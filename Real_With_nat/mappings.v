@@ -832,7 +832,7 @@ Definition TL_HOL {A : Type'} := (@ε ((prod nat nat) -> (seq A) -> seq A) (fun 
 Definition TL {A : Type'} (s : seq A) := if s is [::] then TL_HOL [::]
   else behead s.
 
-Lemma TL_HOL_def {A : Type'} : @TL A = @TL_HOL A.
+Lemma TL_def {A : Type'} : @TL A = @TL_HOL A.
 Proof. by rewrite/TL_HOL ; partial_align (is_nil A). Qed.
 
 Definition NULL : forall {A : Type'}, seq A -> Prop := nilp.
@@ -869,12 +869,12 @@ Proof.
   by partial_align (is_nil A) => ? ; case=>* ; if_seq.
 Qed.
 
-Fixpoint map2 {A B C : Type'} (f : A -> B -> C) (s : seq A) (s' : seq B) : seq C := 
+Fixpoint MAP2 {A B C : Type'} (f : A -> B -> C) (s : seq A) (s' : seq B) : seq C := 
 match s with
 |[::] => [::]
-|a::s => f a (HD s') :: map2 f s (TL s') end.
+|a::s => f a (HD s') :: MAP2 f s (TL s') end.
 
-Lemma MAP2_def {A B C : Type'} : map2 = (@ε ((prod nat (prod nat (prod nat nat))) -> (A -> B -> C) -> (seq A) -> (seq B) -> seq C) (fun MAP2' : (prod nat (prod nat (prod nat nat))) -> (A -> B -> C) -> (seq A) -> (seq B) -> seq C => forall _18174 : prod nat (prod nat (prod nat nat)), (forall f : A -> B -> C, forall l : seq B, (MAP2' _18174 f (@nil A) l) = (@nil C)) /\ (forall h1' : A, forall f : A -> B -> C, forall t1 : seq A, forall l : seq B, (MAP2' _18174 f (@cons A h1' t1) l) = (@cons C (f h1' (@HD B l)) (MAP2' _18174 f t1 (@TL B l))))) (@pair nat (prod nat (prod nat nat)) ((BIT1 (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 0)))))))) (@pair nat (prod nat nat) ((BIT1 (BIT0 (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 0)))))))) (@pair nat nat ((BIT0 (BIT0 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 0)))))))) ((BIT0 (BIT1 (BIT0 (BIT0 (BIT1 (BIT1 0))))))))))).
+Lemma MAP2_def {A B C : Type'} : MAP2 = (@ε ((prod nat (prod nat (prod nat nat))) -> (A -> B -> C) -> (seq A) -> (seq B) -> seq C) (fun MAP2' : (prod nat (prod nat (prod nat nat))) -> (A -> B -> C) -> (seq A) -> (seq B) -> seq C => forall _18174 : prod nat (prod nat (prod nat nat)), (forall f : A -> B -> C, forall l : seq B, (MAP2' _18174 f (@nil A) l) = (@nil C)) /\ (forall h1' : A, forall f : A -> B -> C, forall t1 : seq A, forall l : seq B, (MAP2' _18174 f (@cons A h1' t1) l) = (@cons C (f h1' (@HD B l)) (MAP2' _18174 f t1 (@TL B l))))) (@pair nat (prod nat (prod nat nat)) ((BIT1 (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 0)))))))) (@pair nat (prod nat nat) ((BIT1 (BIT0 (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 0)))))))) (@pair nat nat ((BIT0 (BIT0 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 0)))))))) ((BIT0 (BIT1 (BIT0 (BIT0 (BIT1 (BIT1 0))))))))))).
 Proof. by total_align. Qed.
 
 (* There is no way that EL 1 (TL [::]) can be found using nth alone. *)
