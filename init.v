@@ -720,11 +720,13 @@ Proof.
   by rewrite -{1}(is_False P) => -> ; exact (if_False _ _).
 Qed.
 
-Tactic Notation "if_triv" :=
+Tactic Notation "if_triv" "by" tactic(tac) :=
   rewrite/COND ;
-  (rewrite if_triv_True ; last by []) ||
-  (rewrite if_triv_False ; last by []) ||
+  (rewrite if_triv_True ; last by tac) ||
+  (rewrite if_triv_False ; last by tac) ||
   fail "no conditional term to simplify".
+
+Tactic Notation "if_triv" := if_triv by idtac.
 
 (* /1= in intro/rewrite pattern *)
 Ltac ssrsimpl1 := repeat if_triv.
