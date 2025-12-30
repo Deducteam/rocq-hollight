@@ -925,7 +925,7 @@ Fixpoint ZIP {A B : Type'} (s : seq A) (s' : seq B) :=
 Lemma ZIP_def {A B : Type'} : ZIP = (@ε ((prod nat (prod nat nat)) -> (seq A) -> (seq B) -> seq (prod A B)) (fun ZIP' : (prod nat (prod nat nat)) -> (seq A) -> (seq B) -> seq (prod A B) => forall _18205 : prod nat (prod nat nat), (forall l2 : seq B, (ZIP' _18205 (@nil A) l2) = (@nil (prod A B))) /\ (forall h1' : A, forall t1 : seq A, forall l2 : seq B, (ZIP' _18205 (@cons A h1' t1) l2) = (@cons (prod A B) (@pair A B h1' (@HD B l2)) (ZIP' _18205 t1 (@TL B l2))))) (@pair nat (prod nat nat) ((BIT0 (BIT1 (BIT0 (BIT1 (BIT1 (BIT0 (BIT1 0)))))))) (@pair nat nat ((BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 0)))))))) ((BIT0 (BIT0 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 0))))))))))).
 Proof. by total_align. Qed.
 
-Lemma ZIP_zip {A B : Type'} (s : seq A) (s' : seq B) : size s < size s' ->
+Lemma ZIP_zip {A B : Type'} (s : seq A) (s' : seq B) : size s <= size s' ->
   zip s s' = ZIP s s'.
 Proof.
   elim:s s' => [|? ? IHs] [|? ?] //=; rewrite ltnS=> ?; f_equal ; exact:IHs.

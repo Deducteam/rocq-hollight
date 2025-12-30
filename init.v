@@ -1242,17 +1242,17 @@ Ltac solve_total_align := try full_destruct ;
    See term_align in coq-hol-light-Logic1 for an example with lists as recursive arguments,
    using the following solving tactic *)
 
-Definition allp T (P : T -> Prop) s : Prop := all P s.
+Definition ALL T (P : T -> Prop) s : Prop := all P s.
 
-Lemma map_allpE (A B : Type) (f g : A -> B) (s : seq A) :
-  allp (fun x => f x = g x) s -> map f s = map g s.
+Lemma map_ALLE (A B : Type) (f g : A -> B) (s : seq A) :
+  ALL (fun x => f x = g x) s -> map f s = map g s.
 Proof.
-  by elim:s=> //= ? ? IHs; rewrite/allp -andP** asboolE=> -[? /IHs ?]; f_equal.
+  by elim:s=> //= ? ? IHs; rewrite/ALL -andP** asboolE=> -[? /IHs ?]; f_equal.
 Qed.
 
 Ltac solve_total_align_with_lists :=
   try full_destruct ; blindrewrite ; auto ;
-  repeat (f_equal ; try now apply map_allpE).
+  repeat (f_equal ; try now apply map_ALLE).
 
 Ltac use_induction r := induction r.
 Ltac total_align1 := total_align1_general use_induction solve_total_align.
