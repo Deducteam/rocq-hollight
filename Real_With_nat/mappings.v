@@ -2,7 +2,7 @@ From Stdlib Require Import Ascii.
 From HB Require Import structures.
 From mathcomp Require Import ssreflect ssrfun ssrbool eqtype ssrnat seq div.
 From mathcomp Require Import choice zify boolp classical_sets functions.
-Require Import HOLLight.init.
+Require Export HOLLight.init.
 Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
