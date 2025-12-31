@@ -55,7 +55,7 @@ Proof.
   - subst y. split ; exact: le_refl.
 Qed.
 
-Lemma R_ltNge {x y : R} : (x < y : Prop) = ~ (y <= x).
+Lemma R_ltNge {x y : R} : ((x < y) : Prop) = ~ (y <= x).
 Proof.
   rewrite real_ltNge ; try exact:num_real.
   symmetry ; exact: negP**.
@@ -67,7 +67,7 @@ Proof.
 Qed.
 
 Lemma neqE {A : eqType} {x y : A} : (x <> y) = (x != y).
-Proof. by rewrite eqP** negP**. Qed.
+Proof. by ext ; move/eqP. Qed.
 
 Ltac simp_R_struct := rewrite/Real.set/Real.val/Real.le/Real.sup/Real.add/Real.zero
   /Real.opp/Real.mul/Real.one/Real.inv/R_struct/=-/R_struct-/(set R).
