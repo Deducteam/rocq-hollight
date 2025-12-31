@@ -893,6 +893,8 @@ Fixpoint gbackchain_ind (s : set (set form))
       (Forall2_nil _) (fun n0 f0 l0 l0' H4 H5 H6 =>
         Forall2_cons _ _ (gbackchain_ind s P H n0 f0 H4) H6) H3) end.
 
+Register Scheme gbackchain_ind as ind_nodep for gbackchain.
+
 Lemma gbackchain_def : gbackchain = (fun s : (form -> Prop) -> Prop => fun a0 : N => fun a1 : form => forall gbackchain' : N -> form -> Prop, (forall a0' : N, forall a1' : form, (exists cl : form -> Prop, exists i : N -> term, exists ns : list N, (a0' = (@fold_right_with_perm_args N N N.add ns (NUMERAL (BIT1 N0)))) /\ ((a1' = (formsubst i (conclusion cl))) /\ ((@IN (form -> Prop) cl s) /\ ((forall x : N, @IN term (i x) (herbase (functions (@IMAGE (form -> Prop) form interp s)))) /\ (@List.Forall2 N form gbackchain' ns (@List.map form form (formsubst i) (hypotheses cl))))))) -> gbackchain' a0' a1') -> gbackchain' a0 a1).
 Proof. ssimpl ; ind_align. Qed.
 
@@ -925,6 +927,8 @@ Fixpoint ibackchain_ind (s : set (set form))
       (Forall2_nil _) (fun n0 f0 l0 l0' H4 H5 H6 =>
         Forall2_cons _ _ (ibackchain_ind s P H n0 f0 H4) H6) H3) end.
 
+Register Scheme ibackchain_ind as ind_nodep for ibackchain.
+
 Lemma ibackchain_def : ibackchain = (fun s : (form -> Prop) -> Prop => fun a0 : N => fun a1 : form => forall ibackchain' : N -> form -> Prop, (forall a0' : N, forall a1' : form, (exists cl : form -> Prop, exists i : N -> term, exists ns : list N, (a0' = (@fold_right_with_perm_args N N N.add ns (NUMERAL (BIT1 N0)))) /\ ((a1' = (formsubst i (conclusion cl))) /\ ((@IN (form -> Prop) cl s) /\ ((forall x : N, @IN term (i x) (terms (functions (@IMAGE (form -> Prop) form interp s)))) /\ (@List.Forall2 N form ibackchain' ns (@List.map form form (formsubst i) (hypotheses cl))))))) -> ibackchain' a0' a1') -> ibackchain' a0 a1).
 Proof. ssimpl ; ind_align. Qed.
 
@@ -955,6 +959,8 @@ Fixpoint provable_ind (s : set form) (P : form -> Prop)
       (Forall2_nil _) (fun f0 f'0 l0 l'0 H00 H10 H20 => Forall2_cons _ _
         (provable_ind s P H0 H1 H2 H3 H4 H5 _ H00) H20) H')) H5 f H6.
 
+Register Scheme provable_ind as ind_nodep for provable.
+
 Lemma vdash_def : provable = (fun E : form -> Prop => fun a : form => forall vdash' : form -> Prop, (forall a' : form, ((exists s : term, exists t : term, (a' = (FEq s t)) /\ (@IN form (FEq s t) E)) \/ ((exists t : term, a' = (FEq t t)) \/ ((exists s : term, exists t : term, (a' = (FEq t s)) /\ (vdash' (FEq s t))) \/ ((exists s : term, exists t : term, exists u : term, (a' = (FEq s u)) /\ ((vdash' (FEq s t)) /\ (vdash' (FEq t u)))) \/ ((exists f : N, exists a'' : list term, exists b : list term, (a' = (FEq (Fn f a'') (Fn f b))) /\ (@List.Forall2 term term (fun l : term => fun r : term => vdash' (FEq l r)) a'' b)) \/ (exists s : term, exists t : term, exists i : N -> term, (a' = (formsubst i (FEq s t))) /\ (vdash' (FEq s t)))))))) -> vdash' a') -> vdash' a).
 Proof. ssimpl ; ind_align. Qed.
 
@@ -978,6 +984,8 @@ Fixpoint wcprovable_ind (s : set form) (P : form -> Prop)
     (fun n l l' H' => H4 n l l' (Forall2_ind (Forall2 (fun t t' => P (FEq t t')))
       (Forall2_nil _) (fun f0 f'0 l0 l'0 H00 H10 H20 => Forall2_cons _ _
         (wcprovable_ind s P H0 H1 H2 H3 H4 _ H00) H20) H')) f H5.
+
+Register Scheme wcprovable_ind as ind_nodep for wcprovable.
 
 Lemma vdash2_def : wcprovable = (fun E : form -> Prop => fun a : form => forall vdash2' : form -> Prop, (forall a' : form, ((exists s : term, exists t : term, exists i : N -> term, (a' = (formsubst i (FEq s t))) /\ (@IN form (FEq s t) E)) \/ ((exists s : term, exists t : term, exists i : N -> term, (a' = (formsubst i (FEq t s))) /\ (@IN form (FEq s t) E)) \/ ((exists t : term, a' = (FEq t t)) \/ ((exists s : term, exists t : term, exists u : term, (a' = (FEq s u)) /\ ((vdash2' (FEq s t)) /\ (vdash2' (FEq t u)))) \/ (exists f : N, exists a'' : list term, exists b : list term, (a' = (FEq (Fn f a'') (Fn f b))) /\ (@List.Forall2 term term (fun l : term => fun r : term => vdash2' (FEq l r)) a'' b)))))) -> vdash2' a') -> vdash2' a).
 Proof. ssimpl ; ind_align. Qed.
@@ -1046,6 +1054,11 @@ with provable_cong_ind f (Hc : provable_cong _ f) : P2 f :=
         (cprovable_ind _ H00) H20) HF2') end.
 
 End cprovable_ind.
+
+Register Scheme cprovable_ind as ind_nodep for cprovable.
+Register Scheme provable_achain_ind as ind_nodep for provable_achain.
+Register Scheme provable_cchain_ind as ind_nodep for provable_cchain.
+Register Scheme provable_cong_ind as ind_nodep for provable_cong.
 
 Ltac provable_align induction_principle :=
   let s := fresh in
@@ -1170,6 +1183,11 @@ with provable_scong_ind f (Hc : provable_scong _ f) : P2 f :=
         (scprovable_ind _ H00) H20) HF2') end.
 
 End scprovable_ind.
+
+Register Scheme scprovable_ind as ind_nodep for scprovable.
+Register Scheme provable_sachain_ind as ind_nodep for provable_sachain.
+Register Scheme provable_scchain_ind as ind_nodep for provable_scchain.
+Register Scheme provable_scong_ind as ind_nodep for provable_scong.
 
 Ltac sprovable_align induction_principle :=
   let s := fresh in
@@ -1344,12 +1362,11 @@ Fixpoint lpo_ind P H0 H1 H2
           (lpo_ind P H0 H1 H2 H3 H4 _ _ H00) H10)
         (fun t0 l0 l0' _ H00 => LEX_eq P t0 l0 l0' H00) l l' H1')) t t' H5.
 
+Register Scheme lpo_ind as ind_nodep for lpo.
+
 Lemma lpo_def : lpo = (fun a0 : term => fun a1 : term => forall lt2' : term -> term -> Prop, (forall a0' : term, forall a1' : term, ((exists x : N, (a0' = (V x)) /\ ((@IN N x (free_variables_term a1')) /\ (~ (a1' = (V x))))) \/ ((exists fs : N, exists sargs : list term, exists ft : N, exists targs : list term, exists si : term, (a0' = (Fn ft targs)) /\ ((a1' = (Fn fs sargs)) /\ ((@List.In term si sargs) /\ ((lt2' (Fn ft targs) si) \/ (si = (Fn ft targs)))))) \/ ((exists fs : N, exists ft : N, exists sargs : list term, exists targs : list term, (a0' = (Fn ft targs)) /\ ((a1' = (Fn fs sargs)) /\ (((N.gt fs ft) \/ ((fs = ft) /\ (N.gt (@lengthN term sargs) (@lengthN term targs)))) /\ (@List.Forall term (fun ti : term => lt2' ti (Fn fs sargs)) targs)))) \/ (exists f : N, exists sargs : list term, exists targs : list term, (a0' = (Fn f targs)) /\ ((a1' = (Fn f sargs)) /\ ((@List.Forall term (fun ti : term => lt2' ti (Fn f sargs)) targs) /\ (@LEX term lt2' targs sargs))))))) -> lt2' a0' a1') -> lt2' a0 a1).
 Proof.
   ssimpl ; ind_align.
   - breakgoal by rewrite -lengthN_gtE.
   - by subst ; apply lpo_Fn_smaller => // ; rewrite lengthN_gtE ; auto.
 Qed.
-
-
-
