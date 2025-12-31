@@ -274,7 +274,7 @@ Definition subr (x y : R) : R := (x - y)%mcR.
 Definition mulr : R -> R -> R := mul.
 Definition invr : R -> R := inv.
 Definition divr (x y : R) : R := (x/y)%mcR.
-Definition real_pow (r : R) n : R := r ^+ n.
+Definition expr (r : R) n : R := r ^+ n.
 Definition normr : R -> R := Num.norm.
 Definition sgr : R -> R := Num.sg.
 Definition maxr : R -> R -> R := max.
@@ -378,9 +378,9 @@ Proof.
   - by move/negP/negbTE ; rewrite/min lt_neqAle Bool.andb_comm => ->.
 Qed.
 
-Lemma real_pow_def : real_pow = (@ε ((prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat nat))))))) -> R -> nat -> R) (fun real_pow' : (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat nat))))))) -> R -> nat -> R => forall _24085 : prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat nat)))))), (forall x : R, (real_pow' _24085 x (NUMERAL O)) = (R_of_nat (NUMERAL (BIT1 O)))) /\ (forall x : R, forall n : nat, (real_pow' _24085 x (S n)) = (mulr x (real_pow' _24085 x n)))) (@pair nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat nat)))))) (NUMERAL (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 (BIT1 (BIT1 O)))))))) (@pair nat (prod nat (prod nat (prod nat (prod nat (prod nat nat))))) (NUMERAL (BIT1 (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 (BIT1 O)))))))) (@pair nat (prod nat (prod nat (prod nat (prod nat nat)))) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 (BIT1 O)))))))) (@pair nat (prod nat (prod nat (prod nat nat))) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT1 (BIT0 (BIT1 (BIT1 O)))))))) (@pair nat (prod nat (prod nat nat)) (NUMERAL (BIT1 (BIT1 (BIT1 (BIT1 (BIT1 (BIT0 (BIT1 O)))))))) (@pair nat (prod nat nat) (NUMERAL (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 (BIT1 (BIT1 O)))))))) (@pair nat nat (NUMERAL (BIT1 (BIT1 (BIT1 (BIT1 (BIT0 (BIT1 (BIT1 O)))))))) (NUMERAL (BIT1 (BIT1 (BIT1 (BIT0 (BIT1 (BIT1 (BIT1 O)))))))))))))))).
+Lemma real_pow_def : expr = (@ε ((prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat nat))))))) -> R -> nat -> R) (fun expr' : (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat nat))))))) -> R -> nat -> R => forall _24085 : prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat nat)))))), (forall x : R, (expr' _24085 x (NUMERAL O)) = (R_of_nat (NUMERAL (BIT1 O)))) /\ (forall x : R, forall n : nat, (expr' _24085 x (S n)) = (mulr x (expr' _24085 x n)))) (@pair nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat nat)))))) (NUMERAL (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 (BIT1 (BIT1 O)))))))) (@pair nat (prod nat (prod nat (prod nat (prod nat (prod nat nat))))) (NUMERAL (BIT1 (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 (BIT1 O)))))))) (@pair nat (prod nat (prod nat (prod nat (prod nat nat)))) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 (BIT1 O)))))))) (@pair nat (prod nat (prod nat (prod nat nat))) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT1 (BIT0 (BIT1 (BIT1 O)))))))) (@pair nat (prod nat (prod nat nat)) (NUMERAL (BIT1 (BIT1 (BIT1 (BIT1 (BIT1 (BIT0 (BIT1 O)))))))) (@pair nat (prod nat nat) (NUMERAL (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 (BIT1 (BIT1 O)))))))) (@pair nat nat (NUMERAL (BIT1 (BIT1 (BIT1 (BIT1 (BIT0 (BIT1 (BIT1 O)))))))) (NUMERAL (BIT1 (BIT1 (BIT1 (BIT0 (BIT1 (BIT1 (BIT1 O)))))))))))))))).
 Proof.
-  by total_align => * ; rewrite/real_pow // exprS.
+  by total_align => * ; rewrite/expr // exprS.
 Qed.
 
 Variant sgr_spec (r : R) : R -> R -> Type :=
@@ -419,26 +419,26 @@ Qed.
 
 Definition hol_sqrt (r : R) := if 0 <= r then Num.sqrt r else -Num.sqrt (-r).
 
-Lemma sqrt_def : hol_sqrt = (fun _27149 : R => @ε R (fun y : R => ((sgr y) = (sgr _27149)) /\ ((real_pow y ((BIT0 (BIT1 O)))) = (normr _27149)))).
+Lemma sqrt_def : hol_sqrt = (fun _27149 : R => @ε R (fun y : R => ((sgr y) = (sgr _27149)) /\ ((expr y ((BIT0 (BIT1 O)))) = (normr _27149)))).
 Proof.
   funext=> /= r. align_ε.
   - rewrite/hol_sqrt -(asboolb (0 <= r)%mcR).
-    apply if_intro with (P := fun r' => sgr r' = sgr r /\ real_pow r' 2 = `|r|);
+    apply if_intro with (P := fun r' => sgr r' = sgr r /\ expr r' 2 = `|r|);
     [move=>pos_r | rewrite -R_ltNge => neg_r] ; split.
     + case (pselect (r = 0)) => [-> | neq_r_0] ; first by rewrite sqrtr0.
       have spos_r : 0 < r by rewrite lt_neqAle -andP** -negP** -eqP** sym.
       by rewrite/sgr !gtr0_sg // sqrtr_gt0.
-    + rewrite/real_pow; case (sqrtrP r); [by rewrite R_ltNge|] => /={}r{}pos_r.
+    + rewrite/expr; case (sqrtrP r); [by rewrite R_ltNge|] => /={}r{}pos_r.
       rewrite ger0_norm ; [exact: erefl | exact: sqr_ge0].
     + rewrite/sgr ltr0_sg ; first by rewrite ltr0_sg ?RltE.
       by rewrite oppr_lt0 sqrtr_gt0 -oppr_lt0 opprK.
-    + rewrite/real_pow -{2}(opprK r). set k := -r. case (sqrtrP (k)) => /=.
+    + rewrite/expr -{2}(opprK r). set k := -r. case (sqrtrP (k)) => /=.
       * rewrite oppr_lt0 => pos_r. have := lt_trans neg_r pos_r.
         by rewrite lt_irreflexive.
       * move =>{k neg_r}r pos_r.
         rewrite sqrrN normrN ger0_norm ; [exact: erefl | exact: sqr_ge0].
   - set (s_r := hol_sqrt r : R) ; move=> s_r' [<- <-] [].
-    rewrite/real_pow ; case (sgr_elim s_r) ; case (sgr_elim s_r') => //=.
+    rewrite/expr ; case (sgr_elim s_r) ; case (sgr_elim s_r') => //=.
     2-4,6-8: cbn ; lra.
     + by move=> * ; apply inj_square_pos.
     + move=> neg_s_r' neg_s_r _ ; rewrite -sqrrN -(sqrrN s_r) => eqsq.
@@ -463,7 +463,7 @@ Definition addz : int -> int -> int := add.
 Definition oppz : int -> int := opp.
 Definition subz (x y : int) : int := x-y.
 Definition mulz : int -> int -> int := mul.
-Definition int_pow (r : int) n : int := r ^+ n.
+Definition expz (r : int) n : int := r ^+ n.
 Definition normz : int -> int := Num.norm.
 Definition sgz : int -> int := Num.sg.
 Definition maxz : int -> int -> int := max.
@@ -489,14 +489,14 @@ Proof.
   by move=>r ; rewrite/Rint intrEfloor -eqP**.
 Qed.
 
-Definition int_of_N n : int := n%:Z.
+Definition int_of_nat n : int := n%:Z.
 
 Lemma floor_natz {R : archiNumDomainType} (n : nat) : @Num.floor R n%:R = n.
 Proof.
   by rewrite pmulrn intrKfloor.
 Qed.
 
-Lemma int_of_num_def : int_of_N = (fun _28789 : nat => int_of_real (R_of_nat _28789)).
+Lemma int_of_num_def : int_of_nat = (fun _28789 : nat => int_of_real (R_of_nat _28789)).
 Proof.
   by ext => n ; rewrite/R_of_nat/int_of_real floor_natz.
 Qed.
@@ -593,15 +593,15 @@ Proof.
 Qed.
 
 Lemma int_pow_def :
-  int_pow = (fun _28974 : int => fun _28975 : nat => int_of_real (real_pow (real_of_int _28974) _28975)).
+  expz = (fun _28974 : int => fun _28975 : nat => int_of_real (expr (real_of_int _28974) _28975)).
 Proof.
-  by ext=>* ; rewrite/real_pow/real_of_int/int_of_real -intr_exp intrKfloor.
+  by ext=>* ; rewrite/expr/real_of_int/int_of_real -intr_exp intrKfloor.
 Qed.
 
 Lemma div_def :
-  divz = (@ε ((prod nat (prod nat nat)) -> int -> int -> int) (fun q : (prod nat (prod nat nat)) -> int -> int -> int => forall _29326 : prod nat (prod nat nat), exists r : int -> int -> int, forall m : int, forall n : int, @COND Prop (n = (int_of_N (NUMERAL O))) (((q _29326 m n) = (int_of_N (NUMERAL O))) /\ ((r m n) = m)) ((lez (int_of_N (NUMERAL O)) (r m n)) /\ ((ltz (r m n) (normz n)) /\ (m = (addz (mulz (q _29326 m n) n) (r m n)))))) (@pair nat (prod nat nat) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 (BIT1 O)))))))) (@pair nat nat (NUMERAL (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 (BIT1 O)))))))) (NUMERAL (BIT0 (BIT1 (BIT1 (BIT0 (BIT1 (BIT1 (BIT1 O))))))))))).
+  divz = (@ε ((prod nat (prod nat nat)) -> int -> int -> int) (fun q : (prod nat (prod nat nat)) -> int -> int -> int => forall _29326 : prod nat (prod nat nat), exists r : int -> int -> int, forall m : int, forall n : int, @COND Prop (n = (int_of_nat (NUMERAL O))) (((q _29326 m n) = (int_of_nat (NUMERAL O))) /\ ((r m n) = m)) ((lez (int_of_nat (NUMERAL O)) (r m n)) /\ ((ltz (r m n) (normz n)) /\ (m = (addz (mulz (q _29326 m n) n) (r m n)))))) (@pair nat (prod nat nat) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 (BIT1 O)))))))) (@pair nat nat (NUMERAL (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 (BIT1 O)))))))) (NUMERAL (BIT0 (BIT1 (BIT1 (BIT0 (BIT1 (BIT1 (BIT1 O))))))))))).
 Proof.
-  rewrite/ltz/normz/addz/mulz/int_of_N/lez/=. align_ε.
+  rewrite/ltz/normz/addz/mulz/int_of_nat/lez/=. align_ε.
   - exists modz => n m ; if_intro.
     + move=>-> ; split ; [exact: divz0 | exact: modz0].
     + move/eqP; repeat split; [exact: modz_ge0|exact: ltz_mod|exact: divz_eq].
@@ -612,9 +612,9 @@ Proof.
 Qed.
 
 Lemma rem_def :
-  modz = (@ε ((prod nat (prod nat nat)) -> int -> int -> int) (fun r : (prod nat (prod nat nat)) -> int -> int -> int => forall _29327 : prod nat (prod nat nat), forall m : int, forall n : int, @COND Prop (n = (int_of_N (NUMERAL O))) (((divz m n) = (int_of_N (NUMERAL O))) /\ ((r _29327 m n) = m)) ((lez (int_of_N (NUMERAL O)) (r _29327 m n)) /\ ((ltz (r _29327 m n) (normz n)) /\ (m = (addz (mulz (divz m n) n) (r _29327 m n)))))) (@pair nat (prod nat nat) (NUMERAL (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 (BIT1 (BIT1 O)))))))) (@pair nat nat (NUMERAL (BIT1 (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 (BIT1 O)))))))) (NUMERAL (BIT1 (BIT0 (BIT1 (BIT1 (BIT0 (BIT1 (BIT1 O))))))))))).
+  modz = (@ε ((prod nat (prod nat nat)) -> int -> int -> int) (fun r : (prod nat (prod nat nat)) -> int -> int -> int => forall _29327 : prod nat (prod nat nat), forall m : int, forall n : int, @COND Prop (n = (int_of_nat (NUMERAL O))) (((divz m n) = (int_of_nat (NUMERAL O))) /\ ((r _29327 m n) = m)) ((lez (int_of_nat (NUMERAL O)) (r _29327 m n)) /\ ((ltz (r _29327 m n) (normz n)) /\ (m = (addz (mulz (divz m n) n) (r _29327 m n)))))) (@pair nat (prod nat nat) (NUMERAL (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 (BIT1 (BIT1 O)))))))) (@pair nat nat (NUMERAL (BIT1 (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 (BIT1 O)))))))) (NUMERAL (BIT1 (BIT0 (BIT1 (BIT1 (BIT0 (BIT1 (BIT1 O))))))))))).
 Proof.
-  rewrite/ltz/normz/addz/mulz/int_of_N/lez/=. align_ε.
+  rewrite/ltz/normz/addz/mulz/int_of_nat/lez/=. align_ε.
   - move=> n m ; if_intro.
     + move=>-> ; split ; [exact: divz0 | exact: modz0].
     + move/eqP; repeat split; [exact: modz_ge0|exact: ltz_mod|exact: divz_eq].
@@ -654,7 +654,7 @@ Qed.
 Definition pair_coprimez : int * int -> Prop := uncurry coprimez.
 
 Lemma int_coprime_def :
-  pair_coprimez = (fun _29691 : prod int int => exists x : int, exists y : int, (addz (mulz (@fst int int _29691) x) (mulz (@snd int int _29691) y)) = (int_of_N (NUMERAL (BIT1 O)))).
+  pair_coprimez = (fun _29691 : prod int int => exists x : int, exists y : int, (addz (mulz (@fst int int _29691) x) (mulz (@snd int int _29691) y)) = (int_of_nat (NUMERAL (BIT1 O)))).
 Proof.
   funext =>-[n m]. unshelve eapply (eq_trans (eq_sym (coprimezP _ _)**)). ext.
   - by case=>-[/= u v] ? ; exist u v ; rewrite/mulz (mulrC m) (mulrC n).
@@ -694,9 +694,9 @@ Proof.
 Qed.
 
 Lemma int_gcd_def :
-  pair_gcdz = (@ε ((prod nat (prod nat (prod nat (prod nat (prod nat (prod nat nat)))))) -> (prod int int) -> int) (fun d : (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat nat)))))) -> (prod int int) -> int => forall _30960 : prod nat (prod nat (prod nat (prod nat (prod nat (prod nat nat))))), forall a : int, forall b : int, (lez (int_of_N (NUMERAL O)) (d _30960 (@pair int int a b))) /\ ((dividez (d _30960 (@pair int int a b)) a) /\ ((dividez (d _30960 (@pair int int a b)) b) /\ (exists x : int, exists y : int, (d _30960 (@pair int int a b)) = (addz (mulz a x) (mulz b y)))))) (@pair nat (prod nat (prod nat (prod nat (prod nat (prod nat nat))))) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 (BIT1 O)))))))) (@pair nat (prod nat (prod nat (prod nat (prod nat nat)))) (NUMERAL (BIT0 (BIT1 (BIT1 (BIT1 (BIT0 (BIT1 (BIT1 O)))))))) (@pair nat (prod nat (prod nat (prod nat nat))) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 (BIT1 (BIT1 O)))))))) (@pair nat (prod nat (prod nat nat)) (NUMERAL (BIT1 (BIT1 (BIT1 (BIT1 (BIT1 (BIT0 (BIT1 O)))))))) (@pair nat (prod nat nat) (NUMERAL (BIT1 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 (BIT1 O)))))))) (@pair nat nat (NUMERAL (BIT1 (BIT1 (BIT0 (BIT0 (BIT0 (BIT1 (BIT1 O)))))))) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 (BIT1 O))))))))))))))).
+  pair_gcdz = (@ε ((prod nat (prod nat (prod nat (prod nat (prod nat (prod nat nat)))))) -> (prod int int) -> int) (fun d : (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat nat)))))) -> (prod int int) -> int => forall _30960 : prod nat (prod nat (prod nat (prod nat (prod nat (prod nat nat))))), forall a : int, forall b : int, (lez (int_of_nat (NUMERAL O)) (d _30960 (@pair int int a b))) /\ ((dividez (d _30960 (@pair int int a b)) a) /\ ((dividez (d _30960 (@pair int int a b)) b) /\ (exists x : int, exists y : int, (d _30960 (@pair int int a b)) = (addz (mulz a x) (mulz b y)))))) (@pair nat (prod nat (prod nat (prod nat (prod nat (prod nat nat))))) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 (BIT1 O)))))))) (@pair nat (prod nat (prod nat (prod nat (prod nat nat)))) (NUMERAL (BIT0 (BIT1 (BIT1 (BIT1 (BIT0 (BIT1 (BIT1 O)))))))) (@pair nat (prod nat (prod nat (prod nat nat))) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 (BIT1 (BIT1 O)))))))) (@pair nat (prod nat (prod nat nat)) (NUMERAL (BIT1 (BIT1 (BIT1 (BIT1 (BIT1 (BIT0 (BIT1 O)))))))) (@pair nat (prod nat nat) (NUMERAL (BIT1 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 (BIT1 O)))))))) (@pair nat nat (NUMERAL (BIT1 (BIT1 (BIT0 (BIT0 (BIT0 (BIT1 (BIT1 O)))))))) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 (BIT1 O))))))))))))))).
 Proof.
-  rewrite/pair_gcdz/lez/int_of_N/dividez/addz/mulz/=. align_ε.
+  rewrite/pair_gcdz/lez/int_of_nat/dividez/addz/mulz/=. align_ε.
   - move=>n m /= ; repeat split ; [exact:dvdz_gcdl|exact:dvdz_gcdr|].
     case (Bezoutz n m)=>u [v <-] ; exist u v ; f_equal ; exact:mulrC.
   - move=> gcd _ gcd_def ; ext => -[a b /=].
@@ -710,9 +710,9 @@ Qed.
 Definition pair_lcmz := uncurry lcmz.
 
 Lemma int_lcm_def :
-  pair_lcmz = (fun y0 : prod int int => @COND int ((mulz (@fst int int y0) (@snd int int y0)) = (int_of_N (NUMERAL O))) (int_of_N (NUMERAL O)) (divz (normz (mulz (@fst int int y0) (@snd int int y0))) (pair_gcdz (@pair int int (@fst int int y0) (@snd int int y0))))).
+  pair_lcmz = (fun y0 : prod int int => @COND int ((mulz (@fst int int y0) (@snd int int y0)) = (int_of_nat (NUMERAL O))) (int_of_nat (NUMERAL O)) (divz (normz (mulz (@fst int int y0) (@snd int int y0))) (pair_gcdz (@pair int int (@fst int int y0) (@snd int int y0))))).
 Proof.
-  rewrite/mulz/int_of_N/pair_gcdz/normz/COND ; ext => -[a b] /=.
+  rewrite/mulz/int_of_nat/pair_gcdz/normz/COND ; ext => -[a b] /=.
   if_intro ; last by rewrite divz_nat abszM.
   move/intUnitRing.idomain_axiomz/orP=> -[]/eqP -> ; [exact:lcm0z|exact:lcmz0].
 Qed.
