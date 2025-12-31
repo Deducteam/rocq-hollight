@@ -480,12 +480,22 @@ builtin "dest_finite_image" ≔ dest_finite_image;
 builtin "axiom_27" ≔ axiom_27;
 builtin "axiom_28" ≔ axiom_28;
 
-// cart
+// cart + iterate
 builtin "cart" ≔ cart;
 builtin "mk_cart" ≔ mk_cart;
 builtin "dest_cart" ≔ dest_cart;
 builtin "axiom_29" ≔ axiom_29;
 builtin "axiom_30" ≔ axiom_30;
+builtin "neutral" ≔ neutral;
+builtin "neutral_def" ≔ neutral_def;
+builtin "support" ≔ support;
+builtin "support_def" ≔ support_def;
+builtin "iterate" ≔ iterate;
+builtin "iterate_def" ≔ iterate_def;
+builtin "sum" ≔ sum;
+builtin "sum_def" ≔ sum_def;
+builtin "dollar" ≔ ﹩;
+builtin "dollar_def" ≔ ﹩_def;
 
 // finite_sum
 builtin "finite_sum" ≔ finite_sum;
