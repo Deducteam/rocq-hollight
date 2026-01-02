@@ -1223,7 +1223,7 @@ Definition axiom_28 A : forall r : nat, ((fun x : nat => @IN nat x (dotdot (NUME
 Definition cart (A B : Type') := 'rV[A]_(dimindex [set:B]).
 
 Definition mk_cart (A B : Type') (f : finite_image B -> A) : cart A B :=
-  matrix_of_fun tt (fun=> f).
+  \row_i f i.
 
 Definition dest_cart (A B : Type') (M : cart A B) : finite_image B -> A :=
   M ord0.
