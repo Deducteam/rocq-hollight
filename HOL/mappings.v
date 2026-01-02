@@ -7,10 +7,10 @@ From HB Require Import structures.
 From Stdlib Require Import List Reals.Reals Lra Permutation.
 From Equations Require Import Equations.
 From mathcomp Require Import ssreflect ssrfun ssrbool eqtype ssrnat seq choice.
-From mathcomp Require Import finfun order ssralg ssrnum interval ssrint intdiv.
-From mathcomp Require Import archimedean finmap interval_inference.
-From mathcomp Require Import all_classical topology normedtype reals.
-From mathcomp Require Import Rstruct_topology derive realfun.
+From mathcomp Require Import fintype finfun order ssralg ssrnum matrix.
+From mathcomp Require Import interval ssrint intdiv archimedean finmap.
+From mathcomp Require Import interval_inference all_classical topology.
+From mathcomp Require Import normedtype reals Rstruct_topology derive realfun.
 Import preorder.Order Order.TTheory GRing GRing.Theory Num.Theory Logic.
 Require Export HOLLight.Real_With_nat.mappings.
 From HOLLight.Real_With_nat Require Import terms theorems.
@@ -1153,7 +1153,6 @@ Ltac ssrsimpl3 ::=
 Lemma dotdot_def : dotdot = (fun _66922 : nat => fun _66923 : nat => @GSPEC nat (fun GEN_PVAR_231 : nat => exists x : nat, @SETSPEC nat GEN_PVAR_231 ((leqn _66922 x) /\ (leqn x _66923)) x)).
 Proof. by funext=> * /3= ; rewrite/leqn andP**. Qed.
 
-From mathcomp Require Import matrix fintype.
 Section enum_type.
 (* Basically finite ordinal arithmetic with types. *)
 
