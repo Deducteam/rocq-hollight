@@ -344,10 +344,9 @@ Proof.
   by funext=> n /3= k ; rewrite/from/leqn/= in_itv /= Bool.andb_true_r.
 Qed.
 
-Locate eventually. Print filter.eventually.
 Definition eventually {A : Type'} : (A -> Prop) -> (net A) -> Prop := fun _757911 : A -> Prop => fun _757912 : net A => ((@net_filter A _757912) = (@set0 (A -> Prop))) \/ (exists u : A -> Prop, (@IN (A -> Prop) u (@net_filter A _757912)) /\ (forall x : A, (@IN A x (@setD A u (@net_limits A _757912))) -> _757911 x)).
 Lemma eventually_def {A : Type'} : (@eventually A) = (fun _757911 : A -> Prop => fun _757912 : net A => ((@net_filter A _757912) = (@set0 (A -> Prop))) \/ (exists u : A -> Prop, (@IN (A -> Prop) u (@net_filter A _757912)) /\ (forall x : A, (@IN A x (@setD A u (@net_limits A _757912))) -> _757911 x))).
-Proof. funext=> s n.  Qed.
+Proof. by []. Qed.
 
 
 
