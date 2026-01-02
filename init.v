@@ -1105,21 +1105,24 @@ Ltac _mk_dest_record := finv_inv_l ; instance_uniqueness.
 (* tries proving [H1 /\ ... /\ Hn -> P] with hypothesis [H1 -> ... -> Hn -> P]
    or the converse. *)
 
-Ltac and_arrow := hnf ; intros ; try match goal with H : _ |- _ => now apply H end.
+Ltac and_arrow := try (move=>* ; full_destruct ; match goal with
+  | Hyp : _ |- _ => exact: Hyp end).
 
 (* finv_inv_r gives us two goals, we can only fully automate one :
    [exists r' : T, _dest r' = r -> (P1 /\ P2 /\ ... /\ Pn') r]
    which is simply done by rewriting the hypothesis, and destructing r'
-   to get its fields which should contain the required proof.  *)
+   to get its fields which should contain the required proof.
+   The tactic tac can provide a way to simplify hol light definitions
+   assuming they are already simplified in the record to align it with *)
 
-Ltac _dest_mk_record :=
-  intros ; apply finv_inv_r ;
+Tactic Notation "_dest_mk_record" "by" tactic(tac) "with" uconstr(dest) :=
+  intros ; apply finv_inv_r with (f := dest) ;
   [ try match goal with
     | |- ?P _ -> _ => unfold P
     | |- ?P _ _ -> _ => unfold P
     | |- ?P _ _ _ -> _ => unfold P
     | |- ?P _ _ _ _ -> _ => unfold P end ;
-    intros ; full_destruct
+    tac ; intros ; full_destruct
   | try match goal with
     | |- (exists _, ?f _ = _) -> _ => unfold f
     | |- (exists _, ?f _ _ = _) -> _ => unfold f
@@ -1127,7 +1130,16 @@ Ltac _dest_mk_record :=
     | |- (exists _, ?f _ _ _ _  = _) -> _ => unfold f end ; 
     let r := fresh in
     intros [r <-] ; clearall ; destruct r ;
-    repeat (and_arrow ; split) ; and_arrow ; simpl ].
+    try match goal with
+    | |- ?P _ => unfold P
+    | |- ?P _ _ => unfold P
+    | |- ?P _ _ _ => unfold P
+    | |- ?P _ _ _ _ => unfold P end ;
+    tac ; repeat (and_arrow ; split) ; and_arrow ; simpl ].
+
+Tactic Notation "_dest_mk_record" "by" tactic(tac) := _dest_mk_record by tac with _.
+Tactic Notation "_dest_mk_record" "with" uconstr(dest) := _dest_mk_record by idtac with dest.
+Tactic Notation "_dest_mk_record" := _dest_mk_record with _.
 
 (* The other goal is the opposite direction,
    for which it is required to provide an instance of the Rocq record,
