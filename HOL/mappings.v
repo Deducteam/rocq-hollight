@@ -7,7 +7,7 @@ From HB Require Import structures.
 From Stdlib Require Import List Reals.Reals Lra Permutation.
 From Equations Require Import Equations.
 From mathcomp Require Import ssreflect ssrfun ssrbool eqtype ssrnat seq choice.
-From mathcomp Require Import fintype finfun order ssralg ssrnum matrix.
+From mathcomp Require Import fintype finset finfun order ssralg ssrnum matrix.
 From mathcomp Require Import interval ssrint intdiv archimedean finmap.
 From mathcomp Require Import interval_inference all_classical topology.
 From mathcomp Require Import normedtype reals Rstruct_topology derive realfun.
@@ -450,8 +450,7 @@ Qed.
 (*****************************************************************************)
 
 Open Scope int_scope.
-
-HB.instance Definition _ := is_Type' 0.
+HB.instance Definition _ := isPointed.Build int 0.
 
 Definition int_of_real : R -> int := Num.floor.
 Definition real_of_int : int -> R := intr.
@@ -1162,7 +1161,9 @@ Definition enum_type : Type := let _ := H in 'I_n.
 
 Local Definition inhabits (k : nat) := IN k (dotdot 1 n).
 
-HB.instance Definition _ := is_Type' (Ordinal H : enum_type).
+HB.instance Definition _ := Equality.on enum_type.
+HB.instance Definition _ := Choice.on enum_type.
+HB.instance Definition _ := isPointed.Build enum_type (Ordinal H).
 
 Local Lemma inhabits_to_ord k : inhabits k -> k.-1 < n.
 Proof. by rewrite/inhabits/3= ; elim: k. Qed.
@@ -1248,6 +1249,31 @@ Qed.
 Lemma axiom_30 : forall (A B : Type') (r : (finite_image B) -> A), ((fun f : (finite_image B) -> A => True) r) = ((@dest_cart A B (@mk_cart A B r)) = r).
 Proof.
   by move=> * ; rewrite/dest_cart/mk_cart sym is_True matrix_of_funK.
+Qed.
+
+(* To be able to use HOL Light objects on row vectors *)
+Lemma fset_setT (T : finType) : fset_set [set: T] = [fset i in finset.setT]%fset.
+Proof.
+  apply/fsetP => x ; rewrite in_fset_set ; last exact: finite_finset.
+  by rewrite in_setT 2!inE.
+Qed.
+
+Lemma card_fset_setT (T : finType) : #|`fset_set [set: T]| = #|T|.
+Proof.
+  by rewrite fset_setT card_finset cardsT.
+Qed.
+
+Lemma card_fset_set_ord n : #|`fset_set [set: 'I_n]| = n.
+Proof.
+  by rewrite card_fset_setT card_ord.
+Qed.
+
+Lemma row_to_cart (A : Type') (n : nat) (gt0n : (0 < n)%N) :
+  'rV[A]_n = cart A (enum_type gt0n).
+Proof.
+  rewrite/cart/dimindex/CARD/enum_type; f_equal.
+  have ?: finite_set [set:'I_n] by exact: finite_finset.
+  by rewrite /1= card_fset_set_ord.
 Qed.
 
 (*****************************************************************************)
