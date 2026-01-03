@@ -9,8 +9,10 @@ From Equations Require Import Equations.
 From mathcomp Require Import ssreflect ssrfun ssrbool eqtype ssrnat seq choice.
 From mathcomp Require Import fintype finset finfun order ssralg ssrnum matrix.
 From mathcomp Require Import interval ssrint intdiv archimedean finmap.
-From mathcomp Require Import interval_inference all_classical topology.
-From mathcomp Require Import normedtype reals Rstruct_topology derive realfun.
+From mathcomp Require Import interval_inference all_classical.
+From HOLLight Require Import morepointedtypes.
+From mathcomp Require Import topology normedtype reals Rstruct_topology derive.
+From mathcomp Require Import realfun.
 Import preorder.Order Order.TTheory GRing GRing.Theory Num.Theory Logic.
 Require Export HOLLight.Real_With_nat.mappings.
 From HOLLight.Real_With_nat Require Import terms theorems.
@@ -1410,6 +1412,25 @@ Definition axiom_40 A : forall r : recspace (finite_sum (finite_sum A A) Datatyp
 Definition neutral {A : Type'} (prod : A -> A -> A) := @ε A (fun x : A => forall y : A, ((prod x y) = y) /\ ((prod y x) = y)).
 Lemma neutral_def {A : Type'} : (@neutral A) = (fun prod : A -> A -> A => @ε A (fun x : A => forall y : A, ((prod x y) = y) /\ ((prod y x) = y))).
 Proof. exact (REFL (@neutral A)). Qed.
+
+(* Would prove it for groups but they are less used than zmodTypes *)
+Lemma neutralE (G : zmodType) : @neutral G +%R = 0%R.
+Proof.
+  rewrite/neutral sym ; align_ε ; first by move=> ? ; rewrite addr0 add0r.
+  by move=> x /[spec x] -[{5}<- _] /[spec 0%R : G] -[_ ->].
+Qed.
+
+Definition monoidal {A : Type'} : (A -> A -> A) -> Prop := fun f : A -> A -> A => (forall x : A, forall y : A, (f x y) = (f y x)) /\ ((forall x : A, forall y : A, forall z : A, (f x (f y z)) = (f (f x y) z)) /\ (forall x : A, (f (@neutral A f) x) = x)).
+Lemma monoidal_def {A : Type'} : (@monoidal A) = (fun f : A -> A -> A => (forall x : A, forall y : A, (f x y) = (f y x)) /\ ((forall x : A, forall y : A, forall z : A, (f x (f y z)) = (f (f x y) z)) /\ (forall x : A, (f (@neutral A f) x) = x))).
+Proof. exact (REFL (@monoidal A)). Qed.
+
+Lemma add_monoidal (M : nmodType) : @monoidal M%' +%R.
+Proof.
+  repeat split => * ; [exact: addrC | exact: addrA |].
+  rewrite/neutral ; have N0: exists x : M, forall y, (x+y = y /\ y+x = y)%mcR.
+  - by exists 0%R => ? ; rewrite addr0 add0r.
+  - by apply (@ε_spec M%' _ N0).
+Qed.
 
 Definition support {A B : Type'} (prod : B -> B -> B) (f : A -> B) (s : set A) :=
   [set x | s x /\ f x <> neutral prod].
