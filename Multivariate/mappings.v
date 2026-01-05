@@ -487,7 +487,7 @@ Qed.
 
 Definition row_norm (R : rcfType) n (v : 'rV[R]_n) : R := Num.sqrt (row_dot v v).
 
-Definition vector_norm (n : Type') (v : cart R n) : R := row_norm v.
+Definition vector_norm (n : Type') (v : cart R n) : R := @row_norm R _ v.
 
 Lemma row_square_ge0 (R : realFieldType) n (v : 'rV[R]_n) : 0 <= row_dot v v.
 Proof.
