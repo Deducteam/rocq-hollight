@@ -1223,7 +1223,7 @@ Definition axiom_28 A : forall r : nat, ((fun x : nat => @IN nat x (dotdot (NUME
 (*****************************************************************************)
 
 (* The same type in mathcomp is defined using column matrices. *)
-Definition cart (A B : Type') := 'rV[A]_(dimindex [set:B]).
+Definition cart (A B : Type') : Type' := 'rV[A]_(dimindex [set:B]).
 
 Definition mk_cart (A B : Type') (f : finite_image B -> A) : cart A B :=
   \row_i f i.
