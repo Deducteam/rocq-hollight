@@ -11,10 +11,17 @@ Import preorder.Order Order.TTheory GRing GRing.Theory Num.Theory Logic.
 *)
 From HB Require Import structures.
 From Stdlib Require Import Reals.Reals.
-From mathcomp Require Import ssreflect ssrfun ssrbool eqtype ssrnat choice.
-From mathcomp Require Import fintype order ssralg ssrnum matrix interval.
-From mathcomp Require Import ssrint cardinality Rstruct_topology.
-From HOLLight.HOL Require Export mappings.
+From mathcomp Require Import ssreflect ssrfun ssrbool eqtype ssrnat seq choice.
+From mathcomp Require Import fintype finmap bigop finset monoid order ssralg.
+From mathcomp Require Import ssrnum matrix sesquilinear interval ssrint boolp.
+From mathcomp Require Import cardinality filter topology matrix_topology.
+From mathcomp Require Import normedtype Rstruct_topology.
+Import Order Order.TTheory GRing Num.Theory.
+Require Export HOLLight.HOL.mappings.
+From HOLLight Require Import morepointedtypes HOL.theorems.
+Set Implicit Arguments.
+Unset Strict Implicit.
+Unset Printing Implicit Defensive.
 
 Set Bullet Behavior "Strict Subproofs".
 
@@ -60,7 +67,7 @@ Gop r x (Gop r y z) = Gop r (Gop r x y) z)
 /\ ((forall x, IN x (Gcar r) -> (Gop r (G0 r) x = x) /\ (Gop r x (G0 r) = x))
 /\ (forall x, IN x (Gcar r) -> (Gop r (Ginv r x) x = G0 r) /\ (Gop r x (Ginv r x) = G0 r)))))).
 
-Class Group (A : Type') := {
+Class hol_Group (A : Type') := {
   gcar :> set A ;
   g0 : A ;
   g0_gcar : gcar g0 ;
@@ -74,19 +81,19 @@ Class Group (A : Type') := {
   ginv_gop_l : forall x, gcar x -> gop (ginv x) x = g0 ;
   ginv_gop_r : forall x, gcar x -> gop x (ginv x) = g0 }.
 
-Instance triv_group (A : Type') : Group A.
+Instance triv_group (A : Type') : hol_Group A.
 Proof. 
   by exists [set point] point (fun _ _ => point) (fun=> point).
 Defined.
 
 HB.instance Definition _ (A : Type') := is_Type' (triv_group A).
 
-Definition group_operations {A : Type'} (G : Group A) : Grp A :=
+Definition group_operations {A : Type'} (G : hol_Group A) : Grp A :=
   (gcar , (g0 , (ginv , gop))).
 
 Definition group {A : Type'} := finv (@group_operations A).
 
-Lemma axiom_43 : forall {A : Type'} (a : Group A), (@group A (@group_operations A a)) = a.
+Lemma axiom_43 : forall {A : Type'} (a : hol_Group A), (@group A (@group_operations A a)) = a.
 Proof. _mk_dest_record. Qed.
 
 Lemma axiom_44 : forall {A : Type'} (r : Grp A), is_group r = (group_operations (group r) = r).
@@ -96,16 +103,16 @@ Proof.
   move=>* ; match goal with Hyp : _ |- _ => by apply Hyp end.
 Qed.
 
-Lemma group_carrier_def {A : Type'} : (@gcar A) = (fun g : Group A => @fst (A -> Prop) (prod A (prod (A -> A) (A -> A -> A))) (@group_operations A g)).
+Lemma group_carrier_def {A : Type'} : (@gcar A) = (fun g : hol_Group A => @fst (A -> Prop) (prod A (prod (A -> A) (A -> A -> A))) (@group_operations A g)).
 Proof. by []. Qed.
 
-Lemma group_id_def {A : Type'} : (@g0 A) = (fun g : Group A => @fst A (prod (A -> A) (A -> A -> A)) (@snd (A -> Prop) (prod A (prod (A -> A) (A -> A -> A))) (@group_operations A g))).
+Lemma group_id_def {A : Type'} : (@g0 A) = (fun g : hol_Group A => @fst A (prod (A -> A) (A -> A -> A)) (@snd (A -> Prop) (prod A (prod (A -> A) (A -> A -> A))) (@group_operations A g))).
 Proof. by []. Qed.
 
-Lemma group_inv_def {A : Type'} : (@ginv A) = (fun g : Group A => @fst (A -> A) (A -> A -> A) (@snd A (prod (A -> A) (A -> A -> A)) (@snd (A -> Prop) (prod A (prod (A -> A) (A -> A -> A))) (@group_operations A g)))).
+Lemma group_inv_def {A : Type'} : (@ginv A) = (fun g : hol_Group A => @fst (A -> A) (A -> A -> A) (@snd A (prod (A -> A) (A -> A -> A)) (@snd (A -> Prop) (prod A (prod (A -> A) (A -> A -> A))) (@group_operations A g)))).
 Proof. by []. Qed.
 
-Lemma group_mul_def {A : Type'} : (@gop A) = (fun g : Group A => @snd (A -> A) (A -> A -> A) (@snd A (prod (A -> A) (A -> A -> A)) (@snd (A -> Prop) (prod A (prod (A -> A) (A -> A -> A))) (@group_operations A g)))).
+Lemma group_mul_def {A : Type'} : (@gop A) = (fun g : hol_Group A => @snd (A -> A) (A -> A -> A) (@snd A (prod (A -> A) (A -> A -> A)) (@snd (A -> Prop) (prod A (prod (A -> A) (A -> A -> A))) (@group_operations A g)))).
 Proof. by []. Qed.
 
 (*****************************************************************************)
@@ -163,7 +170,6 @@ Definition istopology {A : Type'} : ((A -> Prop) -> Prop) -> Prop :=
         /\ ((forall s t, ((IN s U) /\ (IN t U)) -> IN (setI s t) U)
            /\ (forall k, subset k U -> IN (UNIONS k) U)).
 
-Print UNIONS.
 Class Topology (A : Type') := {
   open_in :> set A -> Prop ;
   open_set0 : open_in set0 ;
@@ -273,8 +279,10 @@ Defined.
 
 HB.instance Definition _ A := is_Type' (triv_metric A).
 
+Definition mdist_pair (A : Type') M := uncurry (@mdist A M).
+
 Definition dest_metric {A} (M : Metric A) :=
-  (mcar, fun (c : A * A) => let (x,y) := c in mdist x y).
+  (mcar, mdist_pair M).
 
 Definition metric {A} := finv (@dest_metric A).
 
@@ -282,7 +290,7 @@ Lemma axiom_51 : forall {A : Type'} (a : Metric A), (@metric A (@dest_metric A a
 Proof.
   finv_inv_l => /= instance1 instance2 eq.
   destruct instance1,instance2.
-  unfold dest_metric in eq. simpl in eq.
+  rewrite/dest_metric/mdist_pair in eq. simpl in eq.
   revert_keep eq. case: eq => -> /[gen] mdisteq0.
   have -> : mdist0 = mdist1 by ext=> x y ; exact: (mdisteq0 (x,y)).
   clearall => * ; f_equal ; exact: proof_irrelevance.
@@ -296,6 +304,12 @@ Proof.
   - by destruct r ; unfold dest_metric ; f_equal => /` -[].
   - by move=> * /` ? ; full_destruct ; apply mdist_refl0.
 Qed.
+
+Lemma mspace_def {A : Type'} : (@mcar A) = (fun _759924 : Metric A => @fst (A -> Prop) ((prod A A) -> R) (@dest_metric A _759924)).
+Proof. by []. Qed.
+
+Lemma mdist_def {A : Type'} : (@mdist_pair A) = (fun _759929 : Metric A => @snd (A -> Prop) ((prod A A) -> R) (@dest_metric A _759929)).
+Proof. by []. Qed.
 
 (*****************************************************************************)
 (* Multivariate.Clifford.multivector *)
@@ -324,17 +338,23 @@ Proof. intros A r. apply dest_mk. Qed.
 (* Alignments towards convergence of sums *)
 (*****************************************************************************)
 
-Definition count_vector (n : nat) := \matrix_(_ < 1, j < n) j.+1.
-
 Definition lambda {A B : Type'} (s : nat -> A) : cart A B :=
-  map_mx s (count_vector _).
+  \row_i s i.+1.
+
+Lemma rowE A n (v v' : 'rV[A]_n) : (forall k (coordk : (k < n)%N),
+  v ord0 (Ordinal coordk) = v' ord0 (Ordinal coordk)) -> v = v'.
+Proof.
+  by move=> ? ; apply/rowP => -[].
+Qed.
+
+Notation "[ 'rowE' ]" := ltac:(apply: rowE).
 
 Lemma lambda_def {A B : Type'} : (@lambda A B) = (fun _94688 : nat -> A => @ε (cart A B) (fun f : cart A B => forall i : nat, ((leqn (NUMERAL (BIT1 O)) i) /\ (leqn i (@dimindex B (@setT B)))) -> (@dollar A B f i) = (_94688 i))).
 Proof.
   ext=> s ; rewrite/leqn/2= ; align_ε.
-  - by case => [|n] [// _ coordn1] ; rewrite/dollar coordE 2!mxE.
-  - move=> v rocq_val hol_val; apply/matrixP => i [j coordj]; rewrite {i}ord1.
-    by rewrite -2!coordE (pred_Sn j) -/(dollar v j.+1) hol_val -?rocq_val.
+  - by case => [|n] [// _ coordn1] ; rewrite/dollar coordE mxE.
+  - move=> v rocq_val hol_val /[rowE] i coordi ; rewrite -2!coordE (pred_Sn i).
+    by rewrite -/(dollar v i.+1) hol_val -?rocq_val.
 Qed.
 
 Definition from (n : nat) : set nat := `[n,+oo[.
@@ -344,33 +364,278 @@ Proof.
   by funext=> n /3= k ; rewrite/from/leqn/= in_itv /= Bool.andb_true_r.
 Qed.
 
-Definition eventually {A : Type'} : (A -> Prop) -> (net A) -> Prop := fun _757911 : A -> Prop => fun _757912 : net A => ((@net_filter A _757912) = (@set0 (A -> Prop))) \/ (exists u : A -> Prop, (@IN (A -> Prop) u (@net_filter A _757912)) /\ (forall x : A, (@IN A x (@setD A u (@net_limits A _757912))) -> _757911 x)).
+Definition eventually (A : Type') (s : set A) (n : net A) :=
+  (n : set_system A) = set0 \/ exists s0, n s0 /\ (s0 `\` net_limits) `<=` s.
+
 Lemma eventually_def {A : Type'} : (@eventually A) = (fun _757911 : A -> Prop => fun _757912 : net A => ((@net_filter A _757912) = (@set0 (A -> Prop))) \/ (exists u : A -> Prop, (@IN (A -> Prop) u (@net_filter A _757912)) /\ (forall x : A, (@IN A x (@setD A u (@net_limits A _757912))) -> _757911 x))).
+Proof. by funext=> * /3=. Qed.
+
+Lemma from_setI_closed : forall s s' : set nat,
+  range from s -> range from s' -> range from (s `&` s').
+Proof.
+  move=> _ _ [n _ <-] [n' _ <-] ; exists (maxn n n') => // ; symmetry.
+  rewrite/from/maxn ; case ltnP=> ? ; [apply: setIidr | apply: setIidl] => k.
+  1,2 : rewrite/= 2!in_itv /= 2!Bool.andb_true_r; apply: le_trans => //.
+  exact: ltW.
+Qed.
+
+Definition sequentially : net nat := {|
+  net_limits := set0 ;
+  net_setI := from_setI_closed |}.
+
+Lemma sequentially_def : sequentially = (@mk_net nat (@pair ((nat -> Prop) -> Prop) (nat -> Prop) (@GSPEC (nat -> Prop) (fun GEN_PVAR_1595 : nat -> Prop => exists n : nat, @SETSPEC (nat -> Prop) GEN_PVAR_1595 (@IN nat n (@setT nat)) (from n))) (@set0 nat))).
+Proof. rewrite/3= ; constr_align (@axiom_49 nat). Qed.
+
+(* Useful for the alignment of vector operations *)
+Lemma map2_lambda (A B C n : Type') (f : A -> B -> C)
+  (v : cart A n) (v' : cart B n) :
+  map2_mx f v v' = lambda (fun k => f (dollar v k) (dollar v' k)).
+Proof.
+  by move/[rowE] => * ; rewrite/dollar 2!mxE -pred_Sn 2!coordE.
+Qed.
+
+Definition vector_sub n (v v' : cart R n) := v - v'.
+
+Lemma vector_sub_def {N' : Type'} : (@vector_sub N') = (fun _1113090 : cart R N' => fun _1113091 : cart R N' => @lambda R N' (fun i : nat => subr (@dollar R N' _1113090 i) (@dollar R N' _1113091 i))).
+Proof.
+  ext=> * ; apply/matrixP ; rewrite/vector_sub/add/=/addmx map2_lambda /lambda.
+  case=> i coordi [j coordj] ; rewrite/lambda/dollar 2!mxE -pred_Sn 3!coordE.
+  by rewrite/opp/=/oppmx/map_mx mxE.
+Qed.
+
+Definition row_dot (R : fieldType) n : 'rV[R]_n -> 'rV[R]_n -> R :=
+  form idfun 1%R.
+
+Lemma sum0 (T : addUMagmaType) n (f : 'I_n -> T) :
+  (forall i, f i = 0) -> \sum_i f i = 0.
+Proof.
+  elim: n f => [|n IHn] f ; first by rewrite big_ord0.
+  by move=> f0 ; rewrite big_ord_recl f0 Algebra.add0r ; apply:IHn.
+Qed.
+
+Lemma row_dotE (R : fieldType) n (v v' : 'rV[R]_n) :
+  row_dot v v' = \sum_i v ord0 i * v' ord0 i.
+Proof.
+  rewrite/row_dot/form mulmx1 /mulmx mxE map_mx_id // ; f_equal => /= /` i.
+  by f_equal ; rewrite mxE.
+Qed.
+
+Definition dot (n : Type') (v v': cart R n) : R := row_dot v v'.
+
+(* Not sure what's supposed to be best to define it hence belast_rowE *)
+Definition belast_row A n (v : 'rV[A]_n.+1) : 'rV[A]_n := col' (Ordinal (leqnn _)) v.
+
+Lemma OrdinalE n i j pi pj : i = j -> @Ordinal n i pi = @Ordinal n j pj.
+Proof.
+  move=> eqij ; move: pi pj ; subst i => * ; f_equal ; exact:proof_irrelevance.
+Qed.
+
+#[global] Hint Extern 0 (Ordinal _ = Ordinal _) => exact: OrdinalE : core.
+
+Lemma belast_rowE A n (v : 'rV[A]_n.+1) :
+  belast_row v = \row_(i < n) (v ord0 (widen_ord (leqnSn _) i)).
+Proof.
+  apply/rowP => -[i coordi] ; rewrite 2!mxE ; f_equal.
+  rewrite/lift/widen_ord ; apply: OrdinalE.
+  by rewrite/bump/= -{3}(add0n i) ; f_equal ; move: coordi ; case leqP.
+Qed.
+
+Lemma hol_sum_condE n (s : set nat) (f : nat -> R) :
+  sum (s `&` dotdot 1 n) f = \sum_(i < n | s i.+1) f i.+1.
+Proof.
+  elim: n => [|n IHn].
+  - rewrite/setI big_ord0 ; apply: thm_SUM_EQ_0 => /3= /= n [_].
+    by rewrite leqn0=> /andP [/[swap] /eqP ->].
+  - rewrite thm_NUMSEG_REC // setIC thm_INSERT_INTER=> /c` [sn | nsn].
+    + have [_ ->] := @thm_SUM_CLAUSES nat nat.
+      2: { apply: finite_setIl ; exact: thm_FINITE_NUMSEG. }
+      rewrite/COND if_triv_False ; last by rewrite/3=/setI/= ltnn => -[].
+      rewrite big_mkcond big_ord_recr -big_mkcond /= addrC setIC IHn.
+      by move:sn=> /3= ? /1=.
+    + rewrite big_mkcond big_ord_recr -big_mkcond /= setIC IHn.
+      by move: nsn => /3= ? /1= ; rewrite addr0.
+Qed.
+
+Lemma hol_sum_ordE n (f : nat -> R) : sum (dotdot 1 n) f = \sum_(i < n) f i.+1.
+Proof.
+  by rewrite -(setTI (dotdot 1 n)) hol_sum_condE /= asboolT.
+Qed.
+
+Lemma hol_sum_natE n m (f : nat -> R) :
+  sum (dotdot n m) f = \sum_(n <= i < m.+1) f i.
+Proof.
+  elim: m n f => [|m IHm] n f.
+  - case:n => [|n] ; first by rewrite thm_SUM_SING_NUMSEG big_nat1_id addr0.
+    by rewrite big_geq ?thm_SUM_TRIV_NUMSEG.
+  - have [_ ->] := thm_SUM_CLAUSES_NUMSEG f => /c` ; rewrite/leqn.
+    + by move=> ? ; rewrite big_nat_recr ?IHm.
+    + rewrite thm_NOT_LE=> ltmn ; rewrite big_geq // thm_SUM_TRIV_NUMSEG //.
+      by apply: (leq_trans _ ltmn) ; rewrite ltnS leqnSn.
+Qed.
+
+Lemma hol_sum_nat_condE n m (s : set nat) (f : nat -> R) :
+  sum (s `&` dotdot n m) f = \sum_(n <= i < m.+1 | s i) f i.
+Proof.
+  by rewrite big_mkcond/= -hol_sum_natE -thm_SUM_RESTRICT_SET /3= setIC.
+Qed.
+
+Lemma dot_def {N' : Type'} : (@dot N') = (fun _1113124 : cart R N' => fun _1113125 : cart R N' => @sum nat (dotdot (NUMERAL (BIT1 O)) (@dimindex N' (@setT N'))) (fun i : nat => mulr (@dollar R N' _1113124 i) (@dollar R N' _1113125 i))).
+Proof.
+  ext=> v v' ; rewrite/dot row_dotE hol_sum_ordE ; f_equal=> /= /` -[i coordi].
+  by f_equal ; rewrite/dollar 2?coordE.
+Qed.
+
+Definition row_norm (R : rcfType) n (v : 'rV[R]_n) : R := Num.sqrt (row_dot v v).
+
+Definition vector_norm (n : Type') (v : cart R n) : R := row_norm v.
+
+Lemma row_square_ge0 (R : realFieldType) n (v : 'rV[R]_n) : 0 <= row_dot v v.
+Proof.
+  rewrite row_dotE ; apply: Num.Theory.sumr_ge0 => /= i _.
+  exact: Num.Theory.sqr_ge0.
+Qed.
+
+Lemma vector_norm_def {_586104 : Type'} : (@vector_norm _586104) = (fun _1113880 : cart R _586104 => hol_sqrt (@dot _586104 _1113880 _1113880)).
+Proof.
+  by ext=> v ; rewrite/vector_norm/row_norm/hol_sqrt/dot row_square_ge0.
+Qed.
+
+Definition row_distance (R : rcfType) n (v v' : 'rV[R]_n) := row_norm (v-v').
+
+Definition distance n : prod (cart R n) (cart R n) -> R :=
+  uncurry (@row_distance R _).
+
+Lemma distance_def {_586129 : Type'} : (@distance _586129) = (fun _1113885 : prod (cart R _586129) (cart R _586129) => @vector_norm _586129 (@vector_sub _586129 (@fst (cart R _586129) (cart R _586129) _1113885) (@snd (cart R _586129) (cart R _586129) _1113885))).
+Proof. by ext ; case. Qed.
+
+Definition row_sum (A : Type') n (s : set A) (f : A -> 'rV[R]_n) : 'rV_n :=
+  \row_i sum s (fun x => (f x) ord0 i).
+
+Definition vsum (A n : Type') : (A -> Prop) -> (A -> cart R n) -> cart R n :=
+  row_sum (n := _).
+
+Lemma vsum_def {A N' : Type'} : (@vsum A N') = (fun s : A -> Prop => fun f : A -> cart R N' => @lambda R N' (fun i : nat => @sum A s (fun x : A => @dollar R N' (f x) i))).
+Proof.
+  rewrite/vsum/row_sum/lambda/dollar => /` * /= ; f_equal => /` ? [] *.
+  by f_equal => /` * ; rewrite coordE.
+Qed.
+
+Definition FImp (n A : Type') (f : A -> cart R n) l (n : net A) :=
+  (forall e : R, 0 < e -> eventually (fun x => row_distance (f x) l < e) n).
+
+Lemma FImp_def {_708096 _708101 : Type'} : (@FImp _708096 _708101) = (fun _1218977 : _708101 -> cart R _708096 => fun _1218978 : cart R _708096 => fun _1218979 : net _708101 => forall e : R, (ltr (R_of_nat (NUMERAL O)) e) -> @eventually _708101 (fun x : _708101 => ltr (@distance _708096 (@pair (cart R _708096) (cart R _708096) (_1218977 x) _1218978)) e) _1218979).
 Proof. by []. Qed.
 
+Lemma row_sum_condE n k (s : set nat) (f : nat -> 'rV[R]_n) :
+  row_sum (s `&` dotdot 0 k) f = \sum_(i < k.+1 | s i) f i.
+Proof.
+  apply/rowP => -[i coordi] ; rewrite/row_sum summxE mxE hol_sum_nat_condE.
+  by rewrite big_mkord ord1.
+Qed.
 
+Lemma row_square0 R n : @row_dot R n 0 0 = 0.
+Proof.
+  by rewrite row_dotE sum0 // => * ; rewrite mxE mulr0.
+Qed.
 
+Definition sums n (u : nat -> cart R n) (l : cart R n) (s : set nat) :=
+  \sum_(i < n.+1 | s i) u i @[n --> \oo] --> l.
 
+Lemma max_square (R : realDomainType) (x y : R) :
+  max (x ^+ 2) (y ^+ 2) = max `|x| `|y| ^+ 2.
+Proof.
+  rewrite/exp/iterop/= maxr_pMr ; last by case (ltP `|x|).
+  rewrite -2![_ * _]/(_^+ 2) -(ger0_norm (sqr_ge0 x)) -(ger0_norm (sqr_ge0 y)).
+  rewrite 2!normrX/exp/iterop/= ; case (ltP `|x|)=>[ltxy|gexy] ; rewrite/max.
+  - rewrite ltr_pM2l ?ltr_pM ?ltxy // ; exact: (le_lt_trans _ ltxy).
+  - by rewrite 2!ltNge ler_pM ?ler_wpM2l.
+Qed.
 
+Lemma bigmax_square A (R : realDomainType) (r : seq A) (F : A -> R) :
+  \big[Def.max/0]_(x <- r) F x ^+ 2 = (\big[Def.max/0]_(x <- r) `|F x|) ^+ 2.
+Proof.
+  elim:r=>[|a r IHr] ; first by rewrite/exp/= 2!big_nil mulr0.
+  rewrite 2!big_cons IHr max_square ; do 2 f_equal.
+  apply:ger0_norm ; exact: bigmax_ge_id.
+Qed.
 
+Lemma row_norm_le_mx_norm (R : rcfType) n (v : 'rV[R]_n) :
+  row_norm v <= Num.sqrt n%:R * `|v|.
+Proof.
+  rewrite/row_norm -normr_id -sqrtr_sqr -sqrtrM ; last by [].
+  rewrite ler_sqrt ; last (apply:mulr_ge0 ; [by [] | exact:mulr_ge0]).
+  rewrite/Num.norm/= mx_normrE -bigmax_square row_dotE.
+  match goal with |- is_true (_ <= _ * ?x) => set (maxv2 := x) end.
+  apply: (le_trans (y:= \sum_(i < n) maxv2)).
+  { apply: ler_sum=> /= i _ ; exact: (le_bigmax _ _ (ord0, i)). }
+  rewrite sumr_const mulr_natl.
+  match goal with |- is_true (?x <= ?y) => have -> // : x = y end.
+  f_equal ; exact: card_ord.
+Qed.
 
+Lemma lift0_surj n (k : 'I_n.+1) :
+  k <> ord0 -> exists k0 : 'I_n, k = lift ord0 k0.
+Proof.
+  case:k=>-[] ; first by rewrite/ord0=> ? contra ; contradiction contra.
+  move=> m /[dup] ; rewrite{1} ltnS => ltmn ? ? ; exists (Ordinal ltmn).
+  by apply ord_inj ; rewrite lift0.
+Qed.
 
+Lemma injectiveE A B (f : A -> B) : injective f ->
+  forall x y, (f x = f y) = (x = y).
+Proof. move=> injf * /` ; [exact: injf | by move=>->]. Qed.
 
+Lemma mx_norm_le_row_norm (R : rcfType) n (v : 'rV[R]_n) :
+  `|v| <= row_norm v.
+Proof.
+  rewrite/row_norm -normr_id -sqrtr_sqr ler_sqrt ; last exact: row_square_ge0.
+  rewrite/Num.norm/exp/iterop/= ; case (EM (mx_norm v == 0)).
+  - by move/eqP/mx_norm_eq0 => -> ; rewrite mx_norm0 row_square0 mulr0.
+  - move/negP/mx_norm_neq0 => -[[j i] ->] /= ; rewrite row_dotE {j}ord1.
+    rewrite-[X in X <= _]/(_ ^+ 2) -normrX ger0_norm ; last exact: sqr_ge0.
+    have ->: v ord0 i ^+ 2 = \sum_(k < n) (if k = i then v ord0 i ^+ 2 else 0).
+    + elim: n v i => [|n IHn] v i.
+      { by rewrite/exp/iterop/= thinmx0 big_ord0 mxE mul0r. }
+      rewrite big_ord_recl /= ; case (EM (ord0 = i)).
+      * move=> <-. have -> /= : `[< ord0 = ord0 >] = true.
+        { by move=> ? ; rewrite asboolT. }
+        rewrite sum0 ?addr0 // => k.
+        by have -> : `[< lift ord0 k = ord0 >] = false by rewrite asboolF.
+      * move/[dup] => in0 ; rewrite eqP** negP** -eqbF_neg -eqP** => ->.
+        rewrite asboolF //= add0r ; rewrite sym in in0.
+        have {i in0}[i ->] := lift0_surj in0.
+        rewrite-{1}(mxE Datatypes.tt (fun (i : 'I_1) j => v i (lift ord0 j))).
+        by rewrite IHn mxE ; f_equal=> /` ? ; rewrite (injectiveE lift_inj).
+    + apply: ler_sum=> /= k _ ; case (EM (k = i)) => [->|?].
+      * by rewrite asboolT.
+      * by rewrite asboolF // -[X in _ <= X]/(_ ^+ 2) sqr_ge0.
+Qed.
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+Lemma sums_def {n0 : Type'} : (@sums n0) = (fun _1333473 : nat -> cart R n0 => fun _1333474 : cart R n0 => fun _1333475 : nat -> Prop => @FImp n0 nat (fun n : nat => @vsum nat n0 (@setI nat _1333475 (dotdot (NUMERAL O) n)) _1333473) _1333474 sequentially).
+Proof.
+  rewrite/sums/cart/vsum/FImp/row_distance; remember (dimindex [set: n0]) as n.
+  case: n Heqn => []; first by have := dimindex_gt0 [set:n0] => /[swap] <-.
+  rewrite/eventually=> {n0}n _ /` u l s.
+  - move/cvgrPdist_le=> /= cvgul e pos_e ; right.
+    have /[spec] [|[N _ incl]] := cvgul ((e / 2) / Num.sqrt n.+1%:R).
+    { apply:divr_gt0 ; [exact:divr_gt0 | by rewrite sqrtr_gt0]. }
+    exists [set n | leq N n] ; split.
+    + by exists N => // ; rewrite from_def /3=.
+    + rewrite setD0 ; apply: {incl}(subset_trans incl).
+      move=> k nearl ; rewrite row_sum_condE.
+      apply: (le_lt_trans (row_norm_le_mx_norm _)).
+      rewrite -(@mulrK _ (Num.sqrt n.+1%:R) _ e).
+      * rewrite -mulrA mulrCA ltr_pM2l ; last by rewrite sqrtr_gt0.
+        rewrite -opprB normrN ; apply: (le_lt_trans nearl).
+        by rewrite mulrAC ltr_pdivrMr ?ltr_pMr ?ltr1n ?divr_gt0 ?sqrtr_gt0.
+      * by rewrite unitfE sqrtr_eq0 -real_ltNge.
+  - move=> cvgul ; apply/cvgrPdist_le => /= e pos_e.
+    case (cvgul e pos_e) => [contra |[Ns [[N _ {Ns}<-]] /= incl]].
+    + by contradict contra; apply/eqP; rewrite set0P; exist (from 0) 0.
+    + exists N => // ; rewrite setD0 from_def /3= in incl.
+      apply: {incl}(subset_trans incl) => k nearl.
+      rewrite -opprB normrN -row_sum_condE /3=.
+      apply: (le_trans (mx_norm_le_row_norm _)).
+      by move:nearl ; case: ltgtP.
+Qed.
 

@@ -540,7 +540,7 @@ builtin "axiom_41" ≔ axiom_41;
 builtin "axiom_42" ≔ axiom_42;
 
 // group
-builtin "Group" ≔ Group;
+builtin "hol_Group" ≔ Group;
 builtin "group" ≔ group;
 builtin "group_operations" ≔ group_operations;
 builtin "axiom_43" ≔ axiom_43;
@@ -596,3 +596,27 @@ builtin "mk_multivector" ≔ mk_multivector;
 builtin "dest_multivector" ≔ dest_multivector;
 builtin "axiom_53" ≔ axiom_53;
 builtin "axiom_54" ≔ axiom_54;
+
+// convergence of vector sums
+builtin "lambda" ≔ lambda;
+builtin "lambda_def" ≔ lambda_def;
+builtin "from" ≔ from;
+builtin "from_def" ≔ from_def;
+builtin "eventually" ≔ eventually;
+builtin "eventually_def" ≔ eventually_def;
+builtin "sequentially" ≔ sequentially;
+builtin "sequentially_def" ≔ sequentially_def;
+builtin "vector_sub" ≔ vector_sub;
+builtin "vector_sub_def" ≔ vector_sub_def;
+builtin "dot" ≔ dot;
+builtin "dot_def" ≔ dot_def;
+builtin "vector_norm" ≔ vector_norm;
+builtin "vector_norm_def" ≔ vector_norm_def;
+builtin "distance" ≔ distance;
+builtin "distance_def" ≔ distance_def;
+builtin "vsum" ≔ vsum;
+builtin "vsum_def" ≔ vsum_def;
+builtin "FImp" ≔ ⟶;
+builtin "FImp_def" ≔ ⟶_def;
+builtin "sums" ≔ sums;
+builtin "sums_def" ≔ sums_def;
