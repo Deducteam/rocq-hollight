@@ -1,14 +1,3 @@
-(*
-From HB Require Import structures.
-From Stdlib Require Import List Reals.Reals Lra Permutation.
-From Equations Require Import Equations.
-From mathcomp Require Import ssreflect ssrfun ssrbool eqtype ssrnat seq choice.
-From mathcomp Require Import fintype finfun order ssralg ssrnum matrix.
-From mathcomp Require Import interval ssrint intdiv archimedean finmap.
-From mathcomp Require Import interval_inference all_classical topology.
-From mathcomp Require Import normedtype reals Rstruct_topology derive realfun.
-Import preorder.Order Order.TTheory GRing GRing.Theory Num.Theory Logic.
-*)
 From HB Require Import structures.
 From Stdlib Require Import Reals.Reals.
 From mathcomp Require Import ssreflect ssrfun ssrbool eqtype ssrnat seq choice.
@@ -425,18 +414,11 @@ Definition dot (n : Type') (v v': cart R n) : R := row_dot v v'.
 (* Not sure what's supposed to be best to define it hence belast_rowE *)
 Definition belast_row A n (v : 'rV[A]_n.+1) : 'rV[A]_n := col' (Ordinal (leqnn _)) v.
 
-Lemma OrdinalE n i j pi pj : i = j -> @Ordinal n i pi = @Ordinal n j pj.
-Proof.
-  move=> eqij ; move: pi pj ; subst i => * ; f_equal ; exact:proof_irrelevance.
-Qed.
-
-#[global] Hint Extern 0 (Ordinal _ = Ordinal _) => exact: OrdinalE : core.
-
 Lemma belast_rowE A n (v : 'rV[A]_n.+1) :
   belast_row v = \row_(i < n) (v ord0 (widen_ord (leqnSn _) i)).
 Proof.
   apply/rowP => -[i coordi] ; rewrite 2!mxE ; f_equal.
-  rewrite/lift/widen_ord ; apply: OrdinalE.
+  rewrite/lift/widen_ord ; apply: val_inj.
   by rewrite/bump/= -{3}(add0n i) ; f_equal ; move: coordi ; case leqP.
 Qed.
 
@@ -573,17 +555,16 @@ Proof.
   f_equal ; exact: card_ord.
 Qed.
 
-Lemma lift0_surj n (k : 'I_n.+1) :
-  k <> ord0 -> exists k0 : 'I_n, k = lift ord0 k0.
-Proof.
-  case:k=>-[] ; first by rewrite/ord0=> ? contra ; contradiction contra.
-  move=> m /[dup] ; rewrite{1} ltnS => ltmn ? ? ; exists (Ordinal ltmn).
-  by apply ord_inj ; rewrite lift0.
-Qed.
-
 Lemma injectiveE A B (f : A -> B) : injective f ->
   forall x y, (f x = f y) = (x = y).
 Proof. move=> injf * /` ; [exact: injf | by move=>->]. Qed.
+
+Lemma lift0_surj n (k : 'I_n.+1) :
+  k <> ord0 -> exists k0 : 'I_n, k = lift ord0 k0.
+Proof.
+  case:k=> -[? []|m /[dup]] ; [exact: val_inj | rewrite{1} ltnS => ltmn ? ?].
+  by exists (Ordinal ltmn) ; apply: ord_inj ;  rewrite lift0.
+Qed.
 
 Lemma mx_norm_le_row_norm (R : rcfType) n (v : 'rV[R]_n) :
   `|v| <= row_norm v.
