@@ -395,13 +395,6 @@ Qed.
 Definition row_dot (R : fieldType) n : 'rV[R]_n -> 'rV[R]_n -> R :=
   form idfun 1%R.
 
-Lemma sum0 (T : addUMagmaType) n (f : 'I_n -> T) :
-  (forall i, f i = 0) -> \sum_i f i = 0.
-Proof.
-  elim: n f => [|n IHn] f ; first by rewrite big_ord0.
-  by move=> f0 ; rewrite big_ord_recl f0 Algebra.add0r ; apply:IHn.
-Qed.
-
 Lemma row_dotE (R : fieldType) n (v v' : 'rV[R]_n) :
   row_dot v v' = \sum_i v ord0 i * v' ord0 i.
 Proof.
@@ -517,7 +510,7 @@ Qed.
 
 Lemma row_square0 R n : @row_dot R n 0 0 = 0.
 Proof.
-  by rewrite row_dotE sum0 // => * ; rewrite mxE mulr0.
+  by rewrite row_dotE big1 // => * ; rewrite mxE mulr0.
 Qed.
 
 Definition sums n (u : nat -> cart R n) (l : cart R n) (s : set nat) :=
@@ -580,7 +573,7 @@ Proof.
       rewrite big_ord_recl /= ; case (EM (ord0 = i)).
       * move=> <-. have -> /= : `[< ord0 = ord0 >] = true.
         { by move=> ? ; rewrite asboolT. }
-        rewrite sum0 ?addr0 // => k.
+        rewrite big1 ?addr0 // => k.
         by have -> : `[< lift ord0 k = ord0 >] = false by rewrite asboolF.
       * move/[dup] => in0 ; rewrite eqP** negP** -eqbF_neg -eqP** => ->.
         rewrite asboolF //= add0r ; rewrite sym in in0.
