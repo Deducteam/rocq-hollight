@@ -9,7 +9,7 @@ From Equations Require Import Equations.
 From mathcomp Require Import ssreflect ssrfun ssrbool eqtype ssrnat seq choice.
 From mathcomp Require Import fintype finset finfun order ssralg ssrnum matrix.
 From mathcomp Require Import interval ssrint intdiv archimedean finmap.
-From mathcomp Require Import interval_inference all_classical.
+From mathcomp Require Import interval_inference all_classical classical_sets.
 From HOLLight Require Import morepointedtypes.
 From mathcomp Require Import topology normedtype reals Rstruct_topology derive.
 From mathcomp Require Import realfun.
@@ -725,7 +725,6 @@ Close Scope int_scope.
 (*****************************************************************************)
 
 Open Scope classical_set_scope.
-Import classical_sets.
 
 (* mathcomp often uses this version over the boolean in_set *)
 Definition IN (A : Type) (a : A) (s : set A) := s a.
@@ -869,7 +868,6 @@ Lemma finite_setE (A : Type') : finite_set = @finite' A.
 Proof. by symmetry ; rewrite FINITE_def ; ind_align. Qed.
 
 (* Version using lists *)
-Open Scope list_scope.
 Definition set_of_list (A : Type') (l : seq A) : A -> Prop := [set` l].
 
 Lemma set_cons (A : Type') (a : A) (s : seq A) :
