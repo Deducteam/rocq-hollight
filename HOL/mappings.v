@@ -7,10 +7,12 @@ From HB Require Import structures.
 From Stdlib Require Import List Reals.Reals Lra Permutation.
 From Equations Require Import Equations.
 From mathcomp Require Import ssreflect ssrfun ssrbool eqtype ssrnat seq choice.
-From mathcomp Require Import finfun order ssralg ssrnum interval ssrint intdiv.
-From mathcomp Require Import archimedean finmap interval_inference.
-From mathcomp Require Import all_classical topology normedtype reals.
-From mathcomp Require Import Rstruct_topology derive realfun.
+From mathcomp Require Import fintype finset finfun order ssralg ssrnum matrix.
+From mathcomp Require Import interval ssrint intdiv archimedean finmap.
+From mathcomp Require Import interval_inference all_classical.
+From HOLLight Require Import morepointedtypes.
+From mathcomp Require Import topology normedtype reals Rstruct_topology derive.
+From mathcomp Require Import realfun.
 Import preorder.Order Order.TTheory GRing GRing.Theory Num.Theory Logic.
 Require Export HOLLight.Real_With_nat.mappings.
 From HOLLight.Real_With_nat Require Import terms theorems.
@@ -450,8 +452,7 @@ Qed.
 (*****************************************************************************)
 
 Open Scope int_scope.
-
-HB.instance Definition _ := is_Type' 0.
+HB.instance Definition _ := isPointed.Build int 0.
 
 Definition int_of_real : R -> int := Num.floor.
 Definition real_of_int : int -> R := intr.
@@ -1153,7 +1154,6 @@ Ltac ssrsimpl3 ::=
 Lemma dotdot_def : dotdot = (fun _66922 : nat => fun _66923 : nat => @GSPEC nat (fun GEN_PVAR_231 : nat => exists x : nat, @SETSPEC nat GEN_PVAR_231 ((leqn _66922 x) /\ (leqn x _66923)) x)).
 Proof. by funext=> * /3= ; rewrite/leqn andP**. Qed.
 
-From mathcomp Require Import matrix fintype.
 Section enum_type.
 (* Basically finite ordinal arithmetic with types. *)
 
@@ -1163,7 +1163,9 @@ Definition enum_type : Type := let _ := H in 'I_n.
 
 Local Definition inhabits (k : nat) := IN k (dotdot 1 n).
 
-HB.instance Definition _ := is_Type' (Ordinal H : enum_type).
+HB.instance Definition _ := Equality.on enum_type.
+HB.instance Definition _ := Choice.on enum_type.
+HB.instance Definition _ := isPointed.Build enum_type (Ordinal H).
 
 Local Lemma inhabits_to_ord k : inhabits k -> k.-1 < n.
 Proof. by rewrite/inhabits/3= ; elim: k. Qed.
@@ -1221,10 +1223,10 @@ Definition axiom_28 A : forall r : nat, ((fun x : nat => @IN nat x (dotdot (NUME
 (*****************************************************************************)
 
 (* The same type in mathcomp is defined using column matrices. *)
-Definition cart (A B : Type') := 'rV[A]_(dimindex [set:B]).
+Definition cart (A B : Type') : Type' := 'rV[A]_(dimindex [set:B]).
 
 Definition mk_cart (A B : Type') (f : finite_image B -> A) : cart A B :=
-  matrix_of_fun tt (fun=> f).
+  \row_i f i.
 
 Definition dest_cart (A B : Type') (M : cart A B) : finite_image B -> A :=
   M ord0.
@@ -1249,6 +1251,31 @@ Qed.
 Lemma axiom_30 : forall (A B : Type') (r : (finite_image B) -> A), ((fun f : (finite_image B) -> A => True) r) = ((@dest_cart A B (@mk_cart A B r)) = r).
 Proof.
   by move=> * ; rewrite/dest_cart/mk_cart sym is_True matrix_of_funK.
+Qed.
+
+(* To be able to use HOL Light objects on row vectors *)
+Lemma fset_setT (T : finType) : fset_set [set: T] = [fset i in finset.setT]%fset.
+Proof.
+  apply/fsetP => x ; rewrite in_fset_set ; last exact: finite_finset.
+  by rewrite in_setT 2!inE.
+Qed.
+
+Lemma card_fset_setT (T : finType) : #|`fset_set [set: T]| = #|T|.
+Proof.
+  by rewrite fset_setT card_finset cardsT.
+Qed.
+
+Lemma card_fset_set_ord n : #|`fset_set [set: 'I_n]| = n.
+Proof.
+  by rewrite card_fset_setT card_ord.
+Qed.
+
+Lemma row_to_cart (A : Type') (n : nat) (gt0n : (0 < n)%N) :
+  'rV[A]_n = cart A (enum_type gt0n).
+Proof.
+  rewrite/cart/dimindex/CARD/enum_type; f_equal.
+  have ?: finite_set [set:'I_n] by exact: finite_finset.
+  by rewrite /1= card_fset_set_ord.
 Qed.
 
 (*****************************************************************************)
@@ -1385,6 +1412,25 @@ Definition axiom_40 A : forall r : recspace (finite_sum (finite_sum A A) Datatyp
 Definition neutral {A : Type'} (prod : A -> A -> A) := @ε A (fun x : A => forall y : A, ((prod x y) = y) /\ ((prod y x) = y)).
 Lemma neutral_def {A : Type'} : (@neutral A) = (fun prod : A -> A -> A => @ε A (fun x : A => forall y : A, ((prod x y) = y) /\ ((prod y x) = y))).
 Proof. exact (REFL (@neutral A)). Qed.
+
+(* Would prove it for groups but they are less used than zmodTypes *)
+Lemma neutralE (G : zmodType) : @neutral G +%R = 0%R.
+Proof.
+  rewrite/neutral sym ; align_ε ; first by move=> ? ; rewrite addr0 add0r.
+  by move=> x /[spec x] -[{5}<- _] /[spec 0%R : G] -[_ ->].
+Qed.
+
+Definition monoidal {A : Type'} : (A -> A -> A) -> Prop := fun f : A -> A -> A => (forall x : A, forall y : A, (f x y) = (f y x)) /\ ((forall x : A, forall y : A, forall z : A, (f x (f y z)) = (f (f x y) z)) /\ (forall x : A, (f (@neutral A f) x) = x)).
+Lemma monoidal_def {A : Type'} : (@monoidal A) = (fun f : A -> A -> A => (forall x : A, forall y : A, (f x y) = (f y x)) /\ ((forall x : A, forall y : A, forall z : A, (f x (f y z)) = (f (f x y) z)) /\ (forall x : A, (f (@neutral A f) x) = x))).
+Proof. exact (REFL (@monoidal A)). Qed.
+
+Lemma add_monoidal (M : nmodType) : @monoidal M%' +%R.
+Proof.
+  repeat split => * ; [exact: addrC | exact: addrA |].
+  rewrite/neutral ; have N0: exists x : M, forall y, (x+y = y /\ y+x = y)%mcR.
+  - by exists 0%R => ? ; rewrite addr0 add0r.
+  - by apply (@ε_spec M%' _ N0).
+Qed.
 
 Definition support {A B : Type'} (prod : B -> B -> B) (f : A -> B) (s : set A) :=
   [set x | s x /\ f x <> neutral prod].
