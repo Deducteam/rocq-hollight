@@ -657,7 +657,7 @@ Definition pair_coprimez : int * int -> Prop := uncurry coprimez.
 Lemma int_coprime_def :
   pair_coprimez = (fun _29691 : prod int int => exists x : int, exists y : int, (addz (mulz (@fst int int _29691) x) (mulz (@snd int int _29691) y)) = (int_of_nat (NUMERAL (BIT1 O)))).
 Proof.
-  funext =>-[n m]. unshelve eapply (eq_trans (eq_sym (coprimezP _ _)**)). ext.
+  funext =>-[n m]. unshelve eapply (etrans (esym (coprimezP _ _)**)). ext.
   - by case=>-[/= u v] ? ; exist u v ; rewrite/mulz (mulrC m) (mulrC n).
   - by case=>u [v ?] ; exists (u,v) ; rewrite/= (mulrC u) (mulrC v).
 Qed.
@@ -778,9 +778,14 @@ Qed.
 
 Definition UNIONS (A : Type') (s : set (set A)) := \bigcup_(x in s) x.
 
+Lemma bigcupE T I : @bigcup T I = fun P F => [set a|exists i, P i /\ F i a].
+Proof.
+  by rewrite/bigcup => /` P F x /= ; firstorder.
+Qed.
+
 Lemma UNIONS_def (A : Type') : (@UNIONS A) = (fun _32397 : (A -> Prop) -> Prop => @GSPEC A (fun GEN_PVAR_1 : A => exists x : A, @SETSPEC A GEN_PVAR_1 (exists u : A -> Prop, (@IN (A -> Prop) u _32397) /\ (@IN A x u)) x)).
 Proof.
-  by ext => ? ? ; rewrite SPEC_elim ; firstorder ; eauto.
+  by funext => ? ; rewrite/UNIONS bigcupE SPEC_elim.
 Qed.
 
 Definition INTERS (A : Type') (s : set (set A)) := \bigcap_(x in s) x.
