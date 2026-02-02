@@ -1,11 +1,8 @@
 From Stdlib Require Import Reals.Reals.
 From Equations Require Import Equations.
 From mathcomp Require Import ssreflect ssrfun ssrbool eqtype ssrnat seq choice.
-From mathcomp Require Import (*fintype finset finfun*) order ssralg ssrnum.
-From mathcomp Require Import (*archimedean finmap *) boolp classical_sets cardinality.
-(*From HOLLight Require Import morepointedtypes. *)
-From mathcomp Require Import (*topology normedtype*) reals Rstruct_topology (*derive *).
-(* From mathcomp Require Import realfun.*)
+From mathcomp Require Import order ssralg ssrnum boolp classical_sets.
+From mathcomp Require Import cardinality reals Rstruct_topology.
 Import preorder.Order Order.TTheory Num.Theory GRing.Theory.
 Require Export HOLLight.HOL.mappings.
 From HB Require Import structures.
@@ -506,7 +503,7 @@ Definition _mk_form := finv _dest_form.
 Lemma _mk_dest_form : forall (a : form), (_mk_form (_dest_form a)) = a.
 Proof. _mk_dest_inductive. Qed.
 
-Lemma _dest_mk_form : forall (r : recspace (prod N (list term))), ((fun a : recspace (prod N (list term)) => forall form' : (recspace (prod N (list term))) -> Prop, (forall a' : recspace (prod N (list term)), ((a' = (@CONSTR (prod N (list term)) (NUMERAL N0) (@pair N (list term) (@ε N (fun v : N => True)) (@ε (list term) (fun v : list term => True))) (fun n : N => @BOTTOM (prod N (list term))))) \/ ((exists a0 : N, exists a1 : list term, a' = ((fun a0' : N => fun a1' : list term => @CONSTR (prod N (list term)) (N.succ (NUMERAL N0)) (@pair N (list term) a0' a1') (fun n : N => @BOTTOM (prod N (list term)))) a0 a1)) \/ ((exists a0 : recspace (prod N (list term)), exists a1 : recspace (prod N (list term)), (a' = ((fun a0' : recspace (prod N (list term)) => fun a1' : recspace (prod N (list term)) => @CONSTR (prod N (list term)) (N.succ (N.succ (NUMERAL N0))) (@pair N (list term) (@ε N (fun v : N => True)) (@ε (list term) (fun v : list term => True))) (@FCONS (recspace (prod N (list term))) a0' (@FCONS (recspace (prod N (list term))) a1' (fun n : N => @BOTTOM (prod N (list term)))))) a0 a1)) /\ ((form' a0) /\ (form' a1))) \/ (exists a0 : N, exists a1 : recspace (prod N (list term)), (a' = ((fun a0' : N => fun a1' : recspace (prod N (list term)) => @CONSTR (prod N (list term)) (N.succ (N.succ (N.succ (NUMERAL N0)))) (@pair N (list term) a0' (@ε (list term) (fun v : list term => True))) (@FCONS (recspace (prod N (list term))) a1' (fun n : N => @BOTTOM (prod N (list term))))) a0 a1)) /\ (form' a1))))) -> form' a') -> form' a) r) = ((_dest_form (_mk_form r)) = r).
+Lemma _dest_mk_form : forall (r : recspace (prod nat (list term))), ((fun a : recspace (prod nat (list term)) => forall form' : (recspace (prod nat (list term))) -> Prop, (forall a' : recspace (prod nat (list term)), ((a' = (@CONSTR (prod nat (list term)) (NUMERAL 0) (@pair nat (list term) (@ε nat (fun v : nat => True)) (@ε (list term) (fun v : list term => True))) (fun n : nat => @BOTTOM (prod nat (list term))))) \/ ((exists a0 : nat, exists a1 : list term, a' = ((fun a0' : nat => fun a1' : list term => @CONSTR (prod nat (list term)) (S (NUMERAL 0)) (@pair nat (list term) a0' a1') (fun n : nat => @BOTTOM (prod nat (list term)))) a0 a1)) \/ ((exists a0 : recspace (prod nat (list term)), exists a1 : recspace (prod nat (list term)), (a' = ((fun a0' : recspace (prod nat (list term)) => fun a1' : recspace (prod nat (list term)) => @CONSTR (prod nat (list term)) (S (S (NUMERAL 0))) (@pair nat (list term) (@ε nat (fun v : nat => True)) (@ε (list term) (fun v : list term => True))) (@FCONS (recspace (prod nat (list term))) a0' (@FCONS (recspace (prod nat (list term))) a1' (fun n : nat => @BOTTOM (prod nat (list term)))))) a0 a1)) /\ ((form' a0) /\ (form' a1))) \/ (exists a0 : nat, exists a1 : recspace (prod nat (list term)), (a' = ((fun a0' : nat => fun a1' : recspace (prod nat (list term)) => @CONSTR (prod nat (list term)) (S (S (S (NUMERAL 0)))) (@pair nat (list term) a0' (@ε (list term) (fun v : list term => True))) (@FCONS (recspace (prod nat (list term))) a1' (fun n : nat => @BOTTOM (prod nat (list term))))) a0 a1)) /\ (form' a1))))) -> form' a') -> form' a) r) = ((_dest_form (_mk_form r)) = r).
 Proof. by _dest_mk_inductive. Qed.
 
 Lemma FFalse_def : FFalse = (_mk_form (@CONSTR (prod nat (list term)) (NUMERAL 0) (@pair nat (list term) (@ε nat (fun v : nat => True)) (@ε (list term) (fun v : list term => True))) (fun n : nat => @BOTTOM (prod nat (list term))))).
@@ -1700,7 +1697,7 @@ Proof.
   _mk_dest_inductive.
 Qed.
 
-Lemma _dest_mk_retval : forall (r : recspace Prop), ((fun a : recspace Prop => forall retval' : (recspace Prop) -> Prop, (forall a' : recspace Prop, ((a' = (@CONSTR Prop (NUMERAL N0) (@ε Prop (fun x : Prop => True)) (fun n : N => @BOTTOM Prop))) \/ ((a' = (@CONSTR Prop (N.succ (NUMERAL N0)) (@ε Prop (fun x : Prop => True)) (fun n : N => @BOTTOM Prop))) \/ (a' = (@CONSTR Prop (N.succ (N.succ (NUMERAL N0))) (@ε Prop (fun x : Prop => True)) (fun n : N => @BOTTOM Prop))))) -> retval' a') -> retval' a) r) = ((_dest_retval (_mk_retval r)) = r).
+Lemma _dest_mk_retval : forall (r : recspace Prop), ((fun a : recspace Prop => forall retval' : (recspace Prop) -> Prop, (forall a' : recspace Prop, ((a' = (@CONSTR Prop (NUMERAL 0) (@ε Prop (fun x : Prop => True)) (fun n : nat => @BOTTOM Prop))) \/ ((a' = (@CONSTR Prop (S (NUMERAL 0)) (@ε Prop (fun x : Prop => True)) (fun n : nat => @BOTTOM Prop))) \/ (a' = (@CONSTR Prop (S (S (NUMERAL 0))) (@ε Prop (fun x : Prop => True)) (fun n : nat => @BOTTOM Prop))))) -> retval' a') -> retval' a) r) = ((_dest_retval (_mk_retval r)) = r).
 Proof. by _dest_mk_inductive. Qed.
 
 Lemma TT_def : TT = (_mk_retval (@CONSTR Prop (NUMERAL 0) (@ε Prop (fun x : Prop => True)) (fun n : nat => @BOTTOM Prop))).
@@ -1890,5 +1887,3 @@ Definition FAll_def' : FAll = FAll := erefl.
 Definition TT_def' : TT = TT := erefl.
 Definition FF_def' : FF = FF := erefl.
 Definition Exception_def' : Exception = Exception := erefl.
-
-Transparent formsubst free_variables valmod VARIANT.
