@@ -496,7 +496,7 @@ builtin "DISJOINT" ≔ DISJOINT;
 builtin "DISJOINT_def" ≔ DISJOINT_def;
 builtin "is_set1" ≔ SING;
 builtin "SING_def" ≔ SING_def;
-builtin "list_Union" ≔ LIST_UNION;
+builtin "seq_Union" ≔ LIST_UNION;
 builtin "LIST_UNION_def" ≔ LIST_UNION_def;
 
 // finite sets
@@ -508,9 +508,9 @@ builtin "CARD" ≔ CARD;
 builtin "CARD_def" ≔ CARD_def;
 builtin "dimindex" ≔ dimindex;
 builtin "dimindex_def" ≔ dimindex_def;
-builtin "set_of_list" ≔ set_of_list;
+builtin "set_of_seq" ≔ set_of_list;
 builtin "set_of_list_def" ≔ set_of_list_def;
-builtin "list_of_set" ≔ list_of_set;
+builtin "seq_of_set" ≔ list_of_set;
 builtin "list_of_set_def" ≔ list_of_set_def;
 
 // finite_image

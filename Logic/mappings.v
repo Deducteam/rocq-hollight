@@ -33,9 +33,9 @@ Proof.
   apply thm_SUBSET_UNION. now apply thm_FINITE_UNION_IMP.
 Qed.
 
-Lemma finite_set_lUmapfvt : forall l, finite_set (list_Union (map free_variables_term l)).
+Lemma finite_set_lUmapfvt : forall s, finite_set (seq_Union (map free_variables_term s)).
 Proof.
-  induction l ; first by [].
+  induction s ; first by [].
   apply thm_FINITE_UNION_IMP. split;auto.
   apply thm_FVT_FINITE.
 Qed.
@@ -117,7 +117,7 @@ Proof.
     + by [].
 Qed.
 
-Definition unifies v l : Prop := all (fun c => termsubst v c.1 = termsubst v c.2) l.
+Definition unifies v s : Prop := all (fun c => termsubst v c.1 = termsubst v c.2) s.
 
 Lemma unifies_def : unifies = (fun _268411 : nat -> term => fun _268412 : seq (prod term term) => @ALL (prod term term) (@ε ((prod term term) -> Prop) (fun f : (prod term term) -> Prop => forall s : term, forall t : term, @eq Prop (f (@pair term term s t)) ((termsubst _268411 s) = (termsubst _268411 t)))) _268412).
 Proof.
@@ -138,7 +138,7 @@ Definition the {A : Type'} (x : option A) :=
 Lemma THE_def {_211969 : Type'} : (@the _211969) = (@ε ((prod nat (prod nat nat)) -> (option _211969) -> _211969) (fun THE' : (prod nat (prod nat nat)) -> (option _211969) -> _211969 => forall _274433 : prod nat (prod nat nat), forall x : _211969, (THE' _274433 (@Some _211969 x)) = x) (@pair nat (prod nat nat) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 (BIT0 (BIT1 0)))))))) (@pair nat nat (NUMERAL (BIT0 (BIT0 (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 0)))))))) (NUMERAL (BIT1 (BIT0 (BIT1 (BIT0 (BIT0 (BIT0 (BIT1 0))))))))))).
 Proof. by partial_align (is_None _211969). Qed.
 
-Definition unifier l := foldr valmod V (SOLVE nil l).
+Definition unifier s := foldr valmod V (SOLVE nil s).
 
 Lemma unifier_def : unifier = (fun _274434 : seq (prod nat term) => @LET (seq (prod nat term)) (nat -> term) (fun sol : seq (prod nat term) => @LET_END (nat -> term) (@ITLIST (prod nat term) (nat -> term) (@valmod term nat) sol V)) (SOLVE (@nil (prod nat term)) _274434)).
 Proof. reflexivity. Qed.
@@ -196,11 +196,9 @@ Definition literal f :=
 
 Lemma literal_def : literal = (fun _276404 : form => (atom _276404) \/ (exists q : form, (atom q) /\ (_276404 = (Not q)))).
 Proof.
-  ext=>f H.
-  - destruct f;auto. destruct f1 ; destruct f2 ; auto. right.
-    now exists (Atom n l).
-  - destruct H as [H|(f',(H,e))]. induction f;auto. destruct H. rewrite e.
-    now induction f'.
+  ext.
+  - by case ; auto ; case => // n s [] // ; right ; exists (Atom n s).
+  - by move=> f [| [f' []]] ; [elim:f | elim: f'] => // ? ? _ ->.
 Qed.
 
 (* finite set of negatomic formulae *)
@@ -257,9 +255,9 @@ Inductive presproof (hyps : set (set form)) : set form -> Prop :=
 Lemma presproof_def : presproof = (fun hyps' : (form -> Prop) -> Prop => fun a : form -> Prop => forall presproof' : (form -> Prop) -> Prop, (forall a' : form -> Prop, ((@IN (form -> Prop) a' hyps') \/ (exists p : form, exists cl1 : form -> Prop, exists cl2 : form -> Prop, (a' = (resolve p cl1 cl2)) /\ ((presproof' cl1) /\ ((presproof' cl2) /\ ((@IN form p cl1) /\ (@IN form (FNot p) cl2)))))) -> presproof' a') -> presproof' a).
 Proof. rewrite/3= ; ind_align. Qed.
 
-Definition interp cl := foldr FOr FFalse [list of cl].
+Definition interp cl := foldr FOr FFalse [seq of cl].
 
-Lemma interp_def : interp = (fun _276649 : form -> Prop => @ITLIST form form FOr (@list_of_set form _276649) FFalse).
+Lemma interp_def : interp = (fun _276649 : form -> Prop => @ITLIST form form FOr (@seq_of_set form _276649) FFalse).
 Proof. reflexivity. Qed.
 
 Definition instance_of cl cl' := (exists subst, cl = formsubst subst @` cl').
@@ -348,9 +346,9 @@ Definition allntresolvents s s' cl := allresolvents s s' cl /\ ~ tautologous cl.
 Lemma allntresolvents_def : allntresolvents = (fun _290400 : (form -> Prop) -> Prop => fun _290401 : (form -> Prop) -> Prop => @GSPEC (form -> Prop) (fun GEN_PVAR_543 : form -> Prop => exists r : form -> Prop, @SETSPEC (form -> Prop) GEN_PVAR_543 ((@IN (form -> Prop) r (allresolvents _290400 _290401)) /\ (~ (tautologous r))) r)).
 Proof. by extall ; rewrite/3=. Qed.
 
-Definition resolvents cl (l : seq (set form)) := [list of allresolvents [set cl] [set` l]].
+Definition resolvents cl (l : seq (set form)) := [seq of allresolvents [set cl] [set` l]].
 
-Lemma resolvents_def : resolvents = (fun _315994 : form -> Prop => fun _315995 : seq (form -> Prop) => @list_of_set (form -> Prop) (allresolvents (@INSERT (form -> Prop) _315994 (@set0 (form -> Prop))) (@set_of_list (form -> Prop) _315995))).
+Lemma resolvents_def : resolvents = (fun _315994 : form -> Prop => fun _315995 : seq (form -> Prop) => @seq_of_set (form -> Prop) (allresolvents (@INSERT (form -> Prop) _315994 (@set0 (form -> Prop))) (@set_of_seq (form -> Prop) _315995))).
 Proof. by extall ; rewrite/3=. Qed.
 
 Fixpoint replace (cl : form -> Prop) l :=
@@ -361,14 +359,14 @@ Fixpoint replace (cl : form -> Prop) l :=
 Lemma replace_def : replace = (@ε ((prod nat (prod nat (prod nat (prod nat (prod nat (prod nat nat)))))) -> (form -> Prop) -> (seq (form -> Prop)) -> seq (form -> Prop)) (fun replace' : (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat nat)))))) -> (form -> Prop) -> (seq (form -> Prop)) -> seq (form -> Prop) => forall _316246 : prod nat (prod nat (prod nat (prod nat (prod nat (prod nat nat))))), (forall cl : form -> Prop, (replace' _316246 cl (@nil (form -> Prop))) = (@cons (form -> Prop) cl (@nil (form -> Prop)))) /\ (forall c : form -> Prop, forall cl : form -> Prop, forall cls : seq (form -> Prop), (replace' _316246 cl (@cons (form -> Prop) c cls)) = (@COND (seq (form -> Prop)) (subsumes cl c) (@cons (form -> Prop) cl cls) (@cons (form -> Prop) c (replace' _316246 cl cls))))) (@pair nat (prod nat (prod nat (prod nat (prod nat (prod nat nat))))) (NUMERAL (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 (BIT1 (BIT1 0)))))))) (@pair nat (prod nat (prod nat (prod nat (prod nat nat)))) (NUMERAL (BIT1 (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 (BIT1 0)))))))) (@pair nat (prod nat (prod nat (prod nat nat))) (NUMERAL (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 (BIT1 (BIT1 0)))))))) (@pair nat (prod nat (prod nat nat)) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT1 (BIT0 (BIT1 (BIT1 0)))))))) (@pair nat (prod nat nat) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 (BIT1 0)))))))) (@pair nat nat (NUMERAL (BIT1 (BIT1 (BIT0 (BIT0 (BIT0 (BIT1 (BIT1 0)))))))) (NUMERAL (BIT1 (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 (BIT1 0))))))))))))))).
 Proof. by total_align. Qed.
 
-Definition incorporate cl cl' l :=
-  if tautologous cl' \/ has (fun cl0 : form -> Prop => subsumes cl0 cl') (cl :: l)
-    then l else replace cl' l.
+Definition incorporate cl cl' s :=
+  if tautologous cl' \/ has (fun cl0 : form -> Prop => subsumes cl0 cl') (cl :: s)
+    then s else replace cl' s.
 
 Lemma incorporate_def : incorporate =(fun _316633 : form -> Prop => fun _316634 : form -> Prop => fun _316635 : seq (form -> Prop) => @COND (seq (form -> Prop)) ((tautologous _316634) \/ (@EX (form -> Prop) (fun c : form -> Prop => subsumes c _316634) (@cons (form -> Prop) _316633 _316635))) _316635 (replace _316634 _316635)).
 Proof. reflexivity. Qed.
 
-Definition insert {A : Type'} (a : A) l := if a \in l then l else a :: l.
+Definition insert {A : Type'} (a : A) s := if a \in s then s else a :: s.
 
 Lemma insert_def {_218810 : Type'} :  (@insert _218810) = (fun _316826 : _218810 => fun _316827 : seq _218810 => @COND (seq _218810) (@MEM _218810 _316826 _316827) _316827 (@cons _218810 _316826 _316827)).
 Proof. by funext=> * ; rewrite/MEM/COND asboolb. Qed.
@@ -376,11 +374,11 @@ Proof. by funext=> * ; rewrite/MEM/COND asboolb. Qed.
 Definition step c :=
   match snd c with
   | nil => c
-  | a::l' => (insert a (fst c), foldr (incorporate a) l' (resolvents a (a :: (fst c)))) end.
+  | a::s => (insert a (fst c), foldr (incorporate a) s (resolvents a (a :: (fst c)))) end.
 
 Lemma step_def : step = (fun _316838 : prod (seq (form -> Prop)) (seq (form -> Prop)) => @COND (prod (seq (form -> Prop)) (seq (form -> Prop))) ((@snd (seq (form -> Prop)) (seq (form -> Prop)) _316838) = (@nil (form -> Prop))) (@pair (seq (form -> Prop)) (seq (form -> Prop)) (@fst (seq (form -> Prop)) (seq (form -> Prop)) _316838) (@snd (seq (form -> Prop)) (seq (form -> Prop)) _316838)) (@LET (seq (form -> Prop)) (prod (seq (form -> Prop)) (seq (form -> Prop))) (fun new : seq (form -> Prop) => @LET_END (prod (seq (form -> Prop)) (seq (form -> Prop))) (@pair (seq (form -> Prop)) (seq (form -> Prop)) (@insert (form -> Prop) (@HD (form -> Prop) (@snd (seq (form -> Prop)) (seq (form -> Prop)) _316838)) (@fst (seq (form -> Prop)) (seq (form -> Prop)) _316838)) (@ITLIST (form -> Prop) (seq (form -> Prop)) (incorporate (@HD (form -> Prop) (@snd (seq (form -> Prop)) (seq (form -> Prop)) _316838))) new (@TL (form -> Prop) (@snd (seq (form -> Prop)) (seq (form -> Prop)) _316838))))) (resolvents (@HD (form -> Prop) (@snd (seq (form -> Prop)) (seq (form -> Prop)) _316838)) (@cons (form -> Prop) (@HD (form -> Prop) (@snd (seq (form -> Prop)) (seq (form -> Prop)) _316838)) (@fst (seq (form -> Prop)) (seq (form -> Prop)) _316838))))).
 Proof.
-  by ext => [[? l']] * ;  if_seq ; destruct l'.
+  by ext => [[? s]] * ;  if_seq ; destruct s.
 Qed.
 
 Fixpoint given n (p : seq (set form) * seq (set form)) :=
@@ -392,9 +390,9 @@ Proof. by total_align. Qed.
 Definition Used init n := [set` (given n init).1].
 Definition Unused init n := [set` (given n init).2].
 
-Lemma Used_def : Used = (fun _316851 : prod (seq (form -> Prop)) (seq (form -> Prop)) => fun _316852 : nat => @set_of_list (form -> Prop) (@fst (seq (form -> Prop)) (seq (form -> Prop)) (given _316852 _316851))).
+Lemma Used_def : Used = (fun _316851 : prod (seq (form -> Prop)) (seq (form -> Prop)) => fun _316852 : nat => @set_of_seq (form -> Prop) (@fst (seq (form -> Prop)) (seq (form -> Prop)) (given _316852 _316851))).
 Proof. reflexivity. Qed.
-Lemma Unused_def : Unused = (fun _316863 : prod (seq (form -> Prop)) (seq (form -> Prop)) => fun _316864 : nat => @set_of_list (form -> Prop) (@snd (seq (form -> Prop)) (seq (form -> Prop)) (given _316864 _316863))).
+Lemma Unused_def : Unused = (fun _316863 : prod (seq (form -> Prop)) (seq (form -> Prop)) => fun _316864 : nat => @set_of_seq (form -> Prop) (@snd (seq (form -> Prop)) (seq (form -> Prop)) (given _316864 _316863))).
 Proof. reflexivity. Qed.
 
 Fixpoint Sub init n : set (set form) := if n is k.+1
@@ -434,27 +432,27 @@ Proof.
 Qed.
 
 Inductive lpresproof (hyps : set (set form)) : seq (set form) -> Prop :=
-  | lpresproof_assumption : forall cl, hyps cl -> lpresproof hyps (cl::nil)
-  | lpresproof_resolve : forall f cl cl' l, lpresproof hyps (cl::l) ->
-                        (hyps cl' \/ cl' \in l) -> cl f -> cl' (FNot f) ->
-                        lpresproof hyps ((resolve f cl cl')::cl::l).
+  | lpresproof_assumption : forall cl, hyps cl -> lpresproof hyps ([:: cl])
+  | lpresproof_resolve : forall f cl cl' s, lpresproof hyps (cl::s) ->
+                        (hyps cl' \/ cl' \in s) -> cl f -> cl' (FNot f) ->
+                        lpresproof hyps ((resolve f cl cl')::cl::s).
 
 Lemma lpresproof_def : lpresproof = (fun hyps' : (form -> Prop) -> Prop => fun a : seq (form -> Prop) => forall lpresproof' : (seq (form -> Prop)) -> Prop, (forall a' : seq (form -> Prop), ((exists cl : form -> Prop, (a' = (@cons (form -> Prop) cl (@nil (form -> Prop)))) /\ (@IN (form -> Prop) cl hyps')) \/ (exists c1 : form -> Prop, exists c2 : form -> Prop, exists lis : seq (form -> Prop), exists p : form, (a' = (@cons (form -> Prop) (resolve p c1 c2) (@cons (form -> Prop) c1 lis))) /\ ((lpresproof' (@cons (form -> Prop) c1 lis)) /\ (((@IN (form -> Prop) c2 hyps') \/ (@MEM (form -> Prop) c2 lis)) /\ ((@IN form p c1) /\ (@IN form (FNot p) c2)))))) -> lpresproof' a') -> lpresproof' a).
 Proof. rewrite/3= ; ind_align. Qed.
 
-Fixpoint suffix {A : Type} (l : seq A) l' :=
-  match l' with
-  | nil => l = nil
-  | _::l'0  => l = l' \/ suffix l l'0 end.
+Fixpoint suffix {A : Type} (s s' : seq A) :=
+  match s' with
+  | nil => s = nil
+  | _::s''  => s = s' \/ suffix s s'' end.
 
 Lemma suffix_def {_224872 : Type'} : (@suffix _224872) = (@ε ((prod nat (prod nat (prod nat (prod nat (prod nat nat))))) -> (seq _224872) -> (seq _224872) -> Prop) (fun suffix' : (prod nat (prod nat (prod nat (prod nat (prod nat nat))))) -> (seq _224872) -> (seq _224872) -> Prop => forall _374747 : prod nat (prod nat (prod nat (prod nat (prod nat nat)))), (forall lis : seq _224872, (suffix' _374747 lis (@nil _224872)) = (lis = (@nil _224872))) /\ (forall s : _224872, forall lis : seq _224872, forall cs : seq _224872, (suffix' _374747 lis (@cons _224872 s cs)) = ((lis = (@cons _224872 s cs)) \/ (suffix' _374747 lis cs)))) (@pair nat (prod nat (prod nat (prod nat (prod nat nat)))) (NUMERAL (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 (BIT1 (BIT1 0)))))))) (@pair nat (prod nat (prod nat (prod nat nat))) (NUMERAL (BIT1 (BIT0 (BIT1 (BIT0 (BIT1 (BIT1 (BIT1 0)))))))) (@pair nat (prod nat (prod nat nat)) (NUMERAL (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 (BIT1 0)))))))) (@pair nat (prod nat nat) (NUMERAL (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 (BIT1 0)))))))) (@pair nat nat (NUMERAL (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 (BIT1 0)))))))) (NUMERAL (BIT0 (BIT0 (BIT0 (BIT1 (BIT1 (BIT1 (BIT1 0)))))))))))))).
 Proof. by total_align. Qed.
 
 Inductive lresproof (hyps : set (set form)) : seq (set form) -> Prop :=
   | lresproof_assumption : forall cl, hyps cl -> lresproof hyps (cl::nil)
-  | lresproof_resolve : forall cl0 cl cl' l, lresproof hyps (cl::l) ->
-                        (hyps cl' \/ cl' \in l) -> isaresolvent cl0 (cl,cl') ->
-                        lresproof hyps (cl0::cl::l).
+  | lresproof_resolve : forall cl0 cl cl' s, lresproof hyps (cl::s) ->
+                        (hyps cl' \/ cl' \in s) -> isaresolvent cl0 (cl,cl') ->
+                        lresproof hyps (cl0::cl::s).
 
 Lemma lresproof_def : lresproof = (fun hyps' : (form -> Prop) -> Prop => fun a : seq (form -> Prop) => forall lresproof' : (seq (form -> Prop)) -> Prop, (forall a' : seq (form -> Prop), ((exists cl : form -> Prop, (a' = (@cons (form -> Prop) cl (@nil (form -> Prop)))) /\ (@IN (form -> Prop) cl hyps')) \/ (exists c1 : form -> Prop, exists c2 : form -> Prop, exists lis : seq (form -> Prop), exists cl : form -> Prop, (a' = (@cons (form -> Prop) cl (@cons (form -> Prop) c1 lis))) /\ ((lresproof' (@cons (form -> Prop) c1 lis)) /\ (((@IN (form -> Prop) c2 hyps') \/ (@MEM (form -> Prop) c2 lis)) /\ (isaresolvent cl (@pair (form -> Prop) (form -> Prop) c1 c2)))))) -> lresproof' a') -> lresproof' a).
 Proof. rewrite/3= ; ind_align. Qed.
@@ -700,20 +698,20 @@ Lemma allntresolvents_sem_def : allntresolvents_sem = (fun _533176 : prod (nat -
 Proof. by extall ; rewrite/3=. Qed.
 
 Definition resolvents_sem M cl (l : seq (set form)) :=
-  [list of allresolvents_sem M [set cl] [set` l]].
+  [seq of allresolvents_sem M [set cl] [set` l]].
 
-Lemma resolvents_sem_def : resolvents_sem = (fun _533232 : prod (nat -> Prop) (prod (nat -> (seq nat) -> nat) (nat -> (seq nat) -> Prop)) => fun _533233 : form -> Prop => fun _533234 : seq (form -> Prop) => @list_of_set (form -> Prop) (allresolvents_sem _533232 (@INSERT (form -> Prop) _533233 (@set0 (form -> Prop))) (@set_of_list (form -> Prop) _533234))).
+Lemma resolvents_sem_def : resolvents_sem = (fun _533232 : prod (nat -> Prop) (prod (nat -> (seq nat) -> nat) (nat -> (seq nat) -> Prop)) => fun _533233 : form -> Prop => fun _533234 : seq (form -> Prop) => @seq_of_set (form -> Prop) (allresolvents_sem _533232 (@INSERT (form -> Prop) _533233 (@set0 (form -> Prop))) (@set_of_seq (form -> Prop) _533234))).
 Proof. by extall ; rewrite/3=. Qed.
 
 Definition step_sem M c :=
   match c with
   | (_,nil) => c
-  | (l,a::l') => (insert a l,
-    foldr (incorporate a) l' (resolvents_sem M a (a :: l))) end.
+  | (s,a::s') => (insert a s,
+    foldr (incorporate a) s' (resolvents_sem M a (a :: s))) end.
 
 Lemma step_sem_def : step_sem = (fun _533275 : prod (nat -> Prop) (prod (nat -> (seq nat) -> nat) (nat -> (seq nat) -> Prop)) => fun _533276 : prod (seq (form -> Prop)) (seq (form -> Prop)) => @COND (prod (seq (form -> Prop)) (seq (form -> Prop))) ((@snd (seq (form -> Prop)) (seq (form -> Prop)) _533276) = (@nil (form -> Prop))) (@pair (seq (form -> Prop)) (seq (form -> Prop)) (@fst (seq (form -> Prop)) (seq (form -> Prop)) _533276) (@snd (seq (form -> Prop)) (seq (form -> Prop)) _533276)) (@Basics.apply (seq (form -> Prop)) (prod (seq (form -> Prop)) (seq (form -> Prop))) (fun new : seq (form -> Prop) => @Datatypes.id (prod (seq (form -> Prop)) (seq (form -> Prop))) (@pair (seq (form -> Prop)) (seq (form -> Prop)) (@insert (form -> Prop) (@HD (form -> Prop) (@snd (seq (form -> Prop)) (seq (form -> Prop)) _533276)) (@fst (seq (form -> Prop)) (seq (form -> Prop)) _533276)) (@ITLIST (form -> Prop) (seq (form -> Prop)) (incorporate (@HD (form -> Prop) (@snd (seq (form -> Prop)) (seq (form -> Prop)) _533276))) new (@TL (form -> Prop) (@snd (seq (form -> Prop)) (seq (form -> Prop)) _533276))))) (resolvents_sem _533275 (@HD (form -> Prop) (@snd (seq (form -> Prop)) (seq (form -> Prop)) _533276)) (@cons (form -> Prop) (@HD (form -> Prop) (@snd (seq (form -> Prop)) (seq (form -> Prop)) _533276)) (@fst (seq (form -> Prop)) (seq (form -> Prop)) _533276))))).
 Proof.
-  by funext => ? [? l] ; if_seq ; case l.
+  by funext => ? [? s] ; if_seq ; case s.
 Qed.
 
 Fixpoint given_sem M n p :=
@@ -724,15 +722,15 @@ Fixpoint given_sem M n p :=
 Lemma given_sem_def : given_sem = (@ε ((prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat nat)))))))) -> (prod (nat -> Prop) (prod (nat -> (seq nat) -> nat) (nat -> (seq nat) -> Prop))) -> nat -> (prod (seq (form -> Prop)) (seq (form -> Prop))) -> prod (seq (form -> Prop)) (seq (form -> Prop))) (fun given_sem' : (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat nat)))))))) -> (prod (nat -> Prop) (prod (nat -> (seq nat) -> nat) (nat -> (seq nat) -> Prop))) -> nat -> (prod (seq (form -> Prop)) (seq (form -> Prop))) -> prod (seq (form -> Prop)) (seq (form -> Prop)) => forall _533299 : prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat nat))))))), (forall M : prod (nat -> Prop) (prod (nat -> (seq nat) -> nat) (nat -> (seq nat) -> Prop)), forall p : prod (seq (form -> Prop)) (seq (form -> Prop)), (given_sem' _533299 M (NUMERAL 0) p) = p) /\ (forall M : prod (nat -> Prop) (prod (nat -> (seq nat) -> nat) (nat -> (seq nat) -> Prop)), forall n : nat, forall p : prod (seq (form -> Prop)) (seq (form -> Prop)), (given_sem' _533299 M (S n) p) = (step_sem M (given_sem' _533299 M n p)))) (@pair nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat nat))))))) (NUMERAL (BIT1 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 (BIT1 0)))))))) (@pair nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat nat)))))) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 (BIT1 0)))))))) (@pair nat (prod nat (prod nat (prod nat (prod nat (prod nat nat))))) (NUMERAL (BIT0 (BIT1 (BIT1 (BIT0 (BIT1 (BIT1 (BIT1 0)))))))) (@pair nat (prod nat (prod nat (prod nat (prod nat nat)))) (NUMERAL (BIT1 (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 (BIT1 0)))))))) (@pair nat (prod nat (prod nat (prod nat nat))) (NUMERAL (BIT0 (BIT1 (BIT1 (BIT1 (BIT0 (BIT1 (BIT1 0)))))))) (@pair nat (prod nat (prod nat nat)) (NUMERAL (BIT1 (BIT1 (BIT1 (BIT1 (BIT1 (BIT0 (BIT1 0)))))))) (@pair nat (prod nat nat) (NUMERAL (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 (BIT1 (BIT1 0)))))))) (@pair nat nat (NUMERAL (BIT1 (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 (BIT1 0)))))))) (NUMERAL (BIT1 (BIT0 (BIT1 (BIT1 (BIT0 (BIT1 (BIT1 0))))))))))))))))).
 Proof. by total_align. Qed.
 
-Definition Used_SEM M init n := let (l,_) := given_sem M n init in [set` l].
-Definition Unused_SEM M init n := let (_,l) := given_sem M n init in [set` l].
+Definition Used_SEM M init n := let (s,_) := given_sem M n init in [set` s].
+Definition Unused_SEM M init n := let (_,s) := given_sem M n init in [set` s].
 
-Lemma Used_SEM_def : Used_SEM = (fun _533300 : prod (nat -> Prop) (prod (nat -> (seq nat) -> nat) (nat -> (seq nat) -> Prop)) => fun _533301 : prod (seq (form -> Prop)) (seq (form -> Prop)) => fun _533302 : nat => @set_of_list (form -> Prop) (@fst (seq (form -> Prop)) (seq (form -> Prop)) (given_sem _533300 _533302 _533301))).
+Lemma Used_SEM_def : Used_SEM = (fun _533300 : prod (nat -> Prop) (prod (nat -> (seq nat) -> nat) (nat -> (seq nat) -> Prop)) => fun _533301 : prod (seq (form -> Prop)) (seq (form -> Prop)) => fun _533302 : nat => @set_of_seq (form -> Prop) (@fst (seq (form -> Prop)) (seq (form -> Prop)) (given_sem _533300 _533302 _533301))).
 Proof.
   by funext => M init n ; rewrite/Used_SEM ;case (given_sem M n init).
 Qed.
 
-Lemma Unused_SEM_def : Unused_SEM = (fun _533321 : prod (nat -> Prop) (prod (nat -> (seq nat) -> nat) (nat -> (seq nat) -> Prop)) => fun _533322 : prod (seq (form -> Prop)) (seq (form -> Prop)) => fun _533323 : nat => @set_of_list (form -> Prop) (@snd (seq (form -> Prop)) (seq (form -> Prop)) (given_sem _533321 _533323 _533322))).
+Lemma Unused_SEM_def : Unused_SEM = (fun _533321 : prod (nat -> Prop) (prod (nat -> (seq nat) -> nat) (nat -> (seq nat) -> Prop)) => fun _533322 : prod (seq (form -> Prop)) (seq (form -> Prop)) => fun _533323 : nat => @set_of_seq (form -> Prop) (@snd (seq (form -> Prop)) (seq (form -> Prop)) (given_sem _533321 _533323 _533322))).
 Proof.
   by funext => M init n ; rewrite/Unused_SEM ;case (given_sem M n init).
 Qed.
@@ -798,10 +796,10 @@ Proof. reflexivity. Qed.
 
 Definition breakhorn cl := if definite cl
   then let p := ε (fun p : form => cl p /\ positive p) in
-    (map FNot [list of cl `\  p], p)
-  else (map FNot (list_of_set cl), FFalse).
+    (map FNot [seq of cl `\  p], p)
+  else (map FNot (seq_of_set cl), FFalse).
 
-Lemma breakhorn_def : breakhorn = (fun _546245 : form -> Prop => @COND (prod (seq form) form) (definite _546245) (@LET form (prod (seq form) form) (fun p : form => @LET_END (prod (seq form) form) (@pair (seq form) form (@List.map form form FNot (@list_of_set form (@DELETE form _546245 p))) p)) (@ε form (fun p : form => (@IN form p _546245) /\ (positive p)))) (@pair (seq form) form (@List.map form form FNot (@list_of_set form _546245)) FFalse)).
+Lemma breakhorn_def : breakhorn = (fun _546245 : form -> Prop => @COND (prod (seq form) form) (definite _546245) (@LET form (prod (seq form) form) (fun p : form => @LET_END (prod (seq form) form) (@pair (seq form) form (@List.map form form FNot (@seq_of_set form (@DELETE form _546245 p))) p)) (@ε form (fun p : form => (@IN form p _546245) /\ (positive p)))) (@pair (seq form) form (@List.map form form FNot (@seq_of_set form _546245)) FFalse)).
 Proof. by rewrite/3=. Qed.
 
 Definition hypotheses cl := fst (breakhorn cl).
@@ -1166,9 +1164,9 @@ Proof. provable_align provable_cong_ind. Qed.
 Fixpoint subterms t : term -> Prop :=
   match t with
   | V _ => [set t]
-  | Fn _ l => t |` (list_Union (map subterms l)) end.
+  | Fn _ l => t |` (seq_Union (map subterms l)) end.
 
-Lemma subterms_def : subterms = (@ε ((prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat nat))))))) -> term -> term -> Prop) (fun subterms' : (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat nat))))))) -> term -> term -> Prop => forall _553739 : prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat nat)))))), (forall x : nat, (subterms' _553739 (V x)) = (@INSERT term (V x) (@set0 term))) /\ (forall f : nat, forall args : seq term, (subterms' _553739 (Fn f args)) = (@INSERT term (Fn f args) (@list_Union term (@List.map term (term -> Prop) (subterms' _553739) args))))) (@pair nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat nat)))))) (NUMERAL (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 (BIT1 (BIT1 0)))))))) (@pair nat (prod nat (prod nat (prod nat (prod nat (prod nat nat))))) (NUMERAL (BIT1 (BIT0 (BIT1 (BIT0 (BIT1 (BIT1 (BIT1 0)))))))) (@pair nat (prod nat (prod nat (prod nat (prod nat nat)))) (NUMERAL (BIT0 (BIT1 (BIT0 (BIT0 (BIT0 (BIT1 (BIT1 0)))))))) (@pair nat (prod nat (prod nat (prod nat nat))) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 (BIT1 (BIT1 0)))))))) (@pair nat (prod nat (prod nat nat)) (NUMERAL (BIT1 (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 (BIT1 0)))))))) (@pair nat (prod nat nat) (NUMERAL (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 (BIT1 (BIT1 0)))))))) (@pair nat nat (NUMERAL (BIT1 (BIT0 (BIT1 (BIT1 (BIT0 (BIT1 (BIT1 0)))))))) (NUMERAL (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 (BIT1 (BIT1 0)))))))))))))))).
+Lemma subterms_def : subterms = (@ε ((prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat nat))))))) -> term -> term -> Prop) (fun subterms' : (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat nat))))))) -> term -> term -> Prop => forall _553739 : prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat nat)))))), (forall x : nat, (subterms' _553739 (V x)) = (@INSERT term (V x) (@set0 term))) /\ (forall f : nat, forall args : seq term, (subterms' _553739 (Fn f args)) = (@INSERT term (Fn f args) (@seq_Union term (@List.map term (term -> Prop) (subterms' _553739) args))))) (@pair nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat nat)))))) (NUMERAL (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 (BIT1 (BIT1 0)))))))) (@pair nat (prod nat (prod nat (prod nat (prod nat (prod nat nat))))) (NUMERAL (BIT1 (BIT0 (BIT1 (BIT0 (BIT1 (BIT1 (BIT1 0)))))))) (@pair nat (prod nat (prod nat (prod nat (prod nat nat)))) (NUMERAL (BIT0 (BIT1 (BIT0 (BIT0 (BIT0 (BIT1 (BIT1 0)))))))) (@pair nat (prod nat (prod nat (prod nat nat))) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 (BIT1 (BIT1 0)))))))) (@pair nat (prod nat (prod nat nat)) (NUMERAL (BIT1 (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 (BIT1 0)))))))) (@pair nat (prod nat nat) (NUMERAL (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 (BIT1 (BIT1 0)))))))) (@pair nat nat (NUMERAL (BIT1 (BIT0 (BIT1 (BIT1 (BIT0 (BIT1 (BIT1 0)))))))) (NUMERAL (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 (BIT1 (BIT1 0)))))))))))))))).
 Proof. by term_align => * /3=. Qed.
 
 Inductive notatom : form -> Prop :=
@@ -1176,12 +1174,12 @@ Inductive notatom : form -> Prop :=
 | notatom_FImp : forall f f', notatom (FImp f f')
 | notatom_FAll : forall n f, notatom (FAll n f).
 
-Definition SUBTERMSA : form -> term -> Prop := @ε ((prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat nat)))))))) -> form -> term -> Prop) (fun subtermsa' : (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat nat)))))))) -> form -> term -> Prop => forall _553741 : prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat nat))))))), forall P : nat, forall args : seq term, (subtermsa' _553741 (Atom P args)) = (@list_Union term (@List.map term (term -> Prop) subterms args))) (@pair nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat nat))))))) (NUMERAL (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 (BIT1 (BIT1 0)))))))) (@pair nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat nat)))))) (NUMERAL (BIT1 (BIT0 (BIT1 (BIT0 (BIT1 (BIT1 (BIT1 0)))))))) (@pair nat (prod nat (prod nat (prod nat (prod nat (prod nat nat))))) (NUMERAL (BIT0 (BIT1 (BIT0 (BIT0 (BIT0 (BIT1 (BIT1 0)))))))) (@pair nat (prod nat (prod nat (prod nat (prod nat nat)))) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 (BIT1 (BIT1 0)))))))) (@pair nat (prod nat (prod nat (prod nat nat))) (NUMERAL (BIT1 (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 (BIT1 0)))))))) (@pair nat (prod nat (prod nat nat)) (NUMERAL (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 (BIT1 (BIT1 0)))))))) (@pair nat (prod nat nat) (NUMERAL (BIT1 (BIT0 (BIT1 (BIT1 (BIT0 (BIT1 (BIT1 0)))))))) (@pair nat nat (NUMERAL (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 (BIT1 (BIT1 0)))))))) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 (BIT1 0)))))))))))))))).
+Definition SUBTERMSA : form -> term -> Prop := @ε ((prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat nat)))))))) -> form -> term -> Prop) (fun subtermsa' : (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat nat)))))))) -> form -> term -> Prop => forall _553741 : prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat nat))))))), forall P : nat, forall args : seq term, (subtermsa' _553741 (Atom P args)) = (@seq_Union term (@List.map term (term -> Prop) subterms args))) (@pair nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat nat))))))) (NUMERAL (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 (BIT1 (BIT1 0)))))))) (@pair nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat nat)))))) (NUMERAL (BIT1 (BIT0 (BIT1 (BIT0 (BIT1 (BIT1 (BIT1 0)))))))) (@pair nat (prod nat (prod nat (prod nat (prod nat (prod nat nat))))) (NUMERAL (BIT0 (BIT1 (BIT0 (BIT0 (BIT0 (BIT1 (BIT1 0)))))))) (@pair nat (prod nat (prod nat (prod nat (prod nat nat)))) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 (BIT1 (BIT1 0)))))))) (@pair nat (prod nat (prod nat (prod nat nat))) (NUMERAL (BIT1 (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 (BIT1 0)))))))) (@pair nat (prod nat (prod nat nat)) (NUMERAL (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 (BIT1 (BIT1 0)))))))) (@pair nat (prod nat nat) (NUMERAL (BIT1 (BIT0 (BIT1 (BIT1 (BIT0 (BIT1 (BIT1 0)))))))) (@pair nat nat (NUMERAL (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 (BIT1 (BIT1 0)))))))) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 (BIT1 0)))))))))))))))).
 
 Definition subtermsa f : term -> Prop :=
-  match f with Atom _ l => list_Union (map subterms l) | _ => SUBTERMSA f end.
+  match f with Atom _ l => seq_Union (map subterms l) | _ => SUBTERMSA f end.
 
-Lemma subtermsa_def : subtermsa = (@ε ((prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat nat)))))))) -> form -> term -> Prop) (fun subtermsa' : (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat nat)))))))) -> form -> term -> Prop => forall _553741 : prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat nat))))))), forall P : nat, forall args : seq term, (subtermsa' _553741 (Atom P args)) = (@list_Union term (@List.map term (term -> Prop) subterms args))) (@pair nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat nat))))))) (NUMERAL (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 (BIT1 (BIT1 0)))))))) (@pair nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat nat)))))) (NUMERAL (BIT1 (BIT0 (BIT1 (BIT0 (BIT1 (BIT1 (BIT1 0)))))))) (@pair nat (prod nat (prod nat (prod nat (prod nat (prod nat nat))))) (NUMERAL (BIT0 (BIT1 (BIT0 (BIT0 (BIT0 (BIT1 (BIT1 0)))))))) (@pair nat (prod nat (prod nat (prod nat (prod nat nat)))) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 (BIT1 (BIT1 0)))))))) (@pair nat (prod nat (prod nat (prod nat nat))) (NUMERAL (BIT1 (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 (BIT1 0)))))))) (@pair nat (prod nat (prod nat nat)) (NUMERAL (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 (BIT1 (BIT1 0)))))))) (@pair nat (prod nat nat) (NUMERAL (BIT1 (BIT0 (BIT1 (BIT1 (BIT0 (BIT1 (BIT1 0)))))))) (@pair nat nat (NUMERAL (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 (BIT1 (BIT1 0)))))))) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 (BIT1 0))))))))))))))))).
+Lemma subtermsa_def : subtermsa = (@ε ((prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat nat)))))))) -> form -> term -> Prop) (fun subtermsa' : (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat nat)))))))) -> form -> term -> Prop => forall _553741 : prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat nat))))))), forall P : nat, forall args : seq term, (subtermsa' _553741 (Atom P args)) = (@seq_Union term (@List.map term (term -> Prop) subterms args))) (@pair nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat nat))))))) (NUMERAL (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 (BIT1 (BIT1 0)))))))) (@pair nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat nat)))))) (NUMERAL (BIT1 (BIT0 (BIT1 (BIT0 (BIT1 (BIT1 (BIT1 0)))))))) (@pair nat (prod nat (prod nat (prod nat (prod nat (prod nat nat))))) (NUMERAL (BIT0 (BIT1 (BIT0 (BIT0 (BIT0 (BIT1 (BIT1 0)))))))) (@pair nat (prod nat (prod nat (prod nat (prod nat nat)))) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 (BIT1 (BIT1 0)))))))) (@pair nat (prod nat (prod nat (prod nat nat))) (NUMERAL (BIT1 (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 (BIT1 0)))))))) (@pair nat (prod nat (prod nat nat)) (NUMERAL (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 (BIT1 (BIT1 0)))))))) (@pair nat (prod nat nat) (NUMERAL (BIT1 (BIT0 (BIT1 (BIT1 (BIT0 (BIT1 (BIT1 0)))))))) (@pair nat nat (NUMERAL (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 (BIT1 (BIT1 0)))))))) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 (BIT1 0))))))))))))))))).
 Proof. by partial_align notatom. Qed.
 
 Definition subtermss s := UNIONS (subtermsa @` s).
@@ -1236,7 +1234,7 @@ Variables
   (H6 : forall t t' t'', provable_scong S (FEq t t') -> P2 (FEq t t') ->
     provable_sachain S (FEq t' t'') -> P0 (FEq t' t'') -> esubterms S t t'' t' ->
     P1 (FEq t t''))
-  (H7 : forall n l l', List.Forall2 (fun t t' : term => P (FEq t t')) l l' -> P2 (FEq (Fn n l) (Fn n l'))).
+  (H7 : forall n s s', List.Forall2 (fun t t' : term => P (FEq t t')) s s' -> P2 (FEq (Fn n s) (Fn n s'))).
 
 Fixpoint scprovable_ind0 f (H' : scprovable S f) : P f :=
   match H' in scprovable _ f return P f with
@@ -1332,24 +1330,24 @@ Definition Eqclause_Func (c : nat * nat) := let (n,m) := c in
   [set` (FEq (Fn n (map fst l)) (Fn n (map snd l)) ::
    map (fun c' => Not (FEq (fst c') (snd c'))) l)].
 
-Lemma Eqclause_Func_def : Eqclause_Func = (fun _554544 : prod nat nat => @set_of_list form (@cons form (FEq (Fn (@fst nat nat _554544) (@List.map (prod term term) term (@fst term term) (Varpairs (@snd nat nat _554544)))) (Fn (@fst nat nat _554544) (@List.map (prod term term) term (@snd term term) (Varpairs (@snd nat nat _554544))))) (@List.map (prod term term) form (@ε ((prod term term) -> form) (fun f : (prod term term) -> form => forall s : term, forall t : term, @eq form (f (@pair term term s t)) (Not (FEq s t)))) (Varpairs (@snd nat nat _554544))))).
+Lemma Eqclause_Func_def : Eqclause_Func = (fun _554544 : prod nat nat => @set_of_seq form (@cons form (FEq (Fn (@fst nat nat _554544) (@List.map (prod term term) term (@fst term term) (Varpairs (@snd nat nat _554544)))) (Fn (@fst nat nat _554544) (@List.map (prod term term) term (@snd term term) (Varpairs (@snd nat nat _554544))))) (@List.map (prod term term) form (@ε ((prod term term) -> form) (fun f : (prod term term) -> form => forall s : term, forall t : term, @eq form (f (@pair term term s t)) (Not (FEq s t)))) (Varpairs (@snd nat nat _554544))))).
 Proof.
-  apply funext ; case=> n m ; rewrite/Eqclause_Func/set_of_list /=.
-  match goal with | |- [set` (?a::map _ ?l)] = _ =>
-    apply (f_equal (fun f => [set` (a :: map f l)])) end.
+  apply funext ; case=> n m ; rewrite/Eqclause_Func/set_of_seq /=.
+  match goal with | |- [set` (?a::map _ ?s)] = _ =>
+    apply (f_equal (fun f => [set` (a :: map f s)])) end.
   by align_ε => // ? H H' ; ext ; case => t t' ; rewrite H H'.
 Qed.
 
 Definition Eqclause_Pred (c : nat * nat) := let (n,m) := c in
-  let l := Varpairs m in
-  [set` Atom n (map snd l) :: Not (Atom n (map fst l)) ::
-     map (fun c' => Not (FEq (fst c') (snd c'))) l].
+  let s := Varpairs m in
+  [set` Atom n (map snd s) :: Not (Atom n (map fst s)) ::
+     map (fun c' => Not (FEq (fst c') (snd c'))) s].
 
-Lemma Eqclause_Pred_def : Eqclause_Pred = (fun _554553 : prod nat nat => @set_of_list form (@cons form (Atom (@fst nat nat _554553) (@List.map (prod term term) term (@snd term term) (Varpairs (@snd nat nat _554553)))) (@cons form (Not (Atom (@fst nat nat _554553) (@List.map (prod term term) term (@fst term term) (Varpairs (@snd nat nat _554553))))) (@List.map (prod term term) form (@ε ((prod term term) -> form) (fun f : (prod term term) -> form => forall s : term, forall t : term, @eq form (f (@pair term term s t)) (Not (FEq s t)))) (Varpairs (@snd nat nat _554553)))))).
+Lemma Eqclause_Pred_def : Eqclause_Pred = (fun _554553 : prod nat nat => @set_of_seq form (@cons form (Atom (@fst nat nat _554553) (@List.map (prod term term) term (@snd term term) (Varpairs (@snd nat nat _554553)))) (@cons form (Not (Atom (@fst nat nat _554553) (@List.map (prod term term) term (@fst term term) (Varpairs (@snd nat nat _554553))))) (@List.map (prod term term) form (@ε ((prod term term) -> form) (fun f : (prod term term) -> form => forall s : term, forall t : term, @eq form (f (@pair term term s t)) (Not (FEq s t)))) (Varpairs (@snd nat nat _554553)))))).
 Proof.
-  apply funext ; case=> n m ; rewrite/Eqclause_Func/set_of_list /=.
-  match goal with | |- [set` (?a::?b::map _ ?l)] = _ =>
-    apply (f_equal (fun f => [set` (a :: b :: map f l)])) end.
+  apply funext ; case=> n m ; rewrite/Eqclause_Func/set_of_seq /=.
+  match goal with | |- [set` (?a::?b::map _ ?s)] = _ =>
+    apply (f_equal (fun f => [set` (a :: b :: map f s)])) end.
   by align_ε => // ? H H' ; ext ; case => t t' ; rewrite H H'.
 Qed.
 
@@ -1382,8 +1380,8 @@ Qed.
 Inductive TRS (rw_rules : term * term -> Prop) : term -> term -> Prop :=
 | TRS_subst : forall v t t', rw_rules (t,t') ->
   TRS rw_rules (termsubst v t) (termsubst v t')
-| TRS_rec : forall t t' n l l', TRS rw_rules t t' ->
-  TRS rw_rules (Fn n (l++t::l')) (Fn n (l++t'::l')).
+| TRS_rec : forall t t' n s s', TRS rw_rules t t' ->
+  TRS rw_rules (Fn n (s++t::s')) (Fn n (s++t'::s')).
 
 Lemma TRS_def : TRS = (fun rws : (prod term term) -> Prop => fun a0 : term => fun a1 : term => forall TRS' : term -> term -> Prop, (forall a0' : term, forall a1' : term, ((exists i : nat -> term, exists l : term, exists r : term, (a0' = (termsubst i l)) /\ ((a1' = (termsubst i r)) /\ (@IN (prod term term) (@pair term term l r) rws))) \/ (exists s : term, exists t : term, exists f : nat, exists largs : seq term, exists rargs : seq term, (a0' = (Fn f (@app term largs (@cons term s rargs)))) /\ ((a1' = (Fn f (@app term largs (@cons term t rargs)))) /\ (TRS' s t)))) -> TRS' a0' a1') -> TRS' a0 a1).
 Proof. rewrite/3= ; ind_align. Qed.
@@ -1421,14 +1419,14 @@ Qed.
 Fixpoint termsize t :=
   match t with
   | V _ => 1
-  | Fn _ l => foldr addn 1 (map termsize l) end.
+  | Fn _ s => foldr addn 1 (map termsize s) end.
 
 Lemma termsize_def : termsize = (@ε ((prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat nat))))))) -> term -> nat) (fun termsize' : (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat nat))))))) -> term -> nat => forall _564457 : prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat nat)))))), (forall x : nat, (termsize' _564457 (V x)) = (NUMERAL (BIT1 0))) /\ (forall f : nat, forall args : seq term, (termsize' _564457 (Fn f args)) = (@ITLIST nat nat addn (@List.map term nat (termsize' _564457) args) (NUMERAL (BIT1 0))))) (@pair nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat nat)))))) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 (BIT1 (BIT1 0)))))))) (@pair nat (prod nat (prod nat (prod nat (prod nat (prod nat nat))))) (NUMERAL (BIT1 (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 (BIT1 0)))))))) (@pair nat (prod nat (prod nat (prod nat (prod nat nat)))) (NUMERAL (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 (BIT1 (BIT1 0)))))))) (@pair nat (prod nat (prod nat (prod nat nat))) (NUMERAL (BIT1 (BIT0 (BIT1 (BIT1 (BIT0 (BIT1 (BIT1 0)))))))) (@pair nat (prod nat (prod nat nat)) (NUMERAL (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 (BIT1 (BIT1 0)))))))) (@pair nat (prod nat nat) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 (BIT1 0)))))))) (@pair nat nat (NUMERAL (BIT0 (BIT1 (BIT0 (BIT1 (BIT1 (BIT1 (BIT1 0)))))))) (NUMERAL (BIT1 (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 (BIT1 0)))))))))))))))).
 Proof. by term_align. Qed.
 
 Inductive LEXi A (R : A -> A -> Prop) : seq A -> seq A -> Prop :=
-| LEX_R : forall x l x' l', R x x' -> size l = size l' -> LEXi R (x::l) (x'::l')
-| LEX_eq : forall x l l', LEXi R l l' -> LEXi R (x::l) (x::l').
+| LEX_R : forall x s x' s', R x x' -> size s = size s' -> LEXi R (x::s) (x'::s')
+| LEX_eq : forall x s s', LEXi R s s' -> LEXi R (x::s) (x::s').
 
 Lemma LEXi_size A (R : A -> A -> Prop) s s' :
   LEXi R s s' -> size s = size s'.
@@ -1456,7 +1454,7 @@ Proof. by total_align => // ? ? ? [] * ; if_seq. Qed.
 
 Inductive subterm : term -> term -> Prop :=
 | subterm_refl : forall t, subterm t t
-| subterm_rec : forall t t' n l, subterm t t' -> MEM t' l -> subterm t (Fn n l).
+| subterm_rec : forall t t' n s, subterm t t' -> MEM t' s -> subterm t (Fn n s).
 
 Lemma subterm_def : subterm = (fun a0 : term => fun a1 : term => forall subterm' : term -> term -> Prop, (forall a0' : term, forall a1' : term, ((a1' = a0') \/ (exists a : term, exists f : nat, exists args : seq term, (a1' = (Fn f args)) /\ ((subterm' a0' a) /\ (@MEM term a args)))) -> subterm' a0' a1') -> subterm' a0 a1).
 Proof. ind_align. Qed.
@@ -1545,6 +1543,6 @@ Register Scheme lpo_ind as ind_nodep for lpo.
 Lemma lpo_def : lpo = (fun a0 : term => fun a1 : term => forall lt2' : term -> term -> Prop, (forall a0' : term, forall a1' : term, ((exists x : nat, (a0' = (V x)) /\ ((@IN nat x (free_variables_term a1')) /\ (~ (a1' = (V x))))) \/ ((exists fs : nat, exists sargs : seq term, exists ft : nat, exists targs : seq term, exists si : term, (a0' = (Fn ft targs)) /\ ((a1' = (Fn fs sargs)) /\ ((@MEM term si sargs) /\ ((lt2' (Fn ft targs) si) \/ (si = (Fn ft targs)))))) \/ ((exists fs : nat, exists ft : nat, exists sargs : seq term, exists targs : seq term, (a0' = (Fn ft targs)) /\ ((a1' = (Fn fs sargs)) /\ (((gtn fs ft) \/ ((fs = ft) /\ (gtn (@size term sargs) (@size term targs)))) /\ (@ALL term (fun ti : term => lt2' ti (Fn fs sargs)) targs)))) \/ (exists f : nat, exists sargs : seq term, exists targs : seq term, (a0' = (Fn f targs)) /\ ((a1' = (Fn f sargs)) /\ ((@ALL term (fun ti : term => lt2' ti (Fn f sargs)) targs) /\ (@LEX term lt2' targs sargs))))))) -> lt2' a0' a1') -> lt2' a0 a1).
 Proof.
   rewrite/ALL/gtn ; ind_align.
-  1,2 : subst ; apply: lpo_Fn_smaller ; breakgoal.
+  1,2 : by subst ; apply: lpo_Fn_smaller ; auto.
   exact: lpo_LEX.
 Qed.

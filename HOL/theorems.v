@@ -1,4 +1,4 @@
-Require Import Stdlib.Reals.Reals mathcomp.boot.ssrnat mathcomp.boot.div mathcomp.boot.seq mathcomp.algebra.ssrint mathcomp.algebra.intdiv mathcomp.classical.classical_sets mathcomp.classical.cardinality mathcomp.analysis_stdlib.Rstruct_topology HOLLight.HOL.mappings.
+Require Import Stdlib.Reals.Reals mathcomp.boot.ssrnat mathcomp.boot.div mathcomp.boot.seq mathcomp.algebra.ssralg mathcomp.algebra.ssrint mathcomp.algebra.intdiv mathcomp.classical.classical_sets mathcomp.classical.cardinality mathcomp.analysis_stdlib.Rstruct_topology HOLLight.HOL.mappings.
 Require Import HOLLight.HOL.terms.
 Axiom thm_T_DEF : True = ((fun p : Prop => p) = (fun p : Prop => p)).
 Axiom thm_AND_DEF : and = (fun p : Prop => fun q : Prop => (fun f : Prop -> Prop -> Prop => f p q) = (fun f : Prop -> Prop -> Prop => f True True)).
@@ -2274,19 +2274,19 @@ Axiom thm_HAS_SIZE_INDEX : forall {A : Type'}, forall s : A -> Prop, forall n : 
 Axiom thm_INFINITE_ENUMERATE : forall s : nat -> Prop, (@INFINITE nat s) -> exists r : nat -> nat, (forall m : nat, forall n : nat, (ltn m n) -> ltn (r m) (r n)) /\ ((@IMAGE nat nat r (@setT nat)) = s).
 Axiom thm_INFINITE_ENUMERATE_EQ : forall s : nat -> Prop, (@INFINITE nat s) = (exists r : nat -> nat, (forall m : nat, forall n : nat, (ltn m n) -> ltn (r m) (r n)) /\ ((@IMAGE nat nat r (@setT nat)) = s)).
 Axiom thm_INFINITE_ENUMERATE_SUBSET : forall {A : Type'}, forall s : A -> Prop, (@INFINITE A s) = (exists f : nat -> A, (forall x : nat, @IN A (f x) s) /\ (forall x : nat, forall y : nat, ((f x) = (f y)) -> x = y)).
-Axiom thm_set_of_list : forall {A : Type'} (h : A) (t : seq A), ((@set_of_list A (@nil A)) = (@set0 A)) /\ ((@set_of_list A (@cons A h t)) = (@INSERT A h (@set_of_list A t))).
-Axiom thm_list_of_set : forall {A : Type'}, forall s : A -> Prop, (@list_of_set A s) = (@ε (seq A) (fun l : seq A => ((@set_of_list A l) = s) /\ ((@size A l) = (@CARD A s)))).
-Axiom thm_LIST_OF_SET_PROPERTIES : forall {A : Type'}, forall s : A -> Prop, (@finite_set A s) -> ((@set_of_list A (@list_of_set A s)) = s) /\ ((@size A (@list_of_set A s)) = (@CARD A s)).
-Axiom thm_SET_OF_LIST_OF_SET : forall {A : Type'}, forall s : A -> Prop, (@finite_set A s) -> (@set_of_list A (@list_of_set A s)) = s.
-Axiom thm_LENGTH_LIST_OF_SET : forall {A : Type'}, forall s : A -> Prop, (@finite_set A s) -> (@size A (@list_of_set A s)) = (@CARD A s).
-Axiom thm_MEM_LIST_OF_SET : forall {A : Type'}, forall s : A -> Prop, (@finite_set A s) -> forall x : A, (@MEM A x (@list_of_set A s)) = (@IN A x s).
-Axiom thm_FINITE_SET_OF_LIST : forall {A : Type'}, forall l : seq A, @finite_set A (@set_of_list A l).
-Axiom thm_IN_SET_OF_LIST : forall {A : Type'}, forall x : A, forall l : seq A, (@IN A x (@set_of_list A l)) = (@MEM A x l).
-Axiom thm_SET_OF_LIST_APPEND : forall {A : Type'}, forall l1 : seq A, forall l2 : seq A, (@set_of_list A (@cat A l1 l2)) = (@setU A (@set_of_list A l1) (@set_of_list A l2)).
-Axiom thm_SET_OF_LIST_MAP : forall {A B : Type'}, forall f : A -> B, forall l : seq A, (@set_of_list B (@map A B f l)) = (@IMAGE A B f (@set_of_list A l)).
-Axiom thm_SET_OF_LIST_EQ_EMPTY : forall {A : Type'}, forall l : seq A, ((@set_of_list A l) = (@set0 A)) = (l = (@nil A)).
-Axiom thm_LIST_OF_SET_EMPTY : forall {A : Type'}, (@list_of_set A (@set0 A)) = (@nil A).
-Axiom thm_LIST_OF_SET_SING : forall {A : Type'}, forall a : A, (@list_of_set A (@INSERT A a (@set0 A))) = (@cons A a (@nil A)).
+Axiom thm_set_of_list : forall {A : Type'} (h : A) (t : seq A), ((@set_of_seq A (@nil A)) = (@set0 A)) /\ ((@set_of_seq A (@cons A h t)) = (@INSERT A h (@set_of_seq A t))).
+Axiom thm_list_of_set : forall {A : Type'}, forall s : A -> Prop, (@seq_of_set A s) = (@ε (seq A) (fun l : seq A => ((@set_of_seq A l) = s) /\ ((@size A l) = (@CARD A s)))).
+Axiom thm_LIST_OF_SET_PROPERTIES : forall {A : Type'}, forall s : A -> Prop, (@finite_set A s) -> ((@set_of_seq A (@seq_of_set A s)) = s) /\ ((@size A (@seq_of_set A s)) = (@CARD A s)).
+Axiom thm_SET_OF_LIST_OF_SET : forall {A : Type'}, forall s : A -> Prop, (@finite_set A s) -> (@set_of_seq A (@seq_of_set A s)) = s.
+Axiom thm_LENGTH_LIST_OF_SET : forall {A : Type'}, forall s : A -> Prop, (@finite_set A s) -> (@size A (@seq_of_set A s)) = (@CARD A s).
+Axiom thm_MEM_LIST_OF_SET : forall {A : Type'}, forall s : A -> Prop, (@finite_set A s) -> forall x : A, (@MEM A x (@seq_of_set A s)) = (@IN A x s).
+Axiom thm_FINITE_SET_OF_LIST : forall {A : Type'}, forall l : seq A, @finite_set A (@set_of_seq A l).
+Axiom thm_IN_SET_OF_LIST : forall {A : Type'}, forall x : A, forall l : seq A, (@IN A x (@set_of_seq A l)) = (@MEM A x l).
+Axiom thm_SET_OF_LIST_APPEND : forall {A : Type'}, forall l1 : seq A, forall l2 : seq A, (@set_of_seq A (@cat A l1 l2)) = (@setU A (@set_of_seq A l1) (@set_of_seq A l2)).
+Axiom thm_SET_OF_LIST_MAP : forall {A B : Type'}, forall f : A -> B, forall l : seq A, (@set_of_seq B (@map A B f l)) = (@IMAGE A B f (@set_of_seq A l)).
+Axiom thm_SET_OF_LIST_EQ_EMPTY : forall {A : Type'}, forall l : seq A, ((@set_of_seq A l) = (@set0 A)) = (l = (@nil A)).
+Axiom thm_LIST_OF_SET_EMPTY : forall {A : Type'}, (@seq_of_set A (@set0 A)) = (@nil A).
+Axiom thm_LIST_OF_SET_SING : forall {A : Type'}, forall a : A, (@seq_of_set A (@INSERT A a (@set0 A))) = (@cons A a (@nil A)).
 Axiom thm_pairwise : forall {A : Type'}, forall s : A -> Prop, forall r : A -> A -> Prop, (@pairwise A r s) = (forall x : A, forall y : A, ((@IN A x s) /\ ((@IN A y s) /\ (~ (x = y)))) -> r x y).
 Axiom thm_PAIRWISE_EMPTY : forall {A : Type'}, forall r : A -> A -> Prop, (@pairwise A r (@set0 A)) = True.
 Axiom thm_PAIRWISE_SING : forall {A : Type'}, forall r : A -> A -> Prop, forall x : A, (@pairwise A r (@INSERT A x (@set0 A))) = True.
@@ -2345,8 +2345,8 @@ Axiom thm_FINITE_UNION_OF_INTER_EQ : forall {A : Type'}, forall P : (A -> Prop) 
 Axiom thm_FINITE_UNION_OF_INTER : forall {A : Type'}, forall P : (A -> Prop) -> Prop, (forall s : A -> Prop, forall t : A -> Prop, ((P s) /\ (P t)) -> P (@setI A s t)) -> forall s : A -> Prop, forall t : A -> Prop, ((@UNION_OF A (@finite_set (A -> Prop)) P s) /\ (@UNION_OF A (@finite_set (A -> Prop)) P t)) -> @UNION_OF A (@finite_set (A -> Prop)) P (@setI A s t).
 Axiom thm_FINITE_INTERSECTION_OF_UNION_EQ : forall {A : Type'}, forall P : (A -> Prop) -> Prop, (forall s : A -> Prop, forall t : A -> Prop, ((@INTERSECTION_OF A (@finite_set (A -> Prop)) P s) /\ (@INTERSECTION_OF A (@finite_set (A -> Prop)) P t)) -> @INTERSECTION_OF A (@finite_set (A -> Prop)) P (@setU A s t)) = (forall s : A -> Prop, forall t : A -> Prop, ((P s) /\ (P t)) -> @INTERSECTION_OF A (@finite_set (A -> Prop)) P (@setU A s t)).
 Axiom thm_FINITE_INTERSECTION_OF_UNION : forall {A : Type'}, forall P : (A -> Prop) -> Prop, (forall s : A -> Prop, forall t : A -> Prop, ((P s) /\ (P t)) -> P (@setU A s t)) -> forall s : A -> Prop, forall t : A -> Prop, ((@INTERSECTION_OF A (@finite_set (A -> Prop)) P s) /\ (@INTERSECTION_OF A (@finite_set (A -> Prop)) P t)) -> @INTERSECTION_OF A (@finite_set (A -> Prop)) P (@setU A s t).
-Axiom thm_CARD_SET_OF_LIST_LE : forall {A : Type'}, forall l : seq A, leqn (@CARD A (@set_of_list A l)) (@size A l).
-Axiom thm_HAS_SIZE_SET_OF_LIST : forall {A : Type'}, forall l : seq A, (@HAS_SIZE A (@set_of_list A l) (@size A l)) = (@PAIRWISE A (fun x : A => fun y : A => ~ (x = y)) l).
+Axiom thm_CARD_SET_OF_LIST_LE : forall {A : Type'}, forall l : seq A, leqn (@CARD A (@set_of_seq A l)) (@size A l).
+Axiom thm_HAS_SIZE_SET_OF_LIST : forall {A : Type'}, forall l : seq A, (@HAS_SIZE A (@set_of_seq A l) (@size A l)) = (@PAIRWISE A (fun x : A => fun y : A => ~ (x = y)) l).
 Axiom thm_SURJECTIVE_IFF_INJECTIVE_GEN : forall {A B : Type'}, forall s : A -> Prop, forall t : B -> Prop, forall f : A -> B, ((@finite_set A s) /\ ((@finite_set B t) /\ (((@CARD A s) = (@CARD B t)) /\ (@subset B (@IMAGE A B f s) t)))) -> (forall y : B, (@IN B y t) -> exists x : A, (@IN A x s) /\ ((f x) = y)) = (forall x : A, forall y : A, ((@IN A x s) /\ ((@IN A y s) /\ ((f x) = (f y)))) -> x = y).
 Axiom thm_SURJECTIVE_IFF_INJECTIVE : forall {A : Type'}, forall s : A -> Prop, forall f : A -> A, ((@finite_set A s) /\ (@subset A (@IMAGE A A f s) s)) -> (forall y : A, (@IN A y s) -> exists x : A, (@IN A x s) /\ ((f x) = y)) = (forall x : A, forall y : A, ((@IN A x s) /\ ((@IN A y s) /\ ((f x) = (f y)))) -> x = y).
 Axiom thm_IMAGE_IMP_INJECTIVE_GEN : forall {A B : Type'}, forall s : A -> Prop, forall t : B -> Prop, forall f : A -> B, ((@finite_set A s) /\ (((@CARD A s) = (@CARD B t)) /\ ((@IMAGE A B f s) = t))) -> forall x : A, forall y : A, ((@IN A x s) /\ ((@IN A y s) /\ ((f x) = (f y)))) -> x = y.

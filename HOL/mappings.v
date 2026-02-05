@@ -873,7 +873,7 @@ Lemma finite_setE (A : Type') : finite_set = @finite' A.
 Proof. by symmetry ; rewrite FINITE_def ; ind_align. Qed.
 
 (* Version using lists *)
-Definition set_of_list (A : Type') (l : seq A) : A -> Prop := [set` l].
+Definition set_of_seq (A : Type') (s : seq A) : A -> Prop := [set` s].
 
 Lemma set_cons (A : Type') (a : A) (s : seq A) :
   [set` a::s] = a |` [set` s].
@@ -885,18 +885,18 @@ Proof.
   - by rewrite Hxl Bool.orb_comm.
 Qed.
 
-Lemma set_of_list_def (A : Type') : (@set_of_list A) = (@ε ((prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat nat)))))))))) -> (list A) -> A -> Prop) (fun set_of_list' : (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat nat)))))))))) -> (list A) -> A -> Prop => forall _56425 : prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat nat))))))))), ((set_of_list' _56425 (@nil A)) = (@set0 A)) /\ (forall h : A, forall t : list A, (set_of_list' _56425 (@cons A h t)) = (@INSERT A h (set_of_list' _56425 t)))) (@pair nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat nat))))))))) (NUMERAL (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 (BIT1 (BIT1 O)))))))) (@pair nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat nat)))))))) (NUMERAL (BIT1 (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 (BIT1 O)))))))) (@pair nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat nat))))))) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 (BIT1 (BIT1 O)))))))) (@pair nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat nat)))))) (NUMERAL (BIT1 (BIT1 (BIT1 (BIT1 (BIT1 (BIT0 (BIT1 O)))))))) (@pair nat (prod nat (prod nat (prod nat (prod nat (prod nat nat))))) (NUMERAL (BIT1 (BIT1 (BIT1 (BIT1 (BIT0 (BIT1 (BIT1 O)))))))) (@pair nat (prod nat (prod nat (prod nat (prod nat nat)))) (NUMERAL (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 (BIT1 O)))))))) (@pair nat (prod nat (prod nat (prod nat nat))) (NUMERAL (BIT1 (BIT1 (BIT1 (BIT1 (BIT1 (BIT0 (BIT1 O)))))))) (@pair nat (prod nat (prod nat nat)) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT1 (BIT0 (BIT1 (BIT1 O)))))))) (@pair nat (prod nat nat) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 (BIT1 O)))))))) (@pair nat nat (NUMERAL (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 (BIT1 (BIT1 O)))))))) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 (BIT1 (BIT1 O))))))))))))))))))).
+Lemma set_of_list_def (A : Type') : (@set_of_seq A) = (@ε ((prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat nat)))))))))) -> (seq A) -> A -> Prop) (fun set_of_list' : (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat nat)))))))))) -> (seq A) -> A -> Prop => forall _56425 : prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat nat))))))))), ((set_of_list' _56425 (@nil A)) = (@set0 A)) /\ (forall h : A, forall t : seq A, (set_of_list' _56425 (@cons A h t)) = (@INSERT A h (set_of_list' _56425 t)))) (@pair nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat nat))))))))) (NUMERAL (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 (BIT1 (BIT1 O)))))))) (@pair nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat nat)))))))) (NUMERAL (BIT1 (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 (BIT1 O)))))))) (@pair nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat nat))))))) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 (BIT1 (BIT1 O)))))))) (@pair nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat nat)))))) (NUMERAL (BIT1 (BIT1 (BIT1 (BIT1 (BIT1 (BIT0 (BIT1 O)))))))) (@pair nat (prod nat (prod nat (prod nat (prod nat (prod nat nat))))) (NUMERAL (BIT1 (BIT1 (BIT1 (BIT1 (BIT0 (BIT1 (BIT1 O)))))))) (@pair nat (prod nat (prod nat (prod nat (prod nat nat)))) (NUMERAL (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 (BIT1 O)))))))) (@pair nat (prod nat (prod nat (prod nat nat))) (NUMERAL (BIT1 (BIT1 (BIT1 (BIT1 (BIT1 (BIT0 (BIT1 O)))))))) (@pair nat (prod nat (prod nat nat)) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT1 (BIT0 (BIT1 (BIT1 O)))))))) (@pair nat (prod nat nat) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 (BIT1 O)))))))) (@pair nat nat (NUMERAL (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 (BIT1 (BIT1 O)))))))) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 (BIT1 (BIT1 O))))))))))))))))))).
 Proof.
   by move=>/3= ; total_align; first apply set_nil ; last apply set_cons.
 Qed.
 
 (* Can be usefull for some finiteness proofs. *)
 Lemma finite_seqE {T : eqType} A :
-   finite_set A = exists s : list T, A = [set` s].
+   finite_set A = exists s : seq T, A = [set` s].
 Proof. apply propext ; exact (finite_seqP A). Qed.
 
-Lemma finite_witness (A : Type') (l : list A) (s : set A) : s = [set` l] -> finite_set s.
-Proof. by rewrite/set_of_list=>->. Qed.
+Lemma finite_witness (A : Type') (s : seq A) (S : set A) : S = [set` s] -> finite_set S.
+Proof. by move=>->. Qed.
 
 Arguments finite_witness {_} _.
 
@@ -907,9 +907,9 @@ Proof.
   - by rewrite in_cons ; case:H=>[-> | ?] ; apply/orP ; auto.
 Qed.
 
-Lemma uniq_NoDup (A : eqType) (l : list A) : uniq l = NoDup l :> Prop.
+Lemma uniq_NoDup (A : eqType) (s : seq A) : uniq s = NoDup s :> Prop.
 Proof.
-  ext ; elim:l=>[|a l IHl] //= H.
+  ext ; elim:s=>[|a s IHs] //= H.
   - by apply NoDup_nil.
   - apply NoDup_cons ; move/andP:H ; last by move=>[_ H] ; auto.
     by rewrite -in_In =>[[H _]] ; apply/negP.
@@ -917,35 +917,35 @@ Proof.
     by apply/negP ; rewrite in_In.
 Qed.
 
-Definition list_of_set (A : Type') (s : set A) : list A :=
+Definition seq_of_set (A : Type') (s : set A) : seq A :=
   ε (fun s' : seq A => [set` s'] = s /\ uniq s').
 
-Notation "[ 'list' 'of' s ]" := (list_of_set s) (format "[ 'list'  'of'  s ]") : classical_set_scope.
+Notation "[ 'seq' 'of' s ]" := (seq_of_set s) (format "[ 'seq'  'of'  s ]") : classical_set_scope.
 
-Lemma list_of_set_spec (A:Type') (s : set A) (H : finite_set s):
-  [set` [list of s]] = s /\ uniq (list_of_set s).
+Lemma seq_of_set_spec (A:Type') (s : set A) (H : finite_set s):
+  [set` [seq of s]] = s /\ uniq (seq_of_set s).
 Proof.
-  rewrite finite_setE in H ; rewrite/list_of_set.
-  match goal with [|- [set` (ε ?Q)] = _ /\ _] => have ex : exists l, Q l end.
-  - elim: {s}H => [|s a _ [l [<- ndl]]]; first by exists nil; rewrite set_nil.
-    case: (EM (a \in l))=>H.
-    + exists l ; split ; last by assumption.
+  rewrite finite_setE in H ; rewrite/seq_of_set.
+  match goal with [|- [set` (ε ?Q)] = _ /\ _] => have ex : exists s, Q s end.
+  - elim: {s}H => [|S a _ [s [<- nds]]]; first by exists nil; rewrite set_nil.
+    case: (EM (a \in s))=>H.
+    + exists s ; split ; last by assumption.
       by rewrite predeqP =>x /= ; split ; first auto ; last move=>[->|].
-    + exists (a::l) ; rewrite set_cons ; split ; first by [].
+    + exists (a::s) ; rewrite set_cons ; split ; first by [].
       by rewrite cons_uniq -andP** -negP**.
   - exact (ε_spec ex).
 Qed.
 
-Lemma In_list_of_set (A:Type') (s : set A) :
-  finite_set s -> forall x, In x [list of s] = s x.
+Lemma In_seq_of_set (A:Type') (s : set A) :
+  finite_set s -> forall x, In x [seq of s] = s x.
 Proof.
-  by move=>fin_s x ; rewrite -{2}(proj1 (list_of_set_spec fin_s)) -in_In.
+  by move=>fin_s x ; rewrite -{2}(proj1 (seq_of_set_spec fin_s)) -in_In.
 Qed.
 
-Lemma list_of_set0 (A:Type') (s : set A) : (s = set0) -> ([list of s] = nil).
+Lemma seq_of_set0 (A:Type') (s : set A) : (s = set0) -> ([seq of s] = nil).
 Proof.
-  move: (list_of_set_spec (finite_set0 A)) => [e _] ->.
-  destruct (list_of_set set0) as [|a l] ; first by reflexivity.
+  move: (seq_of_set_spec (finite_set0 A)) => [e _] ->.
+  destruct (seq_of_set set0) as [|a l] ; first by reflexivity.
   rewrite set_cons setU_eq0 in e.
   have contra : set0 a by move:e=>[<- _] ; reflexivity.
   by inversion contra.
@@ -997,26 +997,26 @@ Proof.
   contradiction. exact j.
 Qed.
 
-Lemma list_of_setU1 {A:Type'} (a:A) {s} :
-  finite_set s -> exists l', Permutation l' (a :: [list of s]) /\
-                     [list of a |` s] = if s a then [list of s] else l'.
+Lemma seq_of_setU1 {A:Type'} (a:A) {S} :
+  finite_set S -> exists s, Permutation s (a :: [seq of S]) /\
+                     [seq of a |` S] = if S a then [seq of S] else s.
 Proof.
   intro H.
-  exists (if s a then a :: [list of s] else [list of a |` s]).
+  exists (if S a then a :: [seq of S] else [seq of a |` S]).
   if_intro=>H' ; split ; auto.
   - f_equal. rewrite setUidr. reflexivity. now intros _ ->.
   - apply eq_mod_permut.
-    + intro x. rewrite In_list_of_set.
+    + intro x. rewrite In_seq_of_set.
       ext. inversion 1 as [->|]. 3 : intros [i | i].
       * now left.
-      * right. now rewrite In_list_of_set.
+      * right. now rewrite In_seq_of_set.
       * left. now symmetry.
-      * right. now rewrite <- In_list_of_set.
+      * right. now rewrite <- In_seq_of_set.
       * rewrite -> finite_setE in *. now apply finite'_setU1.
-    + rewrite -uniq_NoDup. apply list_of_set_spec. rewrite -> finite_setE in *.
+    + rewrite -uniq_NoDup. apply seq_of_set_spec. rewrite -> finite_setE in *.
       exact: finite'_setU1.
-    + apply NoDup_cons. now rewrite In_list_of_set.
-      rewrite -uniq_NoDup. now apply list_of_set_spec.
+    + apply NoDup_cons. now rewrite In_seq_of_set.
+      rewrite -uniq_NoDup. now apply seq_of_set_spec.
 Qed.
 
 Definition ITSET {A B : Type'} : (A -> B -> B) -> (A -> Prop) -> B -> B := fun _43025 : A -> B -> B => fun _43026 : A -> Prop => fun _43027 : B => @ε ((A -> Prop) -> B) (fun g : (A -> Prop) -> B => ((g (@set0 A)) = _43027) /\ (forall x : A, forall s : A -> Prop, (@finite_set A s) -> (g (@INSERT A x s)) = (@COND B (@IN A x s) (g s) (_43025 x (g s))))) _43026.
@@ -1025,10 +1025,10 @@ Definition permut_inv {A B:Type} (f:A -> B -> B) :=
   forall b y x, f x (f y b) = f y (f x b).
 
 Definition fold_set {A B:Type'} (f : A -> B -> B) (s : set A) (b : B) :=
-  if permut_inv f /\ finite_set s then fold_right f b [list of s] else ITSET f s b.
+  if permut_inv f /\ finite_set s then foldr f b [seq of s] else ITSET f s b.
 
-Lemma permut_inv_fold_right {A B : Type} {f : A -> B -> B} {b : B} {l : list A} l' :
-  Permutation l l' -> permut_inv f -> fold_right f b l = fold_right f b l'.
+Lemma permut_inv_fold_right {A B : Type} {f : A -> B -> B} {b : B} {s : seq A} s' :
+  Permutation s s' -> permut_inv f -> foldr f b s = foldr f b s'.
 Proof.
   intros H H'. induction H.
   - reflexivity.
@@ -1044,8 +1044,8 @@ Proof.
   rewrite/fold_set/ITSET. ext=> f s b.
   case (EM (permut_inv f))=> ? ; last by if_triv by easy.
   revert s. align_ε_if.
-  - split. now rewrite list_of_set0. intros a E H'. unfold INSERT.
-    destruct (list_of_setU1 a H') as (l, (Hl, ->))=> /3= /c` H.
+  - split. now rewrite seq_of_set0. intros a E H'. unfold INSERT.
+    destruct (seq_of_setU1 a H') as (l, (Hl, ->))=> /3= /c` H.
     reflexivity. now rewrite (permut_inv_fold_right Hl).
   - rewrite finite_setE. intros f' (HEmpty,HINSERT) (HEmpty', HINSERT') E (_, Hfin).
     induction Hfin. now rewrite HEmpty HEmpty'.
@@ -1063,26 +1063,26 @@ Proof. by []. Qed.
 Definition CARD (A : Type') (s : set A) :=
   if finite_set s then (#|` fset_set s|) else CARD_HOL s.
 
-Lemma in_fset_list {A : Type'} (l : list A) :
-  [fset x in l] =i l.
+Lemma in_fset_seq {A : Type'} (s : seq A) :
+  [fset x in s] =i s.
 Proof.
-  by elim:l=>[|a l IHl] x /= ; rewrite !in_fset_.
+  by elim:s=>[|a s IHs] x /= ; rewrite !in_fset_.
 Qed.
 
-Lemma fset_set_list {A : Type'} (l : list A) :
-  fset_set [set` l] = [fset x in l].
+Lemma fset_set_seq {A : Type'} (s : seq A) :
+  fset_set [set` s] = [fset x in s].
 Proof.
-  apply fsetP=>x ; rewrite in_fset_set ; last by apply (finite_witness l).
-  by rewrite in_fset_list mem_setE.
+  apply fsetP=>x ; rewrite in_fset_set ; last by apply (finite_witness s).
+  by rewrite in_fset_seq mem_setE.
 Qed.
 
 Lemma CARD_def (A : Type') : (@CARD A) = (fun _43228 : A -> Prop => @fold_set A nat (fun x : A => fun n : nat => S n) _43228 (NUMERAL O)).
 Proof.
-  rewrite/3=/CARD/fold_set; ext=>s ; if_intro =>fin_s ; last by [].
+  rewrite/3=/CARD/fold_set => /` S /c` fin_S ; last by [].
   if_triv using permut_inv_succ.
-  move:(list_of_set_spec fin_s)=>[eq nd] ; rewrite -{1}eq.
-  rewrite fset_set_list card_fseq undup_id ; last by [].
-  by elim:[list of s] => [|a l IHl] ; last (simpl ; f_equal).
+  move:(seq_of_set_spec fin_S)=>[eq nd] ; rewrite -{1}eq.
+  rewrite fset_set_seq card_fseq undup_id ; last by [].
+  by elim:[seq of S] => [|a s IHs] ; last (simpl ; f_equal).
 Qed.
 
 Definition dimindex (A : Type') (_ : set A) :=
@@ -1098,14 +1098,14 @@ Proof.
 Qed.
 
 (* seq_fset seems intended only for internal use in mathcomp but has useful results. *)
-Lemma fset_set_seq_fset (A: Type') (l : list A) : [fset x in l] = seq_fset tt l.
+Lemma fset_set_seq_fset (A: Type') (s : seq A) : [fset x in s] = seq_fset tt s.
 Proof.
-  by apply fsetP=>x ; rewrite in_fset_list seq_fsetE.
+  by apply fsetP=>x ; rewrite in_fset_seq seq_fsetE.
 Qed.
 
-Lemma CARD_set_of_list (A : Type') (l : list A) : CARD [set` l] = size (undup l).
+Lemma CARD_set_of_seq (A : Type') (l : seq A) : CARD [set` l] = size (undup l).
 Proof.
-  rewrite/CARD fset_set_list fset_set_seq_fset ; if_triv using (finite_witness l).
+  rewrite/CARD fset_set_seq fset_set_seq_fset ; if_triv using (finite_witness l).
   exact: size_seq_fset.
 Qed.
 
@@ -1116,17 +1116,17 @@ Proof.
   by elim: (size s) (size (undup s))=> [[] | ? ? []].
 Qed.
 
-Lemma list_of_set_def (A : Type') : (@list_of_set A) = (fun _56426 : A -> Prop => @ε (list A) (fun l : list A => ((@set_of_list A l) = _56426) /\ ((@size A l) = (@CARD A _56426)))).
+Lemma list_of_set_def (A : Type') : (@seq_of_set A) = (fun _56426 : A -> Prop => @ε (seq A) (fun l : seq A => ((@set_of_seq A l) = _56426) /\ ((@size A l) = (@CARD A _56426)))).
 Proof.
-  rewrite/list_of_set/set_of_list=> /` s ; f_equal=> /` l [<- Hl] ; split=>//.
-  all : by move:Hl ; rewrite size_undup_uniq CARD_set_of_list -eqP**=> ->.
+  rewrite/seq_of_set/set_of_seq=> /` S ; f_equal=> /` s [<- Hs] ; split=>//.
+  all : by move:Hs ; rewrite size_undup_uniq CARD_set_of_seq -eqP**=> ->.
 Qed.
 
 (* Could be useful for cardinal proofs. *)
-Lemma CARD_witness {A : Type'} (l : list A) (s : set A) (n : nat) : s = [set` l] ->
-  n = size (undup l) -> CARD s = n.
+Lemma CARD_witness {A : Type'} (s : seq A) (S : set A) (n : nat) : S = [set` s] ->
+  n = size (undup s) -> CARD S = n.
 Proof.
-  by move=>->-> ; apply CARD_set_of_list.
+  by move=>->-> ; apply CARD_set_of_seq.
 Qed.
 
 Arguments CARD_witness {_} _.

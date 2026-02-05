@@ -1,4 +1,4 @@
-Require Import Stdlib.Reals.Reals mathcomp.boot.ssrnat mathcomp.boot.div mathcomp.boot.seq mathcomp.algebra.ssrint mathcomp.algebra.intdiv mathcomp.classical.cardinality mathcomp.analysis_stdlib.Rstruct_topology HOLLight.Multivariate.mappings.
+Require Import Stdlib.Reals.Reals mathcomp.boot.ssrnat mathcomp.boot.div mathcomp.boot.seq mathcomp.algebra.ssralg mathcomp.algebra.ssrint mathcomp.algebra.intdiv mathcomp.classical.classical_sets mathcomp.classical.cardinality mathcomp.analysis_stdlib.Rstruct_topology HOLLight.Multivariate.mappings.
 Definition _FALSITY_ : Prop := False.
 Lemma _FALSITY__def : _FALSITY_ = False.
 Proof. exact (REFL _FALSITY_). Qed.
