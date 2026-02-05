@@ -611,13 +611,13 @@ builtin "morder_def" ≔ morder_def;
 
 // terms
 builtin "term" ≔ term;
-builtin "(list term)" ≔ list_204723;
-builtin "_mk_tlist" ≔ _mk_list_204723;
-builtin "_dest_tlist" ≔ _dest_list_204723;
+builtin "(seq term)" ≔ list_204723;
+builtin "_mk_tseq" ≔ _mk_list_204723;
+builtin "_dest_tseq" ≔ _dest_list_204723;
 builtin "_mk_term" ≔ _mk_term;
 builtin "_dest_term" ≔ _dest_term;
-builtin "_mk_dest_tlist" ≔ axiom_47;
-builtin "_dest_mk_tlist" ≔ axiom_48;
+builtin "_mk_dest_tseq" ≔ axiom_47;
+builtin "_dest_mk_tseq" ≔ axiom_48;
 builtin "_mk_dest_term" ≔ axiom_49;
 builtin "_dest_mk_term" ≔ axiom_50;
 builtin "V" ≔ _204724;
