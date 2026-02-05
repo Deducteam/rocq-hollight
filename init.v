@@ -693,8 +693,9 @@ Ltac align_ε :=
           gobble a' uv ;
           revert a' H H' (* Revert [a'], [P a] and [P a'] to reuse them in other tactics *)
         ]
-    | |- ?a = ε ?P => apply align_ε (* Replaces the goal [a = ε P] with two goals [P a] and
-                                       [forall x, P a => P x => x = a]. *)
+    | |- @eq ?T _ (ε _) => apply (align_ε (A := (T : Type')))
+        (* Replaces the goal [a = ε P] with two goals [P a] and
+           [forall x, P a => P x => x = a]. *)
     end
   in aux.
 
