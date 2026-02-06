@@ -1,5 +1,5 @@
-Require Import mathcomp.boot.ssrnat mathcomp.boot.div mathcomp.boot.seq HOLLight.Real_With_nat.mappings.
-Require Import HOLLight.Real_With_nat.terms.
+Require Import mathcomp.boot.ssrnat mathcomp.boot.div mathcomp.boot.seq HOLLight.Real_def.mappings.
+Require Import HOLLight.Real_def.terms.
 Axiom thm_T_DEF : True = ((fun p : Prop => p) = (fun p : Prop => p)).
 Axiom thm_AND_DEF : and = (fun p : Prop => fun q : Prop => (fun f : Prop -> Prop -> Prop => f p q) = (fun f : Prop -> Prop -> Prop => f True True)).
 Axiom thm_IMP_DEF : imp = (fun p : Prop => fun q : Prop => (p /\ q) = p).

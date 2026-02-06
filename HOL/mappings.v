@@ -14,8 +14,8 @@ From HOLLight Require Import morepointedtypes.
 From mathcomp Require Import topology normedtype reals Rstruct_topology derive.
 From mathcomp Require Import realfun.
 Import preorder.Order Order.TTheory GRing GRing.Theory Num.Theory Logic.
-Require Export HOLLight.Real_With_nat.mappings.
-From HOLLight.Real_With_nat Require Import terms theorems.
+Require Export HOLLight.Real_def.mappings.
+From HOLLight.Real_def Require Import terms theorems.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
