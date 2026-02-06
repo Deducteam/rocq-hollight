@@ -26,11 +26,11 @@ Notation is_Type' := (HOL_isPointed.Build _).
 (* in classical context, is a factory for pointedType *)
 HB.builders Context T of HOL_isPointed T.
 
-HB.instance Definition _ := isPointed.Build _ point.
-
 HB.instance Definition _ := gen_eqMixin T.
 
 HB.instance Definition _ := gen_choiceMixin T.
+
+HB.instance Definition _ := isPointed.Build _ point.
 
 HB.end.
 
