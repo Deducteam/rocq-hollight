@@ -85,10 +85,9 @@ Proof.
     rewrite -is_False => -> ; if_triv.
     by apply reals.ub_le_sup.
   - rewrite/down/has_sup/has_ub/ub/nonempty. simp_R_struct.
-    rewrite/Rsup => E x [NemptE boundedE].
-    case (pselect (exists2 y : R, E y & x <= y)) ; first tauto.
-    move/forall2NP => ubound_E_x ; right. have : E <> set0 by apply/eqP/set0P.
-    rewrite -is_False => -> ; if_triv. apply reals.ge_sup ; first by [].
+    rewrite/Rsup => E x [NemptE boundedE] ; if_triv by apply/eqP/set0P.
+    case (EM (exists2 y : R, E y & x <= y)) ; first tauto.
+    move/forall2NP => ubound_E_x ; right ; apply: (reals.ge_sup NemptE).
     move => /= y ; case: (ubound_E_x y) => // +_.
     by rewrite -R_ltNge ; move/andP=>[].
   - move=> *; exact: lerD.
@@ -160,7 +159,7 @@ Canonical real_struct.
 Lemma real_sup_is_lub E :
   Real.has_sup E -> ub E (real_sup E) /\ (forall b, ub E b -> real_le (real_sup E) b).
 Proof.
-  intros [i j]. unfold real_sup.
+  move=> [i j] ; rewrite/real_sup.
   case (pselect (exists x : real, E x)) ; last contradiction.
   case (pselect (exists M : real, forall x : real, E x -> real_le x M)) ; last contradiction.
   by (ε_spec by exact (thm_REAL_COMPLETE E (conj i j))) => ? -[].
@@ -171,7 +170,7 @@ Proof. intro h. apply (proj1 (real_sup_is_lub h)). Qed.
 
 Lemma real_sup_total E x : Real.has_sup E -> Real.down E x \/ real_le (real_sup E) x.
 Proof.
-  intro h. case (pselect (Real.down E x)); intro k. auto. right.
+  intro h. case (EM (Real.down E x)); intro k. auto. right.
   generalize (real_sup_is_lub h); intros [i j]. apply j.
   intros y hy.
   rewrite/Real.down exists2E -forallNE in k.
@@ -423,7 +422,7 @@ Proof.
   - rewrite/hol_sqrt -(asboolb (0 <= r)%mcR).
     apply if_intro with (P := fun r' => sgr r' = sgr r /\ expr r' 2 = `|r|);
     [move=>pos_r | rewrite -R_ltNge => neg_r] ; split.
-    + case (pselect (r = 0)) => [-> | neq_r_0] ; first by rewrite sqrtr0.
+    + case (EM (r = 0)) => [-> | neq_r_0] ; first by rewrite sqrtr0.
       have spos_r : 0 < r by rewrite lt_neqAle -andP** -negP** -eqP** sym.
       by rewrite/sgr !gtr0_sg // sqrtr_gt0.
     + rewrite/expr ; case (sqrtrP r) ; [by rewrite R_ltNge|move=>/={}r{}pos_r].
@@ -957,7 +956,7 @@ Proof.
   apply False_rec. rewrite <- h. left. reflexivity.
 
   intros e n n'. inversion n; inversion n'; subst.
-  destruct (pselect (a = a0)).
+  destruct (EM (a = a0)).
 
   (* case a = a0 *)
   subst a0. apply perm_skip. apply IHl.

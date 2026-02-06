@@ -567,19 +567,13 @@ Proof.
     have ->: v ord0 i ^+ 2 = \sum_(k < n) (if k = i then v ord0 i ^+ 2 else 0).
     + elim: n v i => [|n IHn] v i.
       { by rewrite/exp/iterop/= thinmx0 big_ord0 mxE mul0r. }
-      rewrite big_ord_recl /= ; case (EM (ord0 = i)).
-      * move=> <-. have -> /= : `[< ord0 = ord0 >] = true.
-        { by move=> ? ; rewrite asboolT. }
-        rewrite big1 ?addr0 // => k.
+      rewrite big_ord_recl /= ; if_intro.
+      * move=> <-. rewrite big1 ?addr0 // => k.
         by have -> : `[< lift ord0 k = ord0 >] = false by rewrite asboolF.
-      * move/[dup] => in0 ; rewrite eqP** negP** -eqbF_neg -eqP** => ->.
-        rewrite asboolF //= add0r ; rewrite sym in in0.
-        have {i in0}[i ->] := lift0_surj in0.
+      * rewrite sym add0r => /lift0_surj [{}i ->].
         rewrite-{1}(mxE Datatypes.tt (fun (i : 'I_1) j => v i (lift ord0 j))).
-        by rewrite IHn mxE ; f_equal=> /` ? ; rewrite (injectiveE lift_inj).
-    + apply: ler_sum=> /= k _ ; case (EM (k = i)) => [->|?].
-      * by rewrite asboolT.
-      * by rewrite asboolF // -[X in _ <= X]/(_ ^+ 2) sqr_ge0.
+        by rewrite IHn mxE ; f_equal => /` ? ; rewrite (injectiveE lift_inj).
+    + apply: ler_sum=> /= k _ /c` [->|?] ; [by [] | exact: sqr_ge0].
 Qed.
 
 Lemma sums_def {n0 : Type'} : (@sums n0) = (fun _1333473 : nat -> cart R n0 => fun _1333474 : cart R n0 => fun _1333475 : nat -> Prop => @FImp n0 nat (fun n : nat => @vsum nat n0 (@setI nat _1333475 (dotdot (NUMERAL O) n)) _1333473) _1333474 sequentially).
