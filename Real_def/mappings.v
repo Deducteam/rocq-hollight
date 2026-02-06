@@ -1135,7 +1135,7 @@ Proof.
   move/(mk_inj (is_nadd_add_aux naddx naddy) (is_nadd_add_aux naddx naddz)).
   move:naddy=> /[swap]/[gen] eqzy. 
   have -> : y = z by ext=> n ; apply: addnI ; exact:eqzy.
-  move=>? ; f_equal ; exact: proof_irrelevance.
+  move=>? ; f_equal ; exact: Prop_irrelevance.
 Qed.
 
 Lemma NADD_ADD_LCANCEL : forall x y z,

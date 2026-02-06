@@ -258,20 +258,6 @@ Definition COND_dep (Q: Prop) (C: Type) (f1: Q -> C) (f2: ~Q -> C) : C :=
   end.
 
 (****************************************************************************)
-(* Derive proof irrelevance. *)
-(****************************************************************************)
-
-Lemma proof_irrelevance (P : Prop) :
-  forall (p p' : P), p = p'.
-Proof.
-  case (EM P).
-  - by rewrite -{1}(is_True P)=>->.
-  - by rewrite -(is_False P).
-Qed.
-
-Arguments proof_irrelevance: clear implicits.
-
-(****************************************************************************)
 (* Proof of HOL-Light axioms. *)
 (****************************************************************************)
 
@@ -361,13 +347,13 @@ Section Subtype.
   Lemma mk_dest x : mk (dest x) = x.
   Proof.
     rewrite/mk/COND_dep; case: (pselect (P (dest x))); case x ; last by [].
-    by move=>a' p pa' ; rewrite (proof_irrelevance _ p pa').
+    by move=>a' p pa' ; rewrite (Prop_irrelevance p pa').
   Qed.
 
   Lemma dest_inj x y : dest x = dest y -> x = y.
   Proof.
     intro e. destruct x as [x i]. destruct y as [y j]. simpl in e.
-    subst y. rewrite (proof_irrelevance _ i j). reflexivity.
+    subst y. rewrite (Prop_irrelevance i j). reflexivity.
   Qed.
 
   Lemma mk_inj x y : P x -> P y -> mk x = mk y -> x = y.
@@ -1094,7 +1080,7 @@ Ltac revert_keep H :=
     repeat match goal with
     | x : _ |- _ => assert_fails typecheck T x ; revert x end end.
 
-(* Apply proof_irrelevance to all propositionnal fields,
+(* Apply Prop_irrelevance to all propositionnal fields,
    to prove injectivity of _dest_T. *)
 
 (* To do that we first need to rewrite equalities to remove the difference in
@@ -1111,7 +1097,7 @@ Ltac instance_uniqueness := let instance1 := fresh in
   | ?f _ _ _ _ = _ => unfold f in eq end ;
   destruct instance1,instance2 ; simpl in eq ;
   revert_keep eq ; inversion_clear eq ;
-  intros ; f_equal ; apply proof_irrelevance.
+  intros ; f_equal ; apply Prop_irrelevance.
 
 (* Combine it with finv_inv_l. *)
 
@@ -1506,7 +1492,7 @@ Section Quotient.
     destruct x as [c [x h]]. destruct y as [d [y i]]. unfold elt_of. simpl.
     intro r. generalize (ex_intro (fun a : A => c = R a) x h)
       (ex_intro (fun a : A => d = R a) y i).
-    have -> : c = d ; last by move=>* ; f_equal ; exact: proof_irrelevance.
+    have -> : c = d ; last by move=>* ; f_equal ; exact: Prop_irrelevance.
     rewrite h i. ext=> z ?.
     - apply: (R_trans (eq_elt_of y)).
       rewrite i in r. apply (R_trans (R_sym r)).

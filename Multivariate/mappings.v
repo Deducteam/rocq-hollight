@@ -278,7 +278,7 @@ Proof.
   rewrite/dest_metric/mdist_pair in eq. simpl in eq.
   revert_keep eq. case: eq => -> /[gen] mdisteq0.
   have -> : mdist0 = mdist1 by ext=> x y ; exact: (mdisteq0 (x,y)).
-  clearall => * ; f_equal ; exact: proof_irrelevance.
+  clearall => * ; f_equal ; exact: Prop_irrelevance.
 Qed.
 
 Lemma axiom_52 : forall {A : Type'} (r : prod (A -> Prop) ((prod A A) -> R)), ((fun m : prod (A -> Prop) ((prod A A) -> R) => @is_metric_space A m) r) = ((@dest_metric A (@metric A r)) = r).

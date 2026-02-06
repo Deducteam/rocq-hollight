@@ -1172,7 +1172,7 @@ Proof.
   case=> k ink. rewrite/dest_enum/mk_enum.
   case (pselect (inhabits (Ordinal ink).+1)) ; last by rewrite/inhabits/3=.
   move=> ink' ; move:{ink'}(inhabits_to_ord ink').
-  rewrite -pred_Sn => ? ; f_equal ; exact: proof_irrelevance.
+  rewrite -pred_Sn => ? ; f_equal ; exact: Prop_irrelevance.
 Qed.
 
 Lemma dest_mk_enum : forall k : nat, inhabits k = (dest_enum (mk_enum k) = k).
@@ -1448,7 +1448,7 @@ Defined.
 Lemma inord_lt n m (ltnSm : n < m.+1) : inord n = Ordinal ltnSm.
 Proof.
   rewrite/inord/insubd/oapp/insub/Sub ; case (@idP (n < m.+1)) => //= ?.
-  f_equal ; exact: proof_irrelevance.
+  f_equal ; exact: Prop_irrelevance.
 Qed.
 
 Lemma inord_gt n m (gtnm : m < n) : inord n = ord0 :> 'I_m.+1.
@@ -1466,7 +1466,7 @@ Qed.
 Lemma coord_ord (A : Type') n (M : 'rV[A]_n) (m : 'I_n) :
   coord M m = M ord0 m.
 Proof.
-  rewrite coordE ; case:m=>* ; do 2 f_equal ; exact: proof_irrelevance.
+  rewrite coordE ; case:m=>* ; do 2 f_equal ; exact: Prop_irrelevance.
 Qed.
 
 (* HOL Light takes coordinates starting at 1. *)
@@ -1482,7 +1482,7 @@ Proof.
     rewrite -2!ltnNge ltnS leqn0 ; case.
     + move/eqP=> -> /= ; f_equal ; exact: inord_lt.
     + move=> ltSmn ; rewrite inord_gt ; last by elim:n ltSmn.
-      rewrite/ord0 ; do 2 f_equal ; exact:proof_irrelevance.
+      rewrite/ord0 ; do 2 f_equal ; exact:Prop_irrelevance.
 Qed.
 
 (*  !!! TODO: move somewhere, alignments for Libraries/analysis.ml !!!

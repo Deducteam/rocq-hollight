@@ -57,7 +57,7 @@ Axiom classic : forall P:Prop, P \/ ~ P.
 Axiom constructive_indefinite_description : forall (A : Type) (P : A->Prop), (exists x, P x) -> { x : A | P x }.
 Axiom fun_ext : forall {A B : Type} {f g : A -> B}, (forall x, (f x) = (g x)) -> f = g.
 Axiom prop_ext : forall {P Q : Prop}, (P -> Q) -> (Q -> P) -> P = Q.
-Axiom proof_irrelevance : forall (P:Prop) (p1 p2:P), p1 = p2.
+Axiom Prop_irrelevance : forall (P:Prop) (p1 p2:P), p1 = p2.
 ```
 
 **Installation using [opam](https://opam.ocaml.org/)**
