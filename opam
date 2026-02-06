@@ -13,7 +13,7 @@ authors: ["Frédéric Blanqui"]
 license: "CeCILL-2.1"
 depends: [
   "rocq-prover" {>= "9.0"}
-  "coq-mathcomp-classical" {>= "1.14.0"}
+  "coq-mathcomp-classical" {>= "1.15.0"}
   "coq-mathcomp-analysis-stdlib" {>= "1.14.0"}
   "coq-fourcolor-reals" {>= "1.4.2"}
   "coq-mathcomp-zify" {>= "1.6.0"}
