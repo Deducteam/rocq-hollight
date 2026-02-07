@@ -1136,7 +1136,7 @@ Ltac provable_align induction_principle :=
   [ intros Pac Pcc Pc P H' ; apply (induction_principle s P Pac Pcc Pc) ; auto ;
     clear H ; intros ; apply H' ; breakgoal
   | apply (H (provable_achain s) (provable_cchain s) (provable_cong s) (cprovable s)) ;
-    clearall ; repeat split ; intros f H ; full_destruct ;
+    clear ; repeat split ; intros f H ; full_destruct ;
     blindrewrite ; try (by constructor) ; try exact: prc_fun_compat ;
     apply: prac_trans || apply: prcc_trans ; eassumption ].
 
@@ -1300,7 +1300,7 @@ Ltac sprovable_align induction_principle :=
   [ intros Pac Pcc Pc P H' ; apply (induction_principle s P Pac Pcc Pc) ; auto ;
     clear H ; intros ; apply H' ; breakgoal
   | apply (H (provable_sachain s) (provable_scchain s) (provable_scong s) (scprovable s)) ;
-    clearall ; repeat split ; intros f H ; full_destruct ;
+    clear ; repeat split ; intros f H ; full_destruct ;
     blindrewrite ; try (by constructor) ; try exact: prsc_fun_compat ;
     apply: prsac_trans || apply: prscc_trans ; eassumption ].
 

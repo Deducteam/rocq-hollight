@@ -95,23 +95,8 @@ Qed. *)
    Proof. by ext 7. Qed.
    Print test.
 
-   This means that ext should be prefered to ext n if possible. *)
-
-(****************************************************************************)
-(* Repeating exists. *)
-(****************************************************************************)
-
-Tactic Notation "exist" uconstr(x1) uconstr(x2) :=
-  exists x1 ; exists x2.
-
-Tactic Notation "exist" uconstr(x1) uconstr(x2) uconstr(x3) :=
-  exists x1 ; exists x2 ; exists x3.
-
-Tactic Notation "exist" uconstr(x1) uconstr(x2) uconstr(x3) uconstr(x4) :=
-  exists x1 ; exists x2 ; exists x3 ; exists x4.
-
-Tactic Notation "exist" uconstr(x1) uconstr(x2) uconstr(x3) uconstr(x4) uconstr(x5) :=
-  exists x1 ; exists x2 ; exists x3 ; exists x4 ; exists x5.
+   This means that ext should be prefered to ext n if possible.
+   But move=> /n` for n between 1 and 5 (defined below) does not have this issue *)
 
 (****************************************************************************)
 (* Coercion from Prop to bool? *)
@@ -507,7 +492,7 @@ Abort. *)
 
 (* use /` during ssr intropattern to ext all,
    /f` to only use funext,
-   and /n` for n between 1 and 5 ext exactly n arguments / hypotheses. *)
+   and /n` for n between 1 and 5 to ext exactly n arguments / hypotheses. *)
 
 Ltac funext :=
   let rec funext' := (let x := fresh "x" in
@@ -876,10 +861,6 @@ Ltac full_destruct := repeat match goal with
 
 Ltac blindrewrite := repeat match goal with H : _ |- _ => rewrite H end.
 
-(* Tactic to clear variables not appearing anywhere, including hypotheses. *)
-
-Ltac clearall := repeat match goal with useless : _ |- _ => clear useless end.
-
 (* In HOL_Light, an inductive defintion is top-down :
    if [Case_i x1 ... xn : Hyps_i x1 ... xn -> P (f_i x1 ... xn)] for 1 <= i <= k
    are the constructors / rules of P, then :
@@ -917,7 +898,7 @@ Ltac ind_align :=
                      The Hyps_i are in the context. *)
   | (* Proving [P_h x -> P_r x] *)
     apply H ; (* Replaces goal [P_r x] with [H'] *)
-    clearall ; (* H' talks about fresh variables *)
+    clear ; (* H' talks about fresh variables *)
     intros_namelast H ;
     full_destruct ; (* Destructing H results in one goal per case, and separates the hypotheses *)
     blindrewrite ;  (* not much to do, each clause should be proved with a rule,
@@ -937,7 +918,7 @@ Lemma finv_inv_l [A B : Type'] (f : A -> B) (x : A) :
   (forall x0 x1 : A, f x0 = f x1 -> x0 = x1) -> finv f (f x) = x.
 Proof. by apply ; rewrite/finv ; ε_spec by exists x. Qed.
 
-Ltac finv_inv_l := intros ; apply finv_inv_l ; clearall.
+Ltac finv_inv_l := intros ; apply finv_inv_l ; clear.
 
 Lemma finv_inv_r [A B : Type'] (f : A -> B) : forall (P : B -> Prop) (y : B),
   (P y -> exists x, f x = y) -> ((exists x, f x = y) -> P y) -> P y = (f (finv f y) = y).
@@ -1130,7 +1111,7 @@ Tactic Notation "_dest_mk_record" "by" tactic(tac) "with" uconstr(dest) :=
     | |- (exists _, ?f _ _ _ = _) -> _ => unfold f
     | |- (exists _, ?f _ _ _ _  = _) -> _ => unfold f end ; 
     let r := fresh in
-    intros [r <-] ; clearall ; destruct r ;
+    intros [r <-] ; clear ; destruct r ;
     try match goal with
     | |- ?P _ => unfold P
     | |- ?P _ _ => unfold P

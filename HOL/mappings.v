@@ -863,12 +863,10 @@ Proof.
   by rewrite/INSERT setU0. by rewrite/INSERT setU0 in H.
 Qed.
 
-(* pattern /3= simplifies HOL_Light set objects to rocq ones in, I believe,
-   the most suitable way. Maybe it would be better for some to unfold IN
-   as the boolean predicate instead of rewriting it to the Prop one. *)
+(* pattern /3= simplifies HOL_Light set functions to rocq ones *)
 Ltac ssrsimpl3 :=
   rewrite ?SPEC_IMAGE?SPEC_elim/GSPEC/SETSPEC/DELETE/IMAGE/INTERS/UNIONS/
-  INSERT/BIT1/BIT0/NUMERAL?setU0?IN_def.
+  INSERT/BIT1/BIT0/NUMERAL?setU0/IN.
 
 (*****************************************************************************)
 (* Finite sets. *)
@@ -1218,8 +1216,8 @@ Arguments dest_enum {_} _.
 Arguments mk_dest_enum {_} _.
 
 (*****************************************************************************)
-(* Cart.finite_image: natural numbers between 1 and the CARDinal of A,
-if A is finite, and 1 otherwise. *)
+(* Cart.finite_image: natural numbers between 1 and the cardinal of A,       *)
+(* if A is finite, and 1 otherwise.                                          *)
 (*****************************************************************************)
 
 Lemma finite_image_gen (A : Type') : 0 < dimindex [set: A].

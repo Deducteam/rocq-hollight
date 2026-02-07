@@ -103,7 +103,6 @@ Proof. exact (REFL (@tends A B)). Qed.
 (*****************************************************************************)
 (* Difference with Rocq : Base is an argument instead of a projection *)
 
-(* Cannot manage to map to a subtype of Metric_Space : Universe Inconsistency *)
 Unset Implicit Arguments.
 Open Scope ring_scope.
 Definition discrete_metric A (c : A * A) : R := if (fst c=snd c) then 0 else 1.
