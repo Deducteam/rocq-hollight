@@ -2,7 +2,7 @@ From HB Require Import structures.
 From mathcomp Require Import ssreflect ssrbool ssrfun ssrnat.
 From mathcomp Require Export eqtype choice.
 From mathcomp Require Import seq boolp functions.
-From mathcomp Require Export eqtype choice classical_sets.
+From mathcomp Require Export classical_sets.
 Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
