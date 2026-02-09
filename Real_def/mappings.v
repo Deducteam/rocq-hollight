@@ -748,8 +748,6 @@ Proof.
   by total_align=> // a t ; if_seq ; elim:t. 
 Qed.
 
-Definition ALL {A : Type'} : (A -> Prop) -> seq A -> Prop := all.
-
 Lemma ALL_def {_25307 : Type'} : (@ALL _25307) = (@ε ((prod nat (prod nat nat)) -> (_25307 -> Prop) -> (seq _25307) -> Prop) (fun ALL' : (prod nat (prod nat nat)) -> (_25307 -> Prop) -> (seq _25307) -> Prop => forall _17973 : prod nat (prod nat nat), (forall P : _25307 -> Prop, (ALL' _17973 P (@nil _25307)) = True) /\ (forall h : _25307, forall P : _25307 -> Prop, forall t : seq _25307, (ALL' _17973 P (@cons _25307 h t)) = ((P h) /\ (ALL' _17973 P t)))) (@pair nat (prod nat nat) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 0)))))))) (@pair nat nat (NUMERAL (BIT0 (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 0)))))))) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 0))))))))))).
 Proof.
   by total_align => * ; [rewrite is_True | rewrite/ALL -andP** asboolE].
