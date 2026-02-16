@@ -1,4 +1,4 @@
-Require Import mathcomp.boot.ssrnat mathcomp.boot.div mathcomp.boot.seq HOLLight.Real_def.mappings.
+Require Import mathcomp.boot.ssrnat mathcomp.boot.div mathcomp.boot.seq HOLLight.Real_With_nat.mappings.
 Definition _FALSITY_ : Prop := False.
 Lemma _FALSITY__def : _FALSITY_ = False.
 Proof. exact (REFL _FALSITY_). Qed.
