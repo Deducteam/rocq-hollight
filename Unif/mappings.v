@@ -1425,6 +1425,14 @@ Proof.
   by ext 1 => ? ; rewrite/Eqaxioms/3= 4!setUA.
 Qed.
 
+Definition DOWNFROM n := rev (iota 0 n).
+
+Lemma DOWNFROMSn n : DOWNFROM n.+1 = n :: DOWNFROM n.
+Proof. by rewrite/DOWNFROM -addn1 iotaD rev_cat. Qed.
+
+Lemma DOWNFROM_def : DOWNFROM = (@ε ((prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat nat))))))) -> nat -> seq nat) (fun DOWNFROM' : (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat nat))))))) -> nat -> seq nat => forall _232733 : prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat nat)))))), ((DOWNFROM' _232733 (NUMERAL O)) = (@nil nat)) /\ (forall n : nat, (DOWNFROM' _232733 (S n)) = (@cons nat n (DOWNFROM' _232733 n)))) (@pair nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat nat)))))) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT0 (BIT0 (BIT0 (BIT1 O)))))))) (@pair nat (prod nat (prod nat (prod nat (prod nat (prod nat nat))))) (NUMERAL (BIT1 (BIT1 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 O)))))))) (@pair nat (prod nat (prod nat (prod nat (prod nat nat)))) (NUMERAL (BIT1 (BIT1 (BIT1 (BIT0 (BIT1 (BIT0 (BIT1 O)))))))) (@pair nat (prod nat (prod nat (prod nat nat))) (NUMERAL (BIT0 (BIT1 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 O)))))))) (@pair nat (prod nat (prod nat nat)) (NUMERAL (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT0 (BIT1 O)))))))) (@pair nat (prod nat nat) (NUMERAL (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 O)))))))) (@pair nat nat (NUMERAL (BIT1 (BIT1 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 O)))))))) (NUMERAL (BIT1 (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 O)))))))))))))))).
+Proof. total_align ; [by [] | exact: DOWNFROMSn]. Qed.
+
 (*****************************************************************************)
 (* retval : bool with a 3rd possibility, exception *)
 (*****************************************************************************)
@@ -1472,13 +1480,6 @@ Definition LOOPFREE s := forall n, ~ Relation_Operators.clos_trans nat (OCC s) n
 
 Lemma LOOPFREE_def : LOOPFREE = (fun _259325 : seq (prod nat term) => forall z : nat, ~ (@Relation_Operators.clos_trans nat (OCC _259325) z z)).
 Proof. exact erefl. Qed.
-
-(* Inductive loopcheck (env : seq (prod nat term)) : nat -> term -> Prop :=
-  | loopcheck_isfreein : forall n t, IN n (free_variables_term t) -> loopcheck env n t
-  | loopcheck_rec : forall n t n' t', IN n' (free_variables_term t) ->
-                    In (n,t') env -> loopcheck env n' t' -> loopcheck env n t. *)
-
-(* come back with a better tactic for partial functions *)
 
 Definition rightsubst (c c' : prod nat term) := (fst c',termsubst (valmod c V) (snd c')).
 

@@ -875,6 +875,8 @@ builtin "Eqaxiom_Pred" ≔ Eqaxiom_Pred;
 builtin "Eqaxiom_Pred_def" ≔ Eqaxiom_Pred_def;
 builtin "Eqaxioms" ≔ Eqaxioms;
 builtin "Eqaxioms_def" ≔ Eqaxioms_def;
+builtin "DOWNFROM" ≔ DOWNFROM;
+builtin "DOWNFROM_def" ≔ DOWNFROM_def;
 builtin "OCC" ≔ OCC;
 builtin "OCC_def" ≔ OCC_def;
 builtin "LOOPFREE" ≔ LOOPFREE;
