@@ -10,6 +10,34 @@ Unset Printing Implicit Defensive.
 
 Set Bullet Behavior "Strict Subproofs".
 
+Inductive loopcheck_ind (env : seq (prod nat term)) : nat -> term -> Prop :=
+  | loopcheck_isfreein : forall n t, free_variables_term t n -> loopcheck_ind env n t
+  | loopcheck_rec : forall n t n' t', free_variables_term t n' ->
+                    (n',t') \in env -> loopcheck_ind env n t' -> loopcheck_ind env n t.
+
+Definition loopcheck_HOL : (seq (prod nat term)) -> nat -> term -> Prop := @ε ((prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat nat)))))))) -> (seq (prod nat term)) -> nat -> term -> Prop) (fun loopcheck' : (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat nat)))))))) -> (seq (prod nat term)) -> nat -> term -> Prop => forall _260318 : prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat nat))))))), forall env : seq (prod nat term), forall x : nat, (LOOPFREE env) -> forall t : term, (loopcheck' _260318 env x t) = (exists y : nat, (@IN nat y (free_variables_term t)) /\ ((y = x) \/ (exists s : term, (@MEM (prod nat term) (@pair nat term y s) env) /\ (loopcheck' _260318 env x s))))) (@pair nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat nat))))))) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT1 (BIT0 (BIT1 (BIT1 O)))))))) (@pair nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat nat)))))) (NUMERAL (BIT1 (BIT1 (BIT1 (BIT1 (BIT0 (BIT1 (BIT1 O)))))))) (@pair nat (prod nat (prod nat (prod nat (prod nat (prod nat nat))))) (NUMERAL (BIT1 (BIT1 (BIT1 (BIT1 (BIT0 (BIT1 (BIT1 O)))))))) (@pair nat (prod nat (prod nat (prod nat (prod nat nat)))) (NUMERAL (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 (BIT1 (BIT1 O)))))))) (@pair nat (prod nat (prod nat (prod nat nat))) (NUMERAL (BIT1 (BIT1 (BIT0 (BIT0 (BIT0 (BIT1 (BIT1 O)))))))) (@pair nat (prod nat (prod nat nat)) (NUMERAL (BIT0 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 (BIT1 O)))))))) (@pair nat (prod nat nat) (NUMERAL (BIT1 (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 (BIT1 O)))))))) (@pair nat nat (NUMERAL (BIT1 (BIT1 (BIT0 (BIT0 (BIT0 (BIT1 (BIT1 O)))))))) (NUMERAL (BIT1 (BIT1 (BIT0 (BIT1 (BIT0 (BIT1 (BIT1 O)))))))))))))))).
+
+Definition loopcheck env := if LOOPFREE env then loopcheck_ind env else loopcheck_HOL env.
+
+Lemma loopcheck_def : loopcheck = (@ε ((prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat nat)))))))) -> (seq (prod nat term)) -> nat -> term -> Prop) (fun loopcheck' : (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat nat)))))))) -> (seq (prod nat term)) -> nat -> term -> Prop => forall _260318 : prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat nat))))))), forall env : seq (prod nat term), forall x : nat, (LOOPFREE env) -> forall t : term, (loopcheck' _260318 env x t) = (exists y : nat, (@IN nat y (free_variables_term t)) /\ ((y = x) \/ (exists s : term, (@MEM (prod nat term) (@pair nat term y s) env) /\ (loopcheck' _260318 env x s))))) (@pair nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat nat))))))) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT1 (BIT0 (BIT1 (BIT1 O)))))))) (@pair nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat nat)))))) (NUMERAL (BIT1 (BIT1 (BIT1 (BIT1 (BIT0 (BIT1 (BIT1 O)))))))) (@pair nat (prod nat (prod nat (prod nat (prod nat (prod nat nat))))) (NUMERAL (BIT1 (BIT1 (BIT1 (BIT1 (BIT0 (BIT1 (BIT1 O)))))))) (@pair nat (prod nat (prod nat (prod nat (prod nat nat)))) (NUMERAL (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 (BIT1 (BIT1 O)))))))) (@pair nat (prod nat (prod nat (prod nat nat))) (NUMERAL (BIT1 (BIT1 (BIT0 (BIT0 (BIT0 (BIT1 (BIT1 O)))))))) (@pair nat (prod nat (prod nat nat)) (NUMERAL (BIT0 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 (BIT1 O)))))))) (@pair nat (prod nat nat) (NUMERAL (BIT1 (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 (BIT1 O)))))))) (@pair nat nat (NUMERAL (BIT1 (BIT1 (BIT0 (BIT0 (BIT0 (BIT1 (BIT1 O)))))))) (NUMERAL (BIT1 (BIT1 (BIT0 (BIT1 (BIT0 (BIT1 (BIT1 O))))))))))))))))).
+Proof.
+  move=> /1` env.
+  apply: (partial_align_case1 (fun env => ~LOOPFREE env) (fun=> loopcheck)) => {env} /=.
+  - move=> _ * ; rewrite/loopcheck /1= ; ext.
+    + elim => * ; breakgoal.
+    + case=> ? /3= [? [<- | [? [*]]]].
+      * exact: loopcheck_isfreein.
+      * apply: loopcheck_rec ; eassumption.
+  - by rewrite/loopcheck => * /1=.
+  - move=> f' uv env Hf Hf' /[spec env]trivcase /f` + t.
+    case: (EM (LOOPFREE env)) => [LOOPFREEenv | /trivcase ->] ; last by [].
+    elim: (thm_LOOPFREE_WF_TERM _ LOOPFREEenv t) => {}t _ IHt n.
+    rewrite (Hf uv env n LOOPFREEenv t) (Hf' uv env n LOOPFREEenv t).
+    ext => -[y [? [? | [? [?]]]]].
+    2 : rewrite IHt => *. 5 : rewrite -IHt => *.
+    all : breakgoal.
+Qed.
+
 Instance WF_CALLORDER : WellFounded CALLORDER := thm_WF_CALLORDER.
 
 Definition istriv_with_witness env n t : {istriv env n t = TT} + {istriv env n t = FF} +

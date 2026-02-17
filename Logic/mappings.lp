@@ -875,6 +875,8 @@ builtin "Eqaxiom_Pred" ≔ Eqaxiom_Pred;
 builtin "Eqaxiom_Pred_def" ≔ Eqaxiom_Pred_def;
 builtin "Eqaxioms" ≔ Eqaxioms;
 builtin "Eqaxioms_def" ≔ Eqaxioms_def;
+builtin "DOWNFROM" ≔ DOWNFROM;
+builtin "DOWNFROM_def" ≔ DOWNFROM_def;
 builtin "OCC" ≔ OCC;
 builtin "OCC_def" ≔ OCC_def;
 builtin "LOOPFREE" ≔ LOOPFREE;
@@ -906,6 +908,8 @@ builtin "CALLORDER_def" ≔ CALLORDER_def;
 //builtin "diese" ≔ diese;
 //builtin "diese_def" ≔ diese_def;
 
+builtin "loopcheck" ≔ loopcheck;
+builtin "loopcheck_def" ≔ loopcheck_def;
 builtin "unify" ≔ unify;
 builtin "unify_def" ≔ unify_def;
 builtin "unifies" ≔ unifies;
