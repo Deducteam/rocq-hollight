@@ -185,6 +185,9 @@ Qed.
 
 Definition CALLORDER c c' := MEASURE MLEFT c c' \/ CRIGHT c c'.
 
+Lemma CALLORDER_def : CALLORDER = (fun _267471 : prod (seq (prod nat term)) (seq (prod term term)) => fun _267472 : prod (seq (prod nat term)) (seq (prod term term)) => (@MEASURE (prod (seq (prod nat term)) (seq (prod term term))) MLEFT (@pair (seq (prod nat term)) (seq (prod term term)) (@fst (seq (prod nat term)) (seq (prod term term)) _267471) (@snd (seq (prod nat term)) (seq (prod term term)) _267471)) (@pair (seq (prod nat term)) (seq (prod term term)) (@fst (seq (prod nat term)) (seq (prod term term)) _267472) (@snd (seq (prod nat term)) (seq (prod term term)) _267472))) \/ (CRIGHT (@pair (seq (prod nat term)) (seq (prod term term)) (@fst (seq (prod nat term)) (seq (prod term term)) _267471) (@snd (seq (prod nat term)) (seq (prod term term)) _267471)) (@pair (seq (prod nat term)) (seq (prod term term)) (@fst (seq (prod nat term)) (seq (prod term term)) _267472) (@snd (seq (prod nat term)) (seq (prod term term)) _267472)))).
+Proof. by funext=> [[? ?] []]. Qed.
+
 Lemma CALLORDER_compat : CALLORDER_HOL = CALLORDER.
 Proof. by rewrite/CALLORDER_HOL CRIGHT_compat. Qed.
 
