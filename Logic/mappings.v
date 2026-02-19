@@ -56,9 +56,6 @@ Proof. exact (WF_from_implication (thm_LOOPFREE_WF_TERM env)). Qed.
 Definition sumboolB : forall b : bool, {b} + {~~b}.
 Proof. by case ; constructor. Defined.
 
-Inductive sigP (P : Prop) (Q : P -> Prop) : Prop :=
-  | existP : forall x : P, Q x -> sigP Q.
-
 Section istriv.
 Context (env : seq (nat * term)) (n : nat).
 
@@ -72,9 +69,9 @@ Equations istriv (t : term) : retval by wf t (term_LOOPFREE_order env) :=
         | right _ _ => FF }};
     istriv t _ with `[< free_variables_term t n >] => {
       istriv _ _ true => Exception;
-      istriv t (left a goodenv) _ => if exists n' (t' : term),
-        @sigP (free_variables_term t n' /\ (n',t') \in env)
-          (fun ordered => istriv t' <> FF) then Exception else FF}}.
+      istriv t (left a goodenv) _ => if exists n' (t' : term)
+        (ordered : free_variables_term t n' /\ (n',t') \in env),
+          (istriv t' <> FF) then Exception else FF}}.
 Next Obligation.
   move=> /= n' mappedn' _ [? _]; split; [by [] | exists n' ; split ; [by []|]].
   by rewrite -/(MEM _ _) thm_MEM_ASSOC.
