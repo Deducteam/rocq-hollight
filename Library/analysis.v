@@ -305,22 +305,6 @@ Proof.
   + by apply/cvg_lim.
 Qed.
 
-Lemma cvg_dnbhs_at_right (f : R -> R) (p : R) (l : R) :
-  f x @[x --> p^'] --> l ->
-  f x @[x --> p^'+] --> l.
-Proof.
-apply: cvg_trans; apply: cvg_app.
-by apply: within_subset => r ?; rewrite gt_eqF.
-Qed.
-
-Lemma cvg_dnbhs_at_left (f : R -> R) (p : R) (l : R) :
-  f x @[x --> p^'] --> l ->
-  f x @[x --> p^'-] --> l.
-Proof.
-apply: cvg_trans; apply: cvg_app.
-by apply: within_subset => r ?; rewrite lt_eqF.
-Qed.
-
 Definition contl (f : R -> R) (x : R) := {for x, continuous f}.
 
 Lemma contl_def : contl = (fun _115562 : R -> R => fun _115563 : R => tends_real_real (fun h : R => _115562 (addr _115563 h)) (_115562 _115563) (R_of_nat (NUMERAL O))).
@@ -333,7 +317,7 @@ Proof.
     f (x0 + x)%mcR @[x0 --> (0%mcR)^'+] --> f (0+x)%mcR).
   - apply propext. apply iff_sym. exact: left_right_continuousP.
   - ext => [[contfxl contfxr]|contfx].
-    + exact: cvg_at_right_left_dnbhs.
+    + by apply (@cvg_at_right_left_dnbhs _ R^o).
     + split ; [exact: cvg_dnbhs_at_left | exact: cvg_dnbhs_at_right].
 Qed.
 
