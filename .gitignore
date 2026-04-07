@@ -1,0 +1,9 @@
+_CoqProject
+rocq.mk
+rocq.mk.conf
+*.vo*
+*.glob
+.*.aux
+.lia.cache
+.nia.cache
+.rocq.mk.d
