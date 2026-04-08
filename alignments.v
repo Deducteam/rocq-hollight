@@ -1,7 +1,27 @@
-From Stdlib Require Import Ascii.
+From fourcolor.reals Require Import real realcategorical.
+(* Importing things in an order so that real.Real does not override important
+   definitions. *)
+Import real.Real.
+From Corelib Require Import Datatypes.
+From Stdlib Require Import Ascii List Reals.Reals Lra Permutation.
 From HB Require Import structures.
-From mathcomp Require Import ssreflect ssrfun ssrbool eqtype ssrnat seq div.
-From mathcomp Require Import choice order zify boolp classical_sets functions.
+From mathcomp Require Import ssreflect ssrfun ssrbool eqtype ssrnat div seq choice.
+From mathcomp Require Import zify fintype finset finfun order ssralg ssrnum matrix.
+From mathcomp Require Import interval ssrint intdiv archimedean finmap.
+From mathcomp Require Import interval_inference all_classical classical_sets.
+
+(* Override the instance in pseudometric_structure.v from mathcomp analysis.
+   More general (defined only for zmodtypes there ) *)
+HB.instance Definition _ (G : Algebra.ChoiceBaseAddUMagma.type) :=
+  isPointed.Build G 0%R.
+
+(* To use for Types that can be infered as ChoiceBaseAddUMagmas.
+   For example, G : zmodType cannot be infered as Type', but G%' can. *)
+Notation "T '%' '":= (T : Algebra.ChoiceBaseAddUMagma.type) (format "T '%' '").
+
+From mathcomp Require Import topology normedtype reals Rstruct_topology derive.
+From mathcomp Require Import realfun.
+Import preorder.Order Order.TTheory GRing GRing.Theory Num.Theory Logic.
 From Multivariate Require Import HOL_Light modules_theory.
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -109,7 +129,7 @@ Abort. *)
 (* applies them to all arguments and propositions at once *)
 Tactic Notation "ext" :=
   let rec ext' := (let H := fresh in
-    first [apply functional_extensionality_dep | eqProp]=> H ; try ext' ; move:H)
+    first [apply functional_extensionality_dep | eqProp] => H ; try ext' ; move:H)
   in ext'.
 
 (* with a counter added to the context to apply it for exactly n arguments/propositions *)
@@ -122,7 +142,7 @@ Definition addone : forall n, internal_witness n -> internal_witness n.+1 :=
 Ltac typecheck A a := assert_succeeds let s:=fresh in set (s := a : A).
 
 Tactic Notation "ext" integer(n) :=
-  let ext0 x w := (first [apply functional_extensionality_dep | eqProp]=>x ; set (w := w0 x))
+  let ext0 x w := (first [apply functional_extensionality_dep | eqProp] => x ; set (w := w0 x))
    (* choosing the fresh variables inside ext0 fails to create new variable names. *)
   in do n (let x := fresh in let w := fresh in ext0 x w) ;
   repeat match goal with | x : _ |- _  =>
@@ -138,25 +158,25 @@ Notation "f`" := (ltac:(try funext)) (at level 0, only parsing).
 
 Notation "1`" := (ltac:(first [apply functional_extensionality_dep | eqProp])) (at level 0, only parsing).
 
-Notation "2`" := (ltac:( let H := fresh in first [apply funext | eqProp]=>H ;
+Notation "2`" := (ltac:( let H := fresh in first [apply funext | eqProp] =>H ;
                          first [apply funext | eqProp] ; move: H ))
                            (at level 0, only parsing).
 
-Notation "3`" := (ltac:( let H1 := fresh in first [apply funext | eqProp]=>H1 ;
-                         let H2 := fresh in first [apply funext | eqProp]=>H2 ;
+Notation "3`" := (ltac:( let H1 := fresh in first [apply funext | eqProp] =>H1 ;
+                         let H2 := fresh in first [apply funext | eqProp] =>H2 ;
                          first [apply funext | eqProp] ; move: H1 H2 ))
                            (at level 0, only parsing).
 
-Notation "4`" := (ltac:( let H1 := fresh in first [apply funext | eqProp]=>H1 ;
-                         let H2 := fresh in first [apply funext | eqProp]=>H2 ;
-                         let H3 := fresh in first [apply funext | eqProp]=>H3 ;
+Notation "4`" := (ltac:( let H1 := fresh in first [apply funext | eqProp] =>H1 ;
+                         let H2 := fresh in first [apply funext | eqProp] =>H2 ;
+                         let H3 := fresh in first [apply funext | eqProp] =>H3 ;
                          first [apply funext | eqProp] ; move: H1 H2 H3))
                            (at level 0, only parsing).
 
-Notation "5`" := (ltac:( let H1 := fresh in first [apply funext | eqProp]=>H1 ;
-                         let H2 := fresh in first [apply funext | eqProp]=>H2 ;
-                         let H3 := fresh in first [apply funext | eqProp]=>H3 ;
-                         let H4 := fresh in first [apply funext | eqProp]=>H4 ;
+Notation "5`" := (ltac:( let H1 := fresh in first [apply funext | eqProp] =>H1 ;
+                         let H2 := fresh in first [apply funext | eqProp] =>H2 ;
+                         let H3 := fresh in first [apply funext | eqProp] =>H3 ;
+                         let H4 := fresh in first [apply funext | eqProp] =>H4 ;
                          first [apply funext | eqProp] ; move: H1 H2 H3 H4))
                            (at level 0, only parsing).
 
@@ -287,6 +307,7 @@ on some inductive type usually looks like:
 named [f] too and removes [uv] from the context, assuming that [f uv]
 does not actually depends on [uv]. *)
 Ltac gobble f uv :=
+  cbv beta in * ; (* Simplifies application of uv so only [f u] is left. *)
   let g := fresh in
   set (g := f uv) in * ;
   clearbody g ; simpl in g ;
@@ -296,6 +317,9 @@ Lemma align_ε (A : Type') (P : A -> Prop) a : P a -> (forall x, P a -> P x -> a
 Proof.
   by move => ha ; apply ; last ε_spec by exists a.
 Qed.
+
+Ltac remove_unused uv := repeat match goal with
+  | H : context [(fun=> ?x) uv] |- _ => change ((fun=> _) uv) with x in H end.
 
 (* From a goal of the form [a = ε (fun a' => forall uv, P (a' uv)) uv0],
 align_ε generates two subgoals [P a] and [forall x, P a -> P x -> a = x]. *)
@@ -317,7 +341,6 @@ Ltac align_ε :=
           rewrite/all in H,H';
           specialize (H uv) ; (* As [P] starts with [forall uv] *)
           specialize (H' uv) ;
-          simpl ((fun _ => a) uv) in * ; (* Simplifies to [a] so that [uv] only appears in [a' uv] *)
           gobble a' uv ;
           revert a' H H' (* Revert [a'], [P a] and [P a'] to reuse them in other tactics *)
         ]
@@ -492,7 +515,6 @@ Ltac align_ε_if :=
             rewrite/all in Hf,Hf';
             specialize (Hf uv) ;
             specialize (Hf' uv) ;
-            simpl (_ uv) in * ;
             gobble f' uv ;
             revert HP ; try revert y ; revert f' Hf Hf' x ]
     | |- _ = ε _ => funext ; (* helping with pattern matching by
@@ -1013,7 +1035,6 @@ Ltac partial_align1_general Q inductiontac solvetac :=
     | intros f' uv x H H' Htriv ; extall ;
       specialize (H uv) ;
       specialize (H' uv) ;
-      simpl (_ uv) in * ;
       gobble f' uv ;
       inductiontac x ; (try now rewrite Htriv ; constructor) ; (* automatically takes care of cases
                                                                         in Q. *)
@@ -1033,7 +1054,6 @@ Ltac partial_align2_general Q inductiontac solvetac :=
     | intros f' uv y x H H' Htriv ; extall ;
       specialize (H uv) ;
       specialize (H' uv) ;
-      simpl (_ uv) in * ;
       gobble f' uv ;
       inductiontac x ; (try now rewrite Htriv ; constructor) ;
       clear Htriv ; solvetac ] end.
@@ -1051,7 +1071,6 @@ Ltac partial_align3_general Q inductiontac solvetac :=
     | intros f' uv y z x H H' Htriv ; extall ;
       specialize (H uv) ;
       specialize (H' uv) ;
-      simpl (_ uv) in * ;
       gobble f' uv ;
       induction x ; (try now rewrite Htriv ; constructor) ;
       clear Htriv ; solvetac] end.
@@ -1566,6 +1585,8 @@ Proof. constr_align axiom_7. Qed.
 (****************************************************************************)
 (* Alignment of mathematical functions on natural numbers with nat. *)
 (****************************************************************************)
+
+Open Scope nat_scope.
 
 Definition NUMERAL : num -> num := id.
 Lemma NUMERAL_def : heq NUMERAL (fun _2128 : num => _2128).
@@ -4670,6 +4691,11 @@ End Real_with_nat.
 
 Module Real_with_nat_theory := Theory(Real_with_nat).
 
+(* Alas, modules cannot take constr parameters, so the following is forbidden:
+Section Reals.
+Variable (R : realType).
+*)
+
 Module Alignments <: Mappings.
 Include Alignments_until_Real.
 Import Real_with_nat_theory.
@@ -4778,8 +4804,6 @@ Proof. constr_align (@axiom_11 A B). Qed.
 Inductive is_inl A B : sum A B -> Prop := is_inl_i a : is_inl (@inl A B a).
 Inductive is_inr A B : sum A B -> Prop := is_inr_i b : is_inr (@inr A B b).
 
-Search (sum _ _).
-
 Definition hOUTL {A B : Type'} : (Sum A B) -> A := @ε ((hprod num (hprod num (hprod num num))) -> (Sum A B) -> A) (fun OUTL' : (hprod num (hprod num (hprod num num))) -> (Sum A B) -> A => all (fun h17649 : hprod num (hprod num (hprod num num)) => all (fun x : A => heq (OUTL' h17649 (@INL A B x)) x))) (@hpair num (hprod num (hprod num num)) (NUMERAL (BIT1 (BIT1 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num num) (NUMERAL (BIT1 (BIT0 (BIT1 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (@hpair num num (NUMERAL (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 h0))))))))))).
 Definition OUTL A B (x : Sum A B) : A := if x is inl a then a else hOUTL x.
 
@@ -4864,7 +4888,7 @@ Ltac if_seq := rewrite/COND if_seq.
 (* Alignment of seq functions *)
 (****************************************************************************)
 
-Definition hHD {A : Type'} := @ε ((prod nat nat) -> (seq A) -> A) (fun HD_HOL' : (prod nat nat) -> (seq A) -> A => forall _17927 : prod nat nat, forall t : seq A, forall h : A, (HD_HOL' _17927 (@cons A h t)) = h) (@pair nat nat (NUMERAL (BIT0 (BIT0 (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 0)))))))) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT0 (BIT0 (BIT0 (BIT1 0))))))))).
+Definition hHD {A : Type'} := @ε ((prod nat nat) -> (seq A) -> A) (fun hHD' : (prod nat nat) -> (seq A) -> A => forall _17927 : prod nat nat, forall t : seq A, forall h : A, (hHD' _17927 (@cons A h t)) = h) (@pair nat nat (NUMERAL (BIT0 (BIT0 (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 0)))))))) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT0 (BIT0 (BIT0 (BIT1 0))))))))).
 
 Definition HD {A:Type'} := head (hHD (Nil A)).
 
@@ -4908,127 +4932,71 @@ Definition LAST {A : Type'} (s : seq A) :=
 
 Lemma LAST_def {A : Type'} : heq (@LAST A) (@ε ((hprod num (hprod num (hprod num num))) -> (hlist A) -> A) (fun LAST' : (hprod num (hprod num (hprod num num))) -> (hlist A) -> A => all (fun h18117 : hprod num (hprod num (hprod num num)) => all (fun h : A => all (fun t : hlist A => heq (LAST' h18117 (@CONS A h t)) (@COND A (heq t (@NIL A)) h (LAST' h18117 t)))))) (@hpair num (hprod num (hprod num num)) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num num) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num num (NUMERAL (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))))))).
 Proof.
-  partial_align (is_nil A). 1,2: move=>?. => ? ; case=>* ; if_seq.
+  by partial_align (is_nil A) => ? ; case=>* ; if_seq.
 Qed.
-Definition BUTLAST {A : Type'} : (hlist A) -> hlist A := @ε ((hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num)))))) -> (hlist A) -> hlist A) (fun BUTLAST' : (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num)))))) -> (hlist A) -> hlist A => all (fun h18121 : hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num))))) => hand (heq (BUTLAST' h18121 (@NIL A)) (@NIL A)) (all (fun h : A => all (fun t : hlist A => heq (BUTLAST' h18121 (@CONS A h t)) (@COND (hlist A) (heq t (@NIL A)) (@NIL A) (@CONS A h (BUTLAST' h18121 t)))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num (hprod num num))))) (NUMERAL (BIT0 (BIT1 (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num num)))) (NUMERAL (BIT1 (BIT0 (BIT1 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num num))) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num num)) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num num) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num num (NUMERAL (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))))))))).
-Lemma BUTLAST_def {A : Type'} : heq (@BUTLAST A) (@ε ((hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num)))))) -> (hlist A) -> hlist A) (fun BUTLAST' : (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num)))))) -> (hlist A) -> hlist A => all (fun h18121 : hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num))))) => hand (heq (BUTLAST' h18121 (@NIL A)) (@NIL A)) (all (fun h : A => all (fun t : hlist A => heq (BUTLAST' h18121 (@CONS A h t)) (@COND (hlist A) (heq t (@NIL A)) (@NIL A) (@CONS A h (BUTLAST' h18121 t)))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num (hprod num num))))) (NUMERAL (BIT0 (BIT1 (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num num)))) (NUMERAL (BIT1 (BIT0 (BIT1 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num num))) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num num)) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num num) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num num (NUMERAL (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 (BIT0 (BIT1 h0))))))))))))))).
-Proof. exact (REFL (@BUTLAST A)). Qed.
-Definition REPLICATE {A : Type'} : num -> A -> hlist A := @ε ((hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num)))))))) -> num -> A -> hlist A) (fun REPLICATE' : (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num)))))))) -> num -> A -> hlist A => all (fun h18125 : hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num))))))) => hand (all (fun x : A => heq (REPLICATE' h18125 (NUMERAL h0) x) (@NIL A))) (all (fun n : num => all (fun x : A => heq (REPLICATE' h18125 (SUC n) x) (@CONS A x (REPLICATE' h18125 n x))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num))))))) (NUMERAL (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num)))))) (NUMERAL (BIT1 (BIT0 (BIT1 (BIT0 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num (hprod num num))))) (NUMERAL (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num num)))) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num num))) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num num)) (NUMERAL (BIT1 (BIT1 (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num num) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num num (NUMERAL (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (NUMERAL (BIT1 (BIT0 (BIT1 (BIT0 (BIT0 (BIT0 (BIT1 h0)))))))))))))))).
-Lemma REPLICATE_def {A : Type'} : heq (@REPLICATE A) (@ε ((hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num)))))))) -> num -> A -> hlist A) (fun REPLICATE' : (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num)))))))) -> num -> A -> hlist A => all (fun h18125 : hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num))))))) => hand (all (fun x : A => heq (REPLICATE' h18125 (NUMERAL h0) x) (@NIL A))) (all (fun n : num => all (fun x : A => heq (REPLICATE' h18125 (SUC n) x) (@CONS A x (REPLICATE' h18125 n x))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num))))))) (NUMERAL (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num)))))) (NUMERAL (BIT1 (BIT0 (BIT1 (BIT0 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num (hprod num num))))) (NUMERAL (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num num)))) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num num))) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num num)) (NUMERAL (BIT1 (BIT1 (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num num) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num num (NUMERAL (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (NUMERAL (BIT1 (BIT0 (BIT1 (BIT0 (BIT0 (BIT0 (BIT1 h0))))))))))))))))).
-Proof. exact (REFL (@REPLICATE A)). Qed.
-Definition NULL {A : Type'} : (hlist A) -> Prop := @ε ((hprod num (hprod num (hprod num num))) -> (hlist A) -> Prop) (fun NULL' : (hprod num (hprod num (hprod num num))) -> (hlist A) -> Prop => all (fun h18129 : hprod num (hprod num (hprod num num)) => hand (heq (NULL' h18129 (@NIL A)) htrue) (all (fun h : A => all (fun t : hlist A => heq (NULL' h18129 (@CONS A h t)) hfalse))))) (@hpair num (hprod num (hprod num num)) (NUMERAL (BIT0 (BIT1 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num num) (NUMERAL (BIT1 (BIT0 (BIT1 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (@hpair num num (NUMERAL (BIT0 (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 h0))))))))))).
-Lemma NULL_def {A : Type'} : heq (@NULL A) (@ε ((hprod num (hprod num (hprod num num))) -> (hlist A) -> Prop) (fun NULL' : (hprod num (hprod num (hprod num num))) -> (hlist A) -> Prop => all (fun h18129 : hprod num (hprod num (hprod num num)) => hand (heq (NULL' h18129 (@NIL A)) htrue) (all (fun h : A => all (fun t : hlist A => heq (NULL' h18129 (@CONS A h t)) hfalse))))) (@hpair num (hprod num (hprod num num)) (NUMERAL (BIT0 (BIT1 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num num) (NUMERAL (BIT1 (BIT0 (BIT1 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (@hpair num num (NUMERAL (BIT0 (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))))))).
-Proof. exact (REFL (@NULL A)). Qed.
-Definition ALL (A : Type') := (@ε ((hprod num (hprod num num)) -> (A -> Prop) -> (hlist A) -> Prop) (fun ALL' : (hprod num (hprod num num)) -> (A -> Prop) -> (hlist A) -> Prop => all (fun h18136 : hprod num (hprod num num) => hand (all (fun P : A -> Prop => heq (ALL' h18136 P (@NIL A)) htrue)) (all (fun h : A => all (fun P : A -> Prop => all (fun t : hlist A => heq (ALL' h18136 P (@CONS A h t)) (hand (P h) (ALL' h18136 P t)))))))) (@hpair num (hprod num num) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num num (NUMERAL (BIT0 (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 h0))))))))))).
-Lemma ALL_def {A : Type'} : heq (@ALL A) (@ε ((hprod num (hprod num num)) -> (A -> Prop) -> (hlist A) -> Prop) (fun ALL' : (hprod num (hprod num num)) -> (A -> Prop) -> (hlist A) -> Prop => all (fun h18136 : hprod num (hprod num num) => hand (all (fun P : A -> Prop => heq (ALL' h18136 P (@NIL A)) htrue)) (all (fun h : A => all (fun P : A -> Prop => all (fun t : hlist A => heq (ALL' h18136 P (@CONS A h t)) (hand (P h) (ALL' h18136 P t)))))))) (@hpair num (hprod num num) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num num (NUMERAL (BIT0 (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 h0))))))))))).
-Proof. exact (REFL (@ALL A)). Qed.
-Definition EX {A : Type'} : (A -> Prop) -> (hlist A) -> Prop := @ε ((hprod num num) -> (A -> Prop) -> (hlist A) -> Prop) (fun EX' : (hprod num num) -> (A -> Prop) -> (hlist A) -> Prop => all (fun h18143 : hprod num num => hand (all (fun P : A -> Prop => heq (EX' h18143 P (@NIL A)) hfalse)) (all (fun h : A => all (fun P : A -> Prop => all (fun t : hlist A => heq (EX' h18143 P (@CONS A h t)) (hor (P h) (EX' h18143 P t)))))))) (@hpair num num (NUMERAL (BIT1 (BIT0 (BIT1 (BIT0 (BIT0 (BIT0 (BIT1 h0)))))))) (NUMERAL (BIT0 (BIT0 (BIT0 (BIT1 (BIT1 (BIT0 (BIT1 h0))))))))).
-Lemma EX_def {A : Type'} : heq (@EX A) (@ε ((hprod num num) -> (A -> Prop) -> (hlist A) -> Prop) (fun EX' : (hprod num num) -> (A -> Prop) -> (hlist A) -> Prop => all (fun h18143 : hprod num num => hand (all (fun P : A -> Prop => heq (EX' h18143 P (@NIL A)) hfalse)) (all (fun h : A => all (fun P : A -> Prop => all (fun t : hlist A => heq (EX' h18143 P (@CONS A h t)) (hor (P h) (EX' h18143 P t)))))))) (@hpair num num (NUMERAL (BIT1 (BIT0 (BIT1 (BIT0 (BIT0 (BIT0 (BIT1 h0)))))))) (NUMERAL (BIT0 (BIT0 (BIT0 (BIT1 (BIT1 (BIT0 (BIT1 h0)))))))))).
-Proof. exact (REFL (@EX A)). Qed.
-Definition ITLIST {A B : Type'} : (A -> B -> B) -> (hlist A) -> B -> B := @ε ((hprod num (hprod num (hprod num (hprod num (hprod num num))))) -> (A -> B -> B) -> (hlist A) -> B -> B) (fun ITLIST' : (hprod num (hprod num (hprod num (hprod num (hprod num num))))) -> (A -> B -> B) -> (hlist A) -> B -> B => all (fun h18151 : hprod num (hprod num (hprod num (hprod num (hprod num num)))) => hand (all (fun f : A -> B -> B => all (fun b : B => heq (ITLIST' h18151 f (@NIL A) b) b))) (all (fun h : A => all (fun f : A -> B -> B => all (fun t : hlist A => all (fun b : B => heq (ITLIST' h18151 f (@CONS A h t) b) (f h (ITLIST' h18151 f t b))))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num num)))) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num num))) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num num)) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num num) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num num (NUMERAL (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 (BIT0 (BIT1 h0))))))))))))).
-Lemma ITLIST_def {A B : Type'} : heq (@ITLIST A B) (@ε ((hprod num (hprod num (hprod num (hprod num (hprod num num))))) -> (A -> B -> B) -> (hlist A) -> B -> B) (fun ITLIST' : (hprod num (hprod num (hprod num (hprod num (hprod num num))))) -> (A -> B -> B) -> (hlist A) -> B -> B => all (fun h18151 : hprod num (hprod num (hprod num (hprod num (hprod num num)))) => hand (all (fun f : A -> B -> B => all (fun b : B => heq (ITLIST' h18151 f (@NIL A) b) b))) (all (fun h : A => all (fun f : A -> B -> B => all (fun t : hlist A => all (fun b : B => heq (ITLIST' h18151 f (@CONS A h t) b) (f h (ITLIST' h18151 f t b))))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num num)))) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num num))) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num num)) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num num) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num num (NUMERAL (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))))))))).
-Proof. exact (REFL (@ITLIST A B)). Qed.
-Definition MEM {A : Type'} : A -> (hlist A) -> Prop := @ε ((hprod num (hprod num num)) -> A -> (hlist A) -> Prop) (fun MEM' : (hprod num (hprod num num)) -> A -> (hlist A) -> Prop => all (fun h18158 : hprod num (hprod num num) => hand (all (fun x : A => heq (MEM' h18158 x (@NIL A)) hfalse)) (all (fun h : A => all (fun x : A => all (fun t : hlist A => heq (MEM' h18158 x (@CONS A h t)) (hor (heq x h) (MEM' h18158 x t)))))))) (@hpair num (hprod num num) (NUMERAL (BIT1 (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num num (NUMERAL (BIT1 (BIT0 (BIT1 (BIT0 (BIT0 (BIT0 (BIT1 h0)))))))) (NUMERAL (BIT1 (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))))).
-Lemma MEM_def {A : Type'} : heq (@MEM A) (@ε ((hprod num (hprod num num)) -> A -> (hlist A) -> Prop) (fun MEM' : (hprod num (hprod num num)) -> A -> (hlist A) -> Prop => all (fun h18158 : hprod num (hprod num num) => hand (all (fun x : A => heq (MEM' h18158 x (@NIL A)) hfalse)) (all (fun h : A => all (fun x : A => all (fun t : hlist A => heq (MEM' h18158 x (@CONS A h t)) (hor (heq x h) (MEM' h18158 x t)))))))) (@hpair num (hprod num num) (NUMERAL (BIT1 (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num num (NUMERAL (BIT1 (BIT0 (BIT1 (BIT0 (BIT0 (BIT0 (BIT1 h0)))))))) (NUMERAL (BIT1 (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 h0))))))))))).
-Proof. exact (REFL (@MEM A)). Qed.
-Definition ALL2 {A B : Type'} : (A -> B -> Prop) -> (hlist A) -> (hlist B) -> Prop := @ε ((hprod num (hprod num (hprod num num))) -> (A -> B -> Prop) -> (hlist A) -> (hlist B) -> Prop) (fun ALL2' : (hprod num (hprod num (hprod num num))) -> (A -> B -> Prop) -> (hlist A) -> (hlist B) -> Prop => all (fun h18166 : hprod num (hprod num (hprod num num)) => hand (all (fun P : A -> B -> Prop => all (fun l2 : hlist B => heq (ALL2' h18166 P (@NIL A) l2) (heq l2 (@NIL B))))) (all (fun h1' : A => all (fun P : A -> B -> Prop => all (fun t1 : hlist A => all (fun l2 : hlist B => heq (ALL2' h18166 P (@CONS A h1' t1) l2) (@COND Prop (heq l2 (@NIL B)) hfalse (hand (P h1' (@HD B l2)) (ALL2' h18166 P t1 (@TL B l2))))))))))) (@hpair num (hprod num (hprod num num)) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num num) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num num (NUMERAL (BIT0 (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (NUMERAL (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 (BIT1 h0)))))))))).
-Lemma ALL2_def {A B : Type'} : heq (@ALL2 A B) (@ε ((hprod num (hprod num (hprod num num))) -> (A -> B -> Prop) -> (hlist A) -> (hlist B) -> Prop) (fun ALL2' : (hprod num (hprod num (hprod num num))) -> (A -> B -> Prop) -> (hlist A) -> (hlist B) -> Prop => all (fun h18166 : hprod num (hprod num (hprod num num)) => hand (all (fun P : A -> B -> Prop => all (fun l2 : hlist B => heq (ALL2' h18166 P (@NIL A) l2) (heq l2 (@NIL B))))) (all (fun h1' : A => all (fun P : A -> B -> Prop => all (fun t1 : hlist A => all (fun l2 : hlist B => heq (ALL2' h18166 P (@CONS A h1' t1) l2) (@COND Prop (heq l2 (@NIL B)) hfalse (hand (P h1' (@HD B l2)) (ALL2' h18166 P t1 (@TL B l2))))))))))) (@hpair num (hprod num (hprod num num)) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num num) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num num (NUMERAL (BIT0 (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (NUMERAL (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 (BIT1 h0))))))))))).
-Proof. exact (REFL (@ALL2 A B)). Qed.
-Definition MAP2 {A B C : Type'} : (A -> B -> C) -> (hlist A) -> (hlist B) -> hlist C := @ε ((hprod num (hprod num (hprod num num))) -> (A -> B -> C) -> (hlist A) -> (hlist B) -> hlist C) (fun MAP2' : (hprod num (hprod num (hprod num num))) -> (A -> B -> C) -> (hlist A) -> (hlist B) -> hlist C => all (fun h18174 : hprod num (hprod num (hprod num num)) => hand (all (fun f : A -> B -> C => all (fun l : hlist B => heq (MAP2' h18174 f (@NIL A) l) (@NIL C)))) (all (fun h1' : A => all (fun f : A -> B -> C => all (fun t1 : hlist A => all (fun l : hlist B => heq (MAP2' h18174 f (@CONS A h1' t1) l) (@CONS C (f h1' (@HD B l)) (MAP2' h18174 f t1 (@TL B l)))))))))) (@hpair num (hprod num (hprod num num)) (NUMERAL (BIT1 (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num num) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num num (NUMERAL (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (NUMERAL (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 (BIT1 h0)))))))))).
-Lemma MAP2_def {A B C : Type'} : heq (@MAP2 A B C) (@ε ((hprod num (hprod num (hprod num num))) -> (A -> B -> C) -> (hlist A) -> (hlist B) -> hlist C) (fun MAP2' : (hprod num (hprod num (hprod num num))) -> (A -> B -> C) -> (hlist A) -> (hlist B) -> hlist C => all (fun h18174 : hprod num (hprod num (hprod num num)) => hand (all (fun f : A -> B -> C => all (fun l : hlist B => heq (MAP2' h18174 f (@NIL A) l) (@NIL C)))) (all (fun h1' : A => all (fun f : A -> B -> C => all (fun t1 : hlist A => all (fun l : hlist B => heq (MAP2' h18174 f (@CONS A h1' t1) l) (@CONS C (f h1' (@HD B l)) (MAP2' h18174 f t1 (@TL B l)))))))))) (@hpair num (hprod num (hprod num num)) (NUMERAL (BIT1 (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num num) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num num (NUMERAL (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (NUMERAL (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 (BIT1 h0))))))))))).
-Proof. exact (REFL (@MAP2 A B C)). Qed.
-Definition EL {A : Type'} : num -> (hlist A) -> A := @ε ((hprod num num) -> num -> (hlist A) -> A) (fun EL' : (hprod num num) -> num -> (hlist A) -> A => all (fun h18178 : hprod num num => hand (all (fun l : hlist A => heq (EL' h18178 (NUMERAL h0) l) (@HD A l))) (all (fun n : num => all (fun l : hlist A => heq (EL' h18178 (SUC n) l) (EL' h18178 n (@TL A l))))))) (@hpair num num (NUMERAL (BIT1 (BIT0 (BIT1 (BIT0 (BIT0 (BIT0 (BIT1 h0)))))))) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 h0))))))))).
-Lemma EL_def {A : Type'} : heq (@EL A) (@ε ((hprod num num) -> num -> (hlist A) -> A) (fun EL' : (hprod num num) -> num -> (hlist A) -> A => all (fun h18178 : hprod num num => hand (all (fun l : hlist A => heq (EL' h18178 (NUMERAL h0) l) (@HD A l))) (all (fun n : num => all (fun l : hlist A => heq (EL' h18178 (SUC n) l) (EL' h18178 n (@TL A l))))))) (@hpair num num (NUMERAL (BIT1 (BIT0 (BIT1 (BIT0 (BIT0 (BIT0 (BIT1 h0)))))))) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))))).
-Proof. exact (REFL (@EL A)). Qed.
-Definition FILTER {A : Type'} : (A -> Prop) -> (hlist A) -> hlist A := @ε ((hprod num (hprod num (hprod num (hprod num (hprod num num))))) -> (A -> Prop) -> (hlist A) -> hlist A) (fun FILTER' : (hprod num (hprod num (hprod num (hprod num (hprod num num))))) -> (A -> Prop) -> (hlist A) -> hlist A => all (fun h18185 : hprod num (hprod num (hprod num (hprod num (hprod num num)))) => hand (all (fun P : A -> Prop => heq (FILTER' h18185 P (@NIL A)) (@NIL A))) (all (fun h : A => all (fun P : A -> Prop => all (fun t : hlist A => heq (FILTER' h18185 P (@CONS A h t)) (@COND (hlist A) (P h) (@CONS A h (FILTER' h18185 P t)) (FILTER' h18185 P t)))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num num)))) (NUMERAL (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num num))) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num num)) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num num) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (@hpair num num (NUMERAL (BIT1 (BIT0 (BIT1 (BIT0 (BIT0 (BIT0 (BIT1 h0)))))))) (NUMERAL (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 h0))))))))))))).
-Lemma FILTER_def {A : Type'} : heq (@FILTER A) (@ε ((hprod num (hprod num (hprod num (hprod num (hprod num num))))) -> (A -> Prop) -> (hlist A) -> hlist A) (fun FILTER' : (hprod num (hprod num (hprod num (hprod num (hprod num num))))) -> (A -> Prop) -> (hlist A) -> hlist A => all (fun h18185 : hprod num (hprod num (hprod num (hprod num (hprod num num)))) => hand (all (fun P : A -> Prop => heq (FILTER' h18185 P (@NIL A)) (@NIL A))) (all (fun h : A => all (fun P : A -> Prop => all (fun t : hlist A => heq (FILTER' h18185 P (@CONS A h t)) (@COND (hlist A) (P h) (@CONS A h (FILTER' h18185 P t)) (FILTER' h18185 P t)))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num num)))) (NUMERAL (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num num))) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num num)) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num num) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (@hpair num num (NUMERAL (BIT1 (BIT0 (BIT1 (BIT0 (BIT0 (BIT0 (BIT1 h0)))))))) (NUMERAL (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))))))))).
-Proof. exact (REFL (@FILTER A)). Qed.
-Definition ASSOC {A B : Type'} : A -> (hlist (hprod A B)) -> B := @ε ((hprod num (hprod num (hprod num (hprod num num)))) -> A -> (hlist (hprod A B)) -> B) (fun ASSOC' : (hprod num (hprod num (hprod num (hprod num num)))) -> A -> (hlist (hprod A B)) -> B => all (fun h18192 : hprod num (hprod num (hprod num (hprod num num))) => all (fun h : hprod A B => all (fun a : A => all (fun t : hlist (hprod A B) => heq (ASSOC' h18192 a (@CONS (hprod A B) h t)) (@COND B (heq (@FST A B h) a) (@SND A B h) (ASSOC' h18192 a t))))))) (@hpair num (hprod num (hprod num (hprod num num))) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num num)) (NUMERAL (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num num) (NUMERAL (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (@hpair num num (NUMERAL (BIT1 (BIT1 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (NUMERAL (BIT1 (BIT1 (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 h0)))))))))))).
-Lemma ASSOC_def {A B : Type'} : heq (@ASSOC A B) (@ε ((hprod num (hprod num (hprod num (hprod num num)))) -> A -> (hlist (hprod A B)) -> B) (fun ASSOC' : (hprod num (hprod num (hprod num (hprod num num)))) -> A -> (hlist (hprod A B)) -> B => all (fun h18192 : hprod num (hprod num (hprod num (hprod num num))) => all (fun h : hprod A B => all (fun a : A => all (fun t : hlist (hprod A B) => heq (ASSOC' h18192 a (@CONS (hprod A B) h t)) (@COND B (heq (@FST A B h) a) (@SND A B h) (ASSOC' h18192 a t))))))) (@hpair num (hprod num (hprod num (hprod num num))) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num num)) (NUMERAL (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num num) (NUMERAL (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (@hpair num num (NUMERAL (BIT1 (BIT1 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (NUMERAL (BIT1 (BIT1 (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 h0))))))))))))).
-Proof. exact (REFL (@ASSOC A B)). Qed.
-Definition ITLIST2 {A B C : Type'} : (A -> B -> C -> C) -> (hlist A) -> (hlist B) -> C -> C := @ε ((hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num)))))) -> (A -> B -> C -> C) -> (hlist A) -> (hlist B) -> C -> C) (fun ITLIST2' : (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num)))))) -> (A -> B -> C -> C) -> (hlist A) -> (hlist B) -> C -> C => all (fun h18201 : hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num))))) => hand (all (fun f : A -> B -> C -> C => all (fun l2 : hlist B => all (fun b : C => heq (ITLIST2' h18201 f (@NIL A) l2 b) b)))) (all (fun h1' : A => all (fun f : A -> B -> C -> C => all (fun t1 : hlist A => all (fun l2 : hlist B => all (fun b : C => heq (ITLIST2' h18201 f (@CONS A h1' t1) l2 b) (f h1' (@HD B l2) (ITLIST2' h18201 f t1 (@TL B l2) b)))))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num (hprod num num))))) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num num)))) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num num))) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num num)) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num num) (NUMERAL (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (@hpair num num (NUMERAL (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (NUMERAL (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 (BIT1 h0))))))))))))).
-Lemma ITLIST2_def {A B C : Type'} : heq (@ITLIST2 A B C) (@ε ((hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num)))))) -> (A -> B -> C -> C) -> (hlist A) -> (hlist B) -> C -> C) (fun ITLIST2' : (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num)))))) -> (A -> B -> C -> C) -> (hlist A) -> (hlist B) -> C -> C => all (fun h18201 : hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num))))) => hand (all (fun f : A -> B -> C -> C => all (fun l2 : hlist B => all (fun b : C => heq (ITLIST2' h18201 f (@NIL A) l2 b) b)))) (all (fun h1' : A => all (fun f : A -> B -> C -> C => all (fun t1 : hlist A => all (fun l2 : hlist B => all (fun b : C => heq (ITLIST2' h18201 f (@CONS A h1' t1) l2 b) (f h1' (@HD B l2) (ITLIST2' h18201 f t1 (@TL B l2) b)))))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num (hprod num num))))) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num num)))) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num num))) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num num)) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num num) (NUMERAL (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (@hpair num num (NUMERAL (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (NUMERAL (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 (BIT1 h0)))))))))))))).
-Proof. exact (REFL (@ITLIST2 A B C)). Qed.
-Definition ZIP {A B : Type'} : (hlist A) -> (hlist B) -> hlist (hprod A B) := @ε ((hprod num (hprod num num)) -> (hlist A) -> (hlist B) -> hlist (hprod A B)) (fun ZIP' : (hprod num (hprod num num)) -> (hlist A) -> (hlist B) -> hlist (hprod A B) => all (fun h18205 : hprod num (hprod num num) => hand (all (fun l2 : hlist B => heq (ZIP' h18205 (@NIL A) l2) (@NIL (hprod A B)))) (all (fun h1' : A => all (fun t1 : hlist A => all (fun l2 : hlist B => heq (ZIP' h18205 (@CONS A h1' t1) l2) (@CONS (hprod A B) (@hpair A B h1' (@HD B l2)) (ZIP' h18205 t1 (@TL B l2))))))))) (@hpair num (hprod num num) (NUMERAL (BIT0 (BIT1 (BIT0 (BIT1 (BIT1 (BIT0 (BIT1 h0)))))))) (@hpair num num (NUMERAL (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (NUMERAL (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))))).
-Lemma ZIP_def {A B : Type'} : heq (@ZIP A B) (@ε ((hprod num (hprod num num)) -> (hlist A) -> (hlist B) -> hlist (hprod A B)) (fun ZIP' : (hprod num (hprod num num)) -> (hlist A) -> (hlist B) -> hlist (hprod A B) => all (fun h18205 : hprod num (hprod num num) => hand (all (fun l2 : hlist B => heq (ZIP' h18205 (@NIL A) l2) (@NIL (hprod A B)))) (all (fun h1' : A => all (fun t1 : hlist A => all (fun l2 : hlist B => heq (ZIP' h18205 (@CONS A h1' t1) l2) (@CONS (hprod A B) (@hpair A B h1' (@HD B l2)) (ZIP' h18205 t1 (@TL B l2))))))))) (@hpair num (hprod num num) (NUMERAL (BIT0 (BIT1 (BIT0 (BIT1 (BIT1 (BIT0 (BIT1 h0)))))))) (@hpair num num (NUMERAL (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (NUMERAL (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 h0))))))))))).
-Proof. exact (REFL (@ZIP A B)). Qed.
-Definition ALLPAIRS {A B : Type'} : (A -> B -> Prop) -> (hlist A) -> (hlist B) -> Prop := @ε ((hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num))))))) -> (A -> B -> Prop) -> (hlist A) -> (hlist B) -> Prop) (fun ALLPAIRS' : (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num))))))) -> (A -> B -> Prop) -> (hlist A) -> (hlist B) -> Prop => all (fun h18213 : hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num)))))) => hand (all (fun f : A -> B -> Prop => all (fun l : hlist B => heq (ALLPAIRS' h18213 f (@NIL A) l) htrue))) (all (fun h : A => all (fun f : A -> B -> Prop => all (fun t : hlist A => all (fun l : hlist B => heq (ALLPAIRS' h18213 f (@CONS A h t) l) (hand (@ALL B (f h) l) (ALLPAIRS' h18213 f t l))))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num)))))) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num (hprod num num))))) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num num)))) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num num))) (NUMERAL (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num num)) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num num) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num num (NUMERAL (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (NUMERAL (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 h0))))))))))))))).
-Lemma ALLPAIRS_def {A B : Type'} : heq (@ALLPAIRS A B) (@ε ((hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num))))))) -> (A -> B -> Prop) -> (hlist A) -> (hlist B) -> Prop) (fun ALLPAIRS' : (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num))))))) -> (A -> B -> Prop) -> (hlist A) -> (hlist B) -> Prop => all (fun h18213 : hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num)))))) => hand (all (fun f : A -> B -> Prop => all (fun l : hlist B => heq (ALLPAIRS' h18213 f (@NIL A) l) htrue))) (all (fun h : A => all (fun f : A -> B -> Prop => all (fun t : hlist A => all (fun l : hlist B => heq (ALLPAIRS' h18213 f (@CONS A h t) l) (hand (@ALL B (f h) l) (ALLPAIRS' h18213 f t l))))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num)))))) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num (hprod num num))))) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num num)))) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num num))) (NUMERAL (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num num)) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num num) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num num (NUMERAL (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (NUMERAL (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))))))))))).
-Proof. exact (REFL (@ALLPAIRS A B)). Qed.
-Definition PAIRWISE {A : Type'} : (A -> A -> Prop) -> (hlist A) -> Prop := @ε ((hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num))))))) -> (A -> A -> Prop) -> (hlist A) -> Prop) (fun PAIRWISE' : (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num))))))) -> (A -> A -> Prop) -> (hlist A) -> Prop => all (fun h18220 : hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num)))))) => hand (all (fun r : A -> A -> Prop => heq (PAIRWISE' h18220 r (@NIL A)) htrue)) (all (fun h : A => all (fun r : A -> A -> Prop => all (fun t : hlist A => heq (PAIRWISE' h18220 r (@CONS A h t)) (hand (@ALL A (r h) t) (PAIRWISE' h18220 r t)))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num)))))) (NUMERAL (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num (hprod num num))))) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num num)))) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num num))) (NUMERAL (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num num)) (NUMERAL (BIT1 (BIT1 (BIT1 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num num) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num num (NUMERAL (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (NUMERAL (BIT1 (BIT0 (BIT1 (BIT0 (BIT0 (BIT0 (BIT1 h0))))))))))))))).
-Lemma PAIRWISE_def {A : Type'} : heq (@PAIRWISE A) (@ε ((hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num))))))) -> (A -> A -> Prop) -> (hlist A) -> Prop) (fun PAIRWISE' : (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num))))))) -> (A -> A -> Prop) -> (hlist A) -> Prop => all (fun h18220 : hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num)))))) => hand (all (fun r : A -> A -> Prop => heq (PAIRWISE' h18220 r (@NIL A)) htrue)) (all (fun h : A => all (fun r : A -> A -> Prop => all (fun t : hlist A => heq (PAIRWISE' h18220 r (@CONS A h t)) (hand (@ALL A (r h) t) (PAIRWISE' h18220 r t)))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num)))))) (NUMERAL (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num (hprod num num))))) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num num)))) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num num))) (NUMERAL (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num num)) (NUMERAL (BIT1 (BIT1 (BIT1 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num num) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num num (NUMERAL (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (NUMERAL (BIT1 (BIT0 (BIT1 (BIT0 (BIT0 (BIT0 (BIT1 h0)))))))))))))))).
-Proof. exact (REFL (@PAIRWISE A)). Qed.
-Definition list_of_seq {A : Type'} : (num -> A) -> num -> hlist A := @ε ((hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num)))))))))) -> (num -> A) -> num -> hlist A) (fun list_of_seq' : (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num)))))))))) -> (num -> A) -> num -> hlist A => all (fun h18227 : hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num))))))))) => hand (all (fun s : num -> A => heq (list_of_seq' h18227 s (NUMERAL h0)) (@NIL A))) (all (fun s : num -> A => all (fun n : num => heq (list_of_seq' h18227 s (SUC n)) (@APPEND A (list_of_seq' h18227 s n) (@CONS A (s n) (@NIL A)))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num))))))))) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT1 (BIT0 (BIT1 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num)))))))) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num))))))) (NUMERAL (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 (BIT1 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num)))))) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 (BIT1 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num (hprod num num))))) (NUMERAL (BIT1 (BIT1 (BIT1 (BIT1 (BIT1 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num num)))) (NUMERAL (BIT1 (BIT1 (BIT1 (BIT1 (BIT0 (BIT1 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num num))) (NUMERAL (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num num)) (NUMERAL (BIT1 (BIT1 (BIT1 (BIT1 (BIT1 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num num) (NUMERAL (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 (BIT1 (BIT1 h0)))))))) (@hpair num num (NUMERAL (BIT1 (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 (BIT1 h0)))))))) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT0 (BIT1 (BIT1 (BIT1 h0)))))))))))))))))).
-Lemma list_of_seq_def {A : Type'} : heq (@list_of_seq A) (@ε ((hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num)))))))))) -> (num -> A) -> num -> hlist A) (fun list_of_seq' : (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num)))))))))) -> (num -> A) -> num -> hlist A => all (fun h18227 : hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num))))))))) => hand (all (fun s : num -> A => heq (list_of_seq' h18227 s (NUMERAL h0)) (@NIL A))) (all (fun s : num -> A => all (fun n : num => heq (list_of_seq' h18227 s (SUC n)) (@APPEND A (list_of_seq' h18227 s n) (@CONS A (s n) (@NIL A)))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num))))))))) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT1 (BIT0 (BIT1 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num)))))))) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num))))))) (NUMERAL (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 (BIT1 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num)))))) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 (BIT1 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num (hprod num num))))) (NUMERAL (BIT1 (BIT1 (BIT1 (BIT1 (BIT1 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num num)))) (NUMERAL (BIT1 (BIT1 (BIT1 (BIT1 (BIT0 (BIT1 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num num))) (NUMERAL (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num num)) (NUMERAL (BIT1 (BIT1 (BIT1 (BIT1 (BIT1 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num num) (NUMERAL (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 (BIT1 (BIT1 h0)))))))) (@hpair num num (NUMERAL (BIT1 (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 (BIT1 h0)))))))) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT0 (BIT1 (BIT1 (BIT1 h0))))))))))))))))))).
-Proof. exact (REFL (@list_of_seq A)). Qed.
-
 
 Definition BUTLAST (A : Type') (s : seq A) :=
   if s is x :: s' then belast x s' else [::].
 
-Lemma BUTLAST_def {_25251 : Type'} : (@BUTLAST _25251) = (@ε ((prod nat (prod nat (prod nat (prod nat (prod nat (prod nat nat)))))) -> (seq _25251) -> seq _25251) (fun BUTLAST' : (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat nat)))))) -> (seq _25251) -> seq _25251 => forall _17958 : prod nat (prod nat (prod nat (prod nat (prod nat (prod nat nat))))), ((BUTLAST' _17958 (@nil _25251)) = (@nil _25251)) /\ (forall h : _25251, forall t : seq _25251, (BUTLAST' _17958 (@cons _25251 h t)) = (@COND (seq _25251) (t = (@nil _25251)) (@nil _25251) (@cons _25251 h (BUTLAST' _17958 t))))) (@pair nat (prod nat (prod nat (prod nat (prod nat (prod nat nat))))) (NUMERAL (BIT0 (BIT1 (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 0)))))))) (@pair nat (prod nat (prod nat (prod nat (prod nat nat)))) (NUMERAL (BIT1 (BIT0 (BIT1 (BIT0 (BIT1 (BIT0 (BIT1 0)))))))) (@pair nat (prod nat (prod nat (prod nat nat))) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 (BIT0 (BIT1 0)))))))) (@pair nat (prod nat (prod nat nat)) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 0)))))))) (@pair nat (prod nat nat) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 0)))))))) (@pair nat nat (NUMERAL (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 0)))))))) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 (BIT0 (BIT1 0))))))))))))))).
+Lemma BUTLAST_def {A : Type'} : heq (@BUTLAST A) (@ε ((hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num)))))) -> (hlist A) -> hlist A) (fun BUTLAST' : (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num)))))) -> (hlist A) -> hlist A => all (fun h18121 : hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num))))) => hand (heq (BUTLAST' h18121 (@NIL A)) (@NIL A)) (all (fun h : A => all (fun t : hlist A => heq (BUTLAST' h18121 (@CONS A h t)) (@COND (hlist A) (heq t (@NIL A)) (@NIL A) (@CONS A h (BUTLAST' h18121 t)))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num (hprod num num))))) (NUMERAL (BIT0 (BIT1 (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num num)))) (NUMERAL (BIT1 (BIT0 (BIT1 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num num))) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num num)) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num num) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num num (NUMERAL (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 (BIT0 (BIT1 h0))))))))))))))).
 Proof.
   by total_align=> // a t ; if_seq ; elim:t. 
 Qed.
 
-Lemma ALL_def {_25307 : Type'} : (@ALL _25307) = (@ε ((prod nat (prod nat nat)) -> (_25307 -> Prop) -> (seq _25307) -> Prop) (fun ALL' : (prod nat (prod nat nat)) -> (_25307 -> Prop) -> (seq _25307) -> Prop => forall _17973 : prod nat (prod nat nat), (forall P : _25307 -> Prop, (ALL' _17973 P (@nil _25307)) = True) /\ (forall h : _25307, forall P : _25307 -> Prop, forall t : seq _25307, (ALL' _17973 P (@cons _25307 h t)) = ((P h) /\ (ALL' _17973 P t)))) (@pair nat (prod nat nat) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 0)))))))) (@pair nat nat (NUMERAL (BIT0 (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 0)))))))) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 0))))))))))).
-Proof.
-  by total_align => * ; [rewrite is_True | rewrite/ALL -andP** asboolE].
-Qed.
+Definition REPLICATE {A : Type'} : num -> A -> hlist A := nseq.
 
-Fixpoint pairwise {A : Type'} (r : rel A) s := match s with
-  | [::] => true
-  | x::s => all (r x) s && pairwise r s end.
-
-Definition PAIRWISE {A : Type'}: (A -> A -> Prop) -> seq A -> Prop := pairwise.
-
-Lemma PAIRWISE_def {A : Type'} : (@PAIRWISE A) = (@ε ((prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat nat))))))) -> (A -> A -> Prop) -> (seq A) -> Prop) (fun PAIRWISE' : (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat nat))))))) -> (A -> A -> Prop) -> (seq A) -> Prop => forall _18057 : prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat nat)))))), (forall r : A -> A -> Prop, (PAIRWISE' _18057 r (@nil A)) = True) /\ (forall h : A, forall r : A -> A -> Prop, forall t : seq A, (PAIRWISE' _18057 r (@cons A h t)) = ((@ALL A (r h) t) /\ (PAIRWISE' _18057 r t)))) (@pair nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat nat)))))) (NUMERAL (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 0)))))))) (@pair nat (prod nat (prod nat (prod nat (prod nat (prod nat nat))))) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 0)))))))) (@pair nat (prod nat (prod nat (prod nat (prod nat nat)))) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 0)))))))) (@pair nat (prod nat (prod nat (prod nat nat))) (NUMERAL (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 0)))))))) (@pair nat (prod nat (prod nat nat)) (NUMERAL (BIT1 (BIT1 (BIT1 (BIT0 (BIT1 (BIT0 (BIT1 0)))))))) (@pair nat (prod nat nat) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 0)))))))) (@pair nat nat (NUMERAL (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 0)))))))) (NUMERAL (BIT1 (BIT0 (BIT1 (BIT0 (BIT0 (BIT0 (BIT1 0)))))))))))))))).
-Proof.
-  by total_align=> * ; [rewrite is_True | rewrite andP**].
-Qed.
-
-Definition FILTER {A : Type'} : (A -> Prop) -> seq A -> seq A := filter.
-
-Lemma _FILTER_def {A : Type'} : (@FILTER A) = (@ε ((prod nat (prod nat (prod nat (prod nat (prod nat nat))))) -> (A -> Prop) -> (seq A) -> seq A) (fun FILTER' : (prod nat (prod nat (prod nat (prod nat (prod nat nat))))) -> (A -> Prop) -> (seq A) -> seq A => forall _18185 : prod nat (prod nat (prod nat (prod nat (prod nat nat)))), (forall P : A -> Prop, (FILTER' _18185 P (@nil A)) = (@nil A)) /\ (forall h : A, forall P : A -> Prop, forall t : seq A, (FILTER' _18185 P (@cons A h t)) = (@COND (seq A) (P h) (@cons A h (FILTER' _18185 P t)) (FILTER' _18185 P t)))) (@pair nat (prod nat (prod nat (prod nat (prod nat nat)))) ((BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT0 (BIT1 0)))))))) (@pair nat (prod nat (prod nat (prod nat nat))) ((BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 0)))))))) (@pair nat (prod nat (prod nat nat)) ((BIT0 (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 0)))))))) (@pair nat (prod nat nat) ((BIT0 (BIT0 (BIT1 (BIT0 (BIT1 (BIT0 (BIT1 0)))))))) (@pair nat nat ((BIT1 (BIT0 (BIT1 (BIT0 (BIT0 (BIT0 (BIT1 0)))))))) ((BIT0 (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 0)))))))))))))).
-Proof. by total_align. Qed.
-
-Definition MEM {A : Type'} a (s : seq A) : Prop := a \in s.
-
-Lemma MEM_def {_25376 : Type'} : (@MEM _25376) = (@ε ((prod nat (prod nat nat)) -> _25376 -> (seq _25376) -> Prop) (fun MEM' : (prod nat (prod nat nat)) -> _25376 -> (seq _25376) -> Prop => forall _17995 : prod nat (prod nat nat), (forall x : _25376, (MEM' _17995 x (@nil _25376)) = False) /\ (forall h : _25376, forall x : _25376, forall t : seq _25376, (MEM' _17995 x (@cons _25376 h t)) = ((x = h) \/ (MEM' _17995 x t)))) (@pair nat (prod nat nat) (NUMERAL (BIT1 (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 0)))))))) (@pair nat nat (NUMERAL (BIT1 (BIT0 (BIT1 (BIT0 (BIT0 (BIT0 (BIT1 0)))))))) (NUMERAL (BIT1 (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 0))))))))))).
-Proof.
-  by total_align => * ; [ rewrite is_False | rewrite [in X in _=X]eqP** orP**].
-Qed.
-
-Lemma REPLICATE_def {A : Type'} : @nseq A = (@ε ((prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat nat)))))))) -> nat -> A -> seq A) (fun REPLICATE' : (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat nat)))))))) -> nat -> A -> seq A => forall _18125 : prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat nat))))))), (forall x : A, (REPLICATE' _18125 0 x) = (@nil A)) /\ (forall n : nat, forall x : A, (REPLICATE' _18125 (S n) x) = (@cons A x (REPLICATE' _18125 n x)))) (@pair nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat nat))))))) ((BIT0 (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 0)))))))) (@pair nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat nat)))))) ((BIT1 (BIT0 (BIT1 (BIT0 (BIT0 (BIT0 (BIT1 0)))))))) (@pair nat (prod nat (prod nat (prod nat (prod nat (prod nat nat))))) ((BIT0 (BIT0 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 0)))))))) (@pair nat (prod nat (prod nat (prod nat (prod nat nat)))) ((BIT0 (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 0)))))))) (@pair nat (prod nat (prod nat (prod nat nat))) ((BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 0)))))))) (@pair nat (prod nat (prod nat nat)) ((BIT1 (BIT1 (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 0)))))))) (@pair nat (prod nat nat) ((BIT1 (BIT0 (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 0)))))))) (@pair nat nat ((BIT0 (BIT0 (BIT1 (BIT0 (BIT1 (BIT0 (BIT1 0)))))))) ((BIT1 (BIT0 (BIT1 (BIT0 (BIT0 (BIT0 (BIT1 0))))))))))))))))).
-Proof. by total_align. Qed.
-
-Definition ITLIST {A B : Type'} 
-(f: A -> B -> B) (l: seq A) (b: B) : B := @foldr A B f b l.
-
-Lemma ITLIST_def {A B : Type'} : (@ITLIST A B) = (@ε ((prod nat (prod nat (prod nat (prod nat (prod nat nat))))) -> (A -> B -> B) -> (seq A) -> B -> B) (fun ITLIST' : (prod nat (prod nat (prod nat (prod nat (prod nat nat))))) -> (A -> B -> B) -> (seq A) -> B -> B => forall _18151 : prod nat (prod nat (prod nat (prod nat (prod nat nat)))), (forall f : A -> B -> B, forall b : B, (ITLIST' _18151 f (@nil A) b) = b) /\ (forall h : A, forall f : A -> B -> B, forall t : seq A, forall b : B, (ITLIST' _18151 f (@cons A h t) b) = (f h (ITLIST' _18151 f t b)))) (@pair nat (prod nat (prod nat (prod nat (prod nat nat)))) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 0)))))))) (@pair nat (prod nat (prod nat (prod nat nat))) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 (BIT0 (BIT1 0)))))))) (@pair nat (prod nat (prod nat nat)) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 0)))))))) (@pair nat (prod nat nat) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 0)))))))) (@pair nat nat (NUMERAL (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 0)))))))) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 (BIT0 (BIT1 0)))))))))))))).
+Lemma REPLICATE_def {A : Type'} : heq (@REPLICATE A) (@ε ((hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num)))))))) -> num -> A -> hlist A) (fun REPLICATE' : (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num)))))))) -> num -> A -> hlist A => all (fun h18125 : hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num))))))) => hand (all (fun x : A => heq (REPLICATE' h18125 (NUMERAL h0) x) (@NIL A))) (all (fun n : num => all (fun x : A => heq (REPLICATE' h18125 (SUC n) x) (@CONS A x (REPLICATE' h18125 n x))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num))))))) (NUMERAL (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num)))))) (NUMERAL (BIT1 (BIT0 (BIT1 (BIT0 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num (hprod num num))))) (NUMERAL (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num num)))) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num num))) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num num)) (NUMERAL (BIT1 (BIT1 (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num num) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num num (NUMERAL (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (NUMERAL (BIT1 (BIT0 (BIT1 (BIT0 (BIT0 (BIT0 (BIT1 h0))))))))))))))))).
 Proof. by total_align. Qed.
 
 Definition NULL : forall {A : Type'}, seq A -> Prop := nilp.
 
-Lemma NULL_def {A : Type'} : @NULL A = (@ε ((prod nat (prod nat (prod nat nat))) -> (seq A) -> Prop) (fun NULL' : (prod nat (prod nat (prod nat nat))) -> (seq A) -> Prop => forall _18129 : prod nat (prod nat (prod nat nat)), ((NULL' _18129 (@nil A)) = True) /\ (forall h : A, forall t : seq A, (NULL' _18129 (@cons A h t)) = False)) (@pair nat (prod nat (prod nat nat)) ((BIT0 (BIT1 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 0)))))))) (@pair nat (prod nat nat) ((BIT1 (BIT0 (BIT1 (BIT0 (BIT1 (BIT0 (BIT1 0)))))))) (@pair nat nat ((BIT0 (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 0)))))))) ((BIT0 (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 0)))))))))))).
+Lemma NULL_def {A : Type'} : heq (@NULL A) (@ε ((hprod num (hprod num (hprod num num))) -> (hlist A) -> Prop) (fun NULL' : (hprod num (hprod num (hprod num num))) -> (hlist A) -> Prop => all (fun h18129 : hprod num (hprod num (hprod num num)) => hand (heq (NULL' h18129 (@NIL A)) htrue) (all (fun h : A => all (fun t : hlist A => heq (NULL' h18129 (@CONS A h t)) hfalse))))) (@hpair num (hprod num (hprod num num)) (NUMERAL (BIT0 (BIT1 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num num) (NUMERAL (BIT1 (BIT0 (BIT1 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (@hpair num num (NUMERAL (BIT0 (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))))))).
 Proof.
-  total_align => * ; first by rewrite is_True.
-  by rewrite/NULL is_False nilpE.
+  total_align => /0= * ; first by rewrite is_True.
+  by rewrite/NULL/hfalse/CONS is_False.
+Qed.
+
+Definition ALL (A : Type') : (A -> Prop) -> (hlist A) -> Prop := @ALL0 A.
+
+Lemma ALL_def {A : Type'} : heq (@ALL A) (@ε ((hprod num (hprod num num)) -> (A -> Prop) -> (hlist A) -> Prop) (fun ALL' : (hprod num (hprod num num)) -> (A -> Prop) -> (hlist A) -> Prop => all (fun h18136 : hprod num (hprod num num) => hand (all (fun P : A -> Prop => heq (ALL' h18136 P (@NIL A)) htrue)) (all (fun h : A => all (fun P : A -> Prop => all (fun t : hlist A => heq (ALL' h18136 P (@CONS A h t)) (hand (P h) (ALL' h18136 P t)))))))) (@hpair num (hprod num num) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num num (NUMERAL (BIT0 (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 h0))))))))))).
+Proof.
+  by total_align => /0= * ; [rewrite is_True | rewrite/ALL/ALL0 -andP** asboolE].
 Qed.
 
 Definition EX {A : Type'} : (A -> Prop) -> seq A -> Prop := has.
 
-Lemma EX_def {A : Type'} : @EX A = (@ε ((prod nat nat) -> (A -> Prop) -> (seq A) -> Prop) (fun EX' : (prod nat nat) -> (A -> Prop) -> (seq A) -> Prop => forall _18143 : prod nat nat, (forall P : A -> Prop, (EX' _18143 P (@nil A)) = False) /\ (forall h : A, forall P : A -> Prop, forall t : seq A, (EX' _18143 P (@cons A h t)) = ((P h) \/ (EX' _18143 P t)))) (@pair nat nat ((BIT1 (BIT0 (BIT1 (BIT0 (BIT0 (BIT0 (BIT1 0)))))))) ((BIT0 (BIT0 (BIT0 (BIT1 (BIT1 (BIT0 (BIT1 0)))))))))).
+Lemma EX_def {A : Type'} : heq (@EX A) (@ε ((hprod num num) -> (A -> Prop) -> (hlist A) -> Prop) (fun EX' : (hprod num num) -> (A -> Prop) -> (hlist A) -> Prop => all (fun h18143 : hprod num num => hand (all (fun P : A -> Prop => heq (EX' h18143 P (@NIL A)) hfalse)) (all (fun h : A => all (fun P : A -> Prop => all (fun t : hlist A => heq (EX' h18143 P (@CONS A h t)) (hor (P h) (EX' h18143 P t)))))))) (@hpair num num (NUMERAL (BIT1 (BIT0 (BIT1 (BIT0 (BIT0 (BIT0 (BIT1 h0)))))))) (NUMERAL (BIT0 (BIT0 (BIT0 (BIT1 (BIT1 (BIT0 (BIT1 h0)))))))))).
 Proof.
-  total_align => * ; first by rewrite is_False ; inversion 1.
+  total_align => /0= * ; first by rewrite is_False ; inversion 1.
   by rewrite/EX/= -orP** asboolE.
+Qed.
+
+Definition ITLIST {A B : Type'} 
+(f: A -> B -> B) (l: seq A) (b: B) : B := @foldr A B f b l.
+
+Lemma ITLIST_def {A B : Type'} : heq (@ITLIST A B) (@ε ((hprod num (hprod num (hprod num (hprod num (hprod num num))))) -> (A -> B -> B) -> (hlist A) -> B -> B) (fun ITLIST' : (hprod num (hprod num (hprod num (hprod num (hprod num num))))) -> (A -> B -> B) -> (hlist A) -> B -> B => all (fun h18151 : hprod num (hprod num (hprod num (hprod num (hprod num num)))) => hand (all (fun f : A -> B -> B => all (fun b : B => heq (ITLIST' h18151 f (@NIL A) b) b))) (all (fun h : A => all (fun f : A -> B -> B => all (fun t : hlist A => all (fun b : B => heq (ITLIST' h18151 f (@CONS A h t) b) (f h (ITLIST' h18151 f t b))))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num num)))) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num num))) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num num)) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num num) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num num (NUMERAL (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))))))))).
+Proof. by total_align. Qed.
+
+Fixpoint MEM {A : Type'} a (s : seq A) : Prop := if s is a'::s
+  then a = a' \/ MEM a s else False.
+
+Lemma MEM_compat (A : pointedType) : @MEM A = fun a s => a \in s.
+Proof.
+  ext => a ; elim=>[|a' s IHs] ; rewrite // in_cons.
+  - by case => [|/IHs] -> ; apply/orP ; [left|right].
+  - by move/orP => -[/eqP ->|/IHs] ; [left|right]. 
+Qed.
+
+Lemma MEM_def {A : Type'} : heq (@MEM A) (@ε ((hprod num (hprod num num)) -> A -> (hlist A) -> Prop) (fun MEM' : (hprod num (hprod num num)) -> A -> (hlist A) -> Prop => all (fun h18158 : hprod num (hprod num num) => hand (all (fun x : A => heq (MEM' h18158 x (@NIL A)) hfalse)) (all (fun h : A => all (fun x : A => all (fun t : hlist A => heq (MEM' h18158 x (@CONS A h t)) (hor (heq x h) (MEM' h18158 x t)))))))) (@hpair num (hprod num num) (NUMERAL (BIT1 (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num num (NUMERAL (BIT1 (BIT0 (BIT1 (BIT0 (BIT0 (BIT0 (BIT1 h0)))))))) (NUMERAL (BIT1 (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 h0))))))))))).
+Proof.
+  by total_align.
 Qed.
 
 Definition ALL2 {A B : Type'} : (A -> B -> Prop) -> seq A -> seq B -> Prop := all2.
 
-Lemma ALL2_def {A B : Type'} : @ALL2 A B = (@ε ((prod nat (prod nat (prod nat nat))) -> (A -> B -> Prop) -> (seq A) -> (seq B) -> Prop) (fun ALL2' : (prod nat (prod nat (prod nat nat))) -> (A -> B -> Prop) -> (seq A) -> (seq B) -> Prop => forall _18166 : prod nat (prod nat (prod nat nat)), (forall P : A -> B -> Prop, forall l2 : seq B, (ALL2' _18166 P (@nil A) l2) = (l2 = (@nil B))) /\ (forall h1' : A, forall P : A -> B -> Prop, forall t1 : seq A, forall l2 : seq B, (ALL2' _18166 P (@cons A h1' t1) l2) = (@COND Prop (l2 = (@nil B)) False ((P h1' (@HD B l2)) /\ (ALL2' _18166 P t1 (@TL B l2)))))) (@pair nat (prod nat (prod nat nat)) ((BIT1 (BIT0 (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 0)))))))) (@pair nat (prod nat nat) ((BIT0 (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 0)))))))) (@pair nat nat ((BIT0 (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 0)))))))) ((BIT0 (BIT1 (BIT0 (BIT0 (BIT1 (BIT1 0))))))))))).
+Lemma ALL2_def {A B : Type'} : heq (@ALL2 A B) (@ε ((hprod num (hprod num (hprod num num))) -> (A -> B -> Prop) -> (hlist A) -> (hlist B) -> Prop) (fun ALL2' : (hprod num (hprod num (hprod num num))) -> (A -> B -> Prop) -> (hlist A) -> (hlist B) -> Prop => all (fun h18166 : hprod num (hprod num (hprod num num)) => hand (all (fun P : A -> B -> Prop => all (fun l2 : hlist B => heq (ALL2' h18166 P (@NIL A) l2) (heq l2 (@NIL B))))) (all (fun h1' : A => all (fun P : A -> B -> Prop => all (fun t1 : hlist A => all (fun l2 : hlist B => heq (ALL2' h18166 P (@CONS A h1' t1) l2) (@COND Prop (heq l2 (@NIL B)) hfalse (hand (P h1' (@HD B l2)) (ALL2' h18166 P t1 (@TL B l2))))))))))) (@hpair num (hprod num (hprod num num)) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num num) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num num (NUMERAL (BIT0 (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (NUMERAL (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 (BIT1 h0))))))))))).
 Proof.
-  total_align=> [? | ???] ; first by case=>* ; rewrite (@eqP _ _ [::])**.
+  total_align=> [? | ???] ; first by case=> * /`.
   rewrite/ALL2/=; case=>*; if_seq; [exact:falseE | by rewrite -andP** asboolE].
 Qed.
 
@@ -5037,30 +5005,44 @@ match s with
 |[::] => [::]
 |a::s => f a (HD s') :: MAP2 f s (TL s') end.
 
-Lemma MAP2_def {A B C : Type'} : MAP2 = (@ε ((prod nat (prod nat (prod nat nat))) -> (A -> B -> C) -> (seq A) -> (seq B) -> seq C) (fun MAP2' : (prod nat (prod nat (prod nat nat))) -> (A -> B -> C) -> (seq A) -> (seq B) -> seq C => forall _18174 : prod nat (prod nat (prod nat nat)), (forall f : A -> B -> C, forall l : seq B, (MAP2' _18174 f (@nil A) l) = (@nil C)) /\ (forall h1' : A, forall f : A -> B -> C, forall t1 : seq A, forall l : seq B, (MAP2' _18174 f (@cons A h1' t1) l) = (@cons C (f h1' (@HD B l)) (MAP2' _18174 f t1 (@TL B l))))) (@pair nat (prod nat (prod nat nat)) ((BIT1 (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 0)))))))) (@pair nat (prod nat nat) ((BIT1 (BIT0 (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 0)))))))) (@pair nat nat ((BIT0 (BIT0 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 0)))))))) ((BIT0 (BIT1 (BIT0 (BIT0 (BIT1 (BIT1 0))))))))))).
+Lemma MAP2_def {A B C : Type'} : heq (@MAP2 A B C) (@ε ((hprod num (hprod num (hprod num num))) -> (A -> B -> C) -> (hlist A) -> (hlist B) -> hlist C) (fun MAP2' : (hprod num (hprod num (hprod num num))) -> (A -> B -> C) -> (hlist A) -> (hlist B) -> hlist C => all (fun h18174 : hprod num (hprod num (hprod num num)) => hand (all (fun f : A -> B -> C => all (fun l : hlist B => heq (MAP2' h18174 f (@NIL A) l) (@NIL C)))) (all (fun h1' : A => all (fun f : A -> B -> C => all (fun t1 : hlist A => all (fun l : hlist B => heq (MAP2' h18174 f (@CONS A h1' t1) l) (@CONS C (f h1' (@HD B l)) (MAP2' h18174 f t1 (@TL B l)))))))))) (@hpair num (hprod num (hprod num num)) (NUMERAL (BIT1 (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num num) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num num (NUMERAL (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (NUMERAL (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 (BIT1 h0))))))))))).
 Proof. by total_align. Qed.
 
 (* There is no way that EL 1 (TL [::]) can be found using nth alone. *)
 Fixpoint EL {A : Type'} n (s: seq A) :=
-  if n - size s is k.+1 then EL k (hTL [::]) else nth (HD_HOL [::]) s n.
+  if n - size s is k.+1 then EL k (hTL [::]) else nth (hHD [::]) s n.
 
-Lemma EL_def {A : Type'} : EL = (@ε ((prod nat nat) -> nat -> (seq A) -> A) (fun EL' : (prod nat nat) -> nat -> (seq A) -> A => forall _18178 : prod nat nat, (forall l : seq A, (EL' _18178 0 l) = (@HD A l)) /\ (forall n : nat, forall l : seq A, (EL' _18178 (S n) l) = (EL' _18178 n (@TL A l)))) (@pair nat nat ((BIT1 (BIT0 (BIT1 (BIT0 (BIT0 (BIT0 (BIT1 0)))))))) ((BIT0 (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 0)))))))))).
+Lemma EL_def {A : Type'} : heq (@EL A) (@ε ((hprod num num) -> num -> (hlist A) -> A) (fun EL' : (hprod num num) -> num -> (hlist A) -> A => all (fun h18178 : hprod num num => hand (all (fun l : hlist A => heq (EL' h18178 (NUMERAL h0) l) (@HD A l))) (all (fun n : num => all (fun l : hlist A => heq (EL' h18178 (SUC n) l) (EL' h18178 n (@TL A l))))))) (@hpair num num (NUMERAL (BIT1 (BIT0 (BIT1 (BIT0 (BIT0 (BIT0 (BIT1 h0)))))))) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))))).
 Proof.
   by total_align ; [case | case => [|?] ; case].
 Qed.
 
+Definition FILTER {A : Type'} : (A -> Prop) -> seq A -> seq A := seq.filter.
+
+Lemma FILTER_def {A : Type'} : heq (@FILTER A) (@ε ((hprod num (hprod num (hprod num (hprod num (hprod num num))))) -> (A -> Prop) -> (hlist A) -> hlist A) (fun FILTER' : (hprod num (hprod num (hprod num (hprod num (hprod num num))))) -> (A -> Prop) -> (hlist A) -> hlist A => all (fun h18185 : hprod num (hprod num (hprod num (hprod num (hprod num num)))) => hand (all (fun P : A -> Prop => heq (FILTER' h18185 P (@NIL A)) (@NIL A))) (all (fun h : A => all (fun P : A -> Prop => all (fun t : hlist A => heq (FILTER' h18185 P (@CONS A h t)) (@COND (hlist A) (P h) (@CONS A h (FILTER' h18185 P t)) (FILTER' h18185 P t)))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num num)))) (NUMERAL (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num num))) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num num)) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num num) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (@hpair num num (NUMERAL (BIT1 (BIT0 (BIT1 (BIT0 (BIT0 (BIT0 (BIT1 h0)))))))) (NUMERAL (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))))))))).
+Proof. by total_align. Qed.
+
 (* ASSOC a l gets the first b such that (a,b) \in l *)
 (* If needed, one can try to weakly align finite maps with such a representation,
    if actually used in hol-light *)
-Definition ASSOC_HOL {A B : Type'} := (@ε ((prod nat (prod nat (prod nat (prod nat nat)))) -> A -> (seq (prod A B)) -> B) (fun ASSOC' : (prod nat (prod nat (prod nat (prod nat nat)))) -> A -> (seq (prod A B)) -> B => forall _18192 : prod nat (prod nat (prod nat (prod nat nat))), forall h : prod A B, forall a : A, forall t : seq (prod A B), (ASSOC' _18192 a (@cons (prod A B) h t)) = (@COND B ((@fst A B h) = a) (@snd A B h) (ASSOC' _18192 a t))) (@pair nat (prod nat (prod nat (prod nat nat))) ((BIT1 (BIT0 (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 0)))))))) (@pair nat (prod nat (prod nat nat)) ((BIT1 (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 0)))))))) (@pair nat (prod nat nat) ((BIT1 (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 0)))))))) (@pair nat nat ((BIT1 (BIT1 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 0)))))))) ((BIT1 (BIT1 (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 0))))))))))))).
+Definition hASSOC {A B : Type'} := (@ε ((prod nat (prod nat (prod nat (prod nat nat)))) -> A -> (seq (prod A B)) -> B) (fun ASSOC' : (prod nat (prod nat (prod nat (prod nat nat)))) -> A -> (seq (prod A B)) -> B => forall _18192 : prod nat (prod nat (prod nat (prod nat nat))), forall h : prod A B, forall a : A, forall t : seq (prod A B), (ASSOC' _18192 a (@cons (prod A B) h t)) = (@COND B ((@fst A B h) = a) (@snd A B h) (ASSOC' _18192 a t))) (@pair nat (prod nat (prod nat (prod nat nat))) ((BIT1 (BIT0 (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 0)))))))) (@pair nat (prod nat (prod nat nat)) ((BIT1 (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 0)))))))) (@pair nat (prod nat nat) ((BIT1 (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 0)))))))) (@pair nat nat ((BIT1 (BIT1 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 0)))))))) ((BIT1 (BIT1 (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 0))))))))))))).
 
 Fixpoint ASSOC {A B : Type'} (a : A) (l : seq (A * B)) := 
 match l with
-|[::] => ASSOC_HOL a [::]
+|[::] => hASSOC a [::]
 |(a0,b0)::l => if a0=a then b0 else ASSOC a l end.
 
-Lemma ASSOC_def {A B : Type'} : ASSOC = (@ε ((prod nat (prod nat (prod nat (prod nat nat)))) -> A -> (seq (prod A B)) -> B) (fun ASSOC' : (prod nat (prod nat (prod nat (prod nat nat)))) -> A -> (seq (prod A B)) -> B => forall _18192 : prod nat (prod nat (prod nat (prod nat nat))), forall h : prod A B, forall a : A, forall t : seq (prod A B), (ASSOC' _18192 a (@cons (prod A B) h t)) = (@COND B ((@fst A B h) = a) (@snd A B h) (ASSOC' _18192 a t))) (@pair nat (prod nat (prod nat (prod nat nat))) ((BIT1 (BIT0 (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 0)))))))) (@pair nat (prod nat (prod nat nat)) ((BIT1 (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 0)))))))) (@pair nat (prod nat nat) ((BIT1 (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 0)))))))) (@pair nat nat ((BIT1 (BIT1 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 0)))))))) ((BIT1 (BIT1 (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 0))))))))))))).
+Lemma ASSOC_def {A B : Type'} : heq (@ASSOC A B) (@ε ((hprod num (hprod num (hprod num (hprod num num)))) -> A -> (hlist (hprod A B)) -> B) (fun ASSOC' : (hprod num (hprod num (hprod num (hprod num num)))) -> A -> (hlist (hprod A B)) -> B => all (fun h18192 : hprod num (hprod num (hprod num (hprod num num))) => all (fun h : hprod A B => all (fun a : A => all (fun t : hlist (hprod A B) => heq (ASSOC' h18192 a (@CONS (hprod A B) h t)) (@COND B (heq (@FST A B h) a) (@SND A B h) (ASSOC' h18192 a t))))))) (@hpair num (hprod num (hprod num (hprod num num))) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num num)) (NUMERAL (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num num) (NUMERAL (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (@hpair num num (NUMERAL (BIT1 (BIT1 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (NUMERAL (BIT1 (BIT1 (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 h0))))))))))))).
 Proof. by partial_align (is_nil (A*B)) ; case. Qed.
+
+Fixpoint ITLIST2 {A B C : Type'} (f : A -> B -> C -> C) 
+(l : seq A) (l' : seq B) (c : C) : C := 
+match l with
+|[::] => c
+|a::l => (f a (HD l') (ITLIST2 f l (TL l') c)) end.
+
+Lemma ITLIST2_def {A B C : Type'} : heq (@ITLIST2 A B C) (@ε ((hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num)))))) -> (A -> B -> C -> C) -> (hlist A) -> (hlist B) -> C -> C) (fun ITLIST2' : (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num)))))) -> (A -> B -> C -> C) -> (hlist A) -> (hlist B) -> C -> C => all (fun h18201 : hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num))))) => hand (all (fun f : A -> B -> C -> C => all (fun l2 : hlist B => all (fun b : C => heq (ITLIST2' h18201 f (@NIL A) l2 b) b)))) (all (fun h1' : A => all (fun f : A -> B -> C -> C => all (fun t1 : hlist A => all (fun l2 : hlist B => all (fun b : C => heq (ITLIST2' h18201 f (@CONS A h1' t1) l2 b) (f h1' (@HD B l2) (ITLIST2' h18201 f t1 (@TL B l2) b)))))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num (hprod num num))))) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num num)))) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num num))) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num num)) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num num) (NUMERAL (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (@hpair num num (NUMERAL (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (NUMERAL (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 (BIT1 h0)))))))))))))).
+Proof. by total_align. Qed.
 
 (*
 (* mathcomp's zip s s' stops when s or s' is empty,
@@ -5085,7 +5067,7 @@ Definition ZIP {A B : Type'} (s : seq A) (s' : seq B) :=
 Fixpoint ZIP {A B : Type'} (s : seq A) (s' : seq B) :=
   if s is a::s0 then (a,HD s')::ZIP s0 (TL s') else [::].
 
-Lemma ZIP_def {A B : Type'} : ZIP = (@ε ((prod nat (prod nat nat)) -> (seq A) -> (seq B) -> seq (prod A B)) (fun ZIP' : (prod nat (prod nat nat)) -> (seq A) -> (seq B) -> seq (prod A B) => forall _18205 : prod nat (prod nat nat), (forall l2 : seq B, (ZIP' _18205 (@nil A) l2) = (@nil (prod A B))) /\ (forall h1' : A, forall t1 : seq A, forall l2 : seq B, (ZIP' _18205 (@cons A h1' t1) l2) = (@cons (prod A B) (@pair A B h1' (@HD B l2)) (ZIP' _18205 t1 (@TL B l2))))) (@pair nat (prod nat nat) ((BIT0 (BIT1 (BIT0 (BIT1 (BIT1 (BIT0 (BIT1 0)))))))) (@pair nat nat ((BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 0)))))))) ((BIT0 (BIT0 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 0))))))))))).
+Lemma ZIP_def {A B : Type'} : heq (@ZIP A B) (@ε ((hprod num (hprod num num)) -> (hlist A) -> (hlist B) -> hlist (hprod A B)) (fun ZIP' : (hprod num (hprod num num)) -> (hlist A) -> (hlist B) -> hlist (hprod A B) => all (fun h18205 : hprod num (hprod num num) => hand (all (fun l2 : hlist B => heq (ZIP' h18205 (@NIL A) l2) (@NIL (hprod A B)))) (all (fun h1' : A => all (fun t1 : hlist A => all (fun l2 : hlist B => heq (ZIP' h18205 (@CONS A h1' t1) l2) (@CONS (hprod A B) (@hpair A B h1' (@HD B l2)) (ZIP' h18205 t1 (@TL B l2))))))))) (@hpair num (hprod num num) (NUMERAL (BIT0 (BIT1 (BIT0 (BIT1 (BIT1 (BIT0 (BIT1 h0)))))))) (@hpair num num (NUMERAL (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (NUMERAL (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 h0))))))))))).
 Proof. by total_align. Qed.
 
 Lemma ZIP_zip {A B : Type'} (s : seq A) (s' : seq B) : size s <= size s' ->
@@ -5102,436 +5084,679 @@ Proof.
   by total_align => * ; [rewrite is_True | rewrite/ALLPAIRS/ALL -andP**].
 Qed.
 
-Lemma list_of_seq_def {A : Type'} : @mkseq A = (@ε ((prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat nat)))))))))) -> (nat -> A) -> nat -> seq A) (fun list_of_seq' : (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat nat)))))))))) -> (nat -> A) -> nat -> seq A => forall _18227 : prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat nat))))))))), (forall s : nat -> A, (list_of_seq' _18227 s 0) = (@nil A)) /\ (forall s : nat -> A, forall n : nat, (list_of_seq' _18227 s (S n)) = (@cat A (list_of_seq' _18227 s n) (@cons A (s n) (@nil A))))) (@pair nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat nat))))))))) ((BIT0 (BIT0 (BIT1 (BIT1 (BIT0 (BIT1 (BIT1 0)))))))) (@pair nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat nat)))))))) ((BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 (BIT1 0)))))))) (@pair nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat nat))))))) ((BIT1 (BIT1 (BIT0 (BIT0 (BIT1 (BIT1 (BIT1 0)))))))) (@pair nat (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat nat)))))) ((BIT0 (BIT0 (BIT1 (BIT0 (BIT1 (BIT1 (BIT1 0)))))))) (@pair nat (prod nat (prod nat (prod nat (prod nat (prod nat nat))))) ((BIT1 (BIT1 (BIT1 (BIT1 (BIT1 (BIT0 (BIT1 0)))))))) (@pair nat (prod nat (prod nat (prod nat (prod nat nat)))) ((BIT1 (BIT1 (BIT1 (BIT1 (BIT0 (BIT1 (BIT1 0)))))))) (@pair nat (prod nat (prod nat (prod nat nat))) ((BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 (BIT1 0)))))))) (@pair nat (prod nat (prod nat nat)) ((BIT1 (BIT1 (BIT1 (BIT1 (BIT1 (BIT0 (BIT1 0)))))))) (@pair nat (prod nat nat) ((BIT1 (BIT1 (BIT0 (BIT0 (BIT1 (BIT1 (BIT1 0)))))))) (@pair nat nat ((BIT1 (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 (BIT1 0)))))))) ((BIT1 (BIT0 (BIT0 (BIT0 (BIT1 (BIT1 (BIT1 0))))))))))))))))))).
+Fixpoint pairwise {A : Type'} (r : rel A) s := match s with
+  | [::] => true
+  | x::s => seq.all (r x) s && pairwise r s end.
+
+Definition PAIRWISE {A : Type'}: (A -> A -> Prop) -> seq A -> Prop := pairwise.
+
+Lemma PAIRWISE_def {A : Type'} : heq (@PAIRWISE A) (@ε ((hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num))))))) -> (A -> A -> Prop) -> (hlist A) -> Prop) (fun PAIRWISE' : (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num))))))) -> (A -> A -> Prop) -> (hlist A) -> Prop => all (fun h18220 : hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num)))))) => hand (all (fun r : A -> A -> Prop => heq (PAIRWISE' h18220 r (@NIL A)) htrue)) (all (fun h : A => all (fun r : A -> A -> Prop => all (fun t : hlist A => heq (PAIRWISE' h18220 r (@CONS A h t)) (hand (@ALL A (r h) t) (PAIRWISE' h18220 r t)))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num)))))) (NUMERAL (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num (hprod num num))))) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num num)))) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num num))) (NUMERAL (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num num)) (NUMERAL (BIT1 (BIT1 (BIT1 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num num) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num num (NUMERAL (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (NUMERAL (BIT1 (BIT0 (BIT1 (BIT0 (BIT0 (BIT0 (BIT1 h0)))))))))))))))).
 Proof.
-  by total_align=> // * ; rewrite mkseqS cats1.
+  by total_align=> /0= * ; [rewrite is_True | rewrite andP**].
 Qed.
 
-Fixpoint ITLIST2 {A B C : Type'} (f : A -> B -> C -> C) 
-(l : seq A) (l' : seq B) (c : C) : C := 
-match l with
-|[::] => c
-|a::l => (f a (HD l') (ITLIST2 f l (TL l') c)) end.
+Definition list_of_seq {A : Type'} : (num -> A) -> num -> hlist A := @mkseq A.
 
-Lemma ITLIST2_def {A B C : Type'} : ITLIST2 = (@ε ((prod nat (prod nat (prod nat (prod nat (prod nat (prod nat nat)))))) -> (A -> B -> C -> C) -> (seq A) -> (seq B) -> C -> C) (fun ITLIST2' : (prod nat (prod nat (prod nat (prod nat (prod nat (prod nat nat)))))) -> (A -> B -> C -> C) -> (seq A) -> (seq B) -> C -> C => forall _18201 : prod nat (prod nat (prod nat (prod nat (prod nat (prod nat nat))))), (forall f : A -> B -> C -> C, forall l2 : seq B, forall b : C, (ITLIST2' _18201 f (@nil A) l2 b) = b) /\ (forall h1' : A, forall f : A -> B -> C -> C, forall t1 : seq A, forall l2 : seq B, forall b : C, (ITLIST2' _18201 f (@cons A h1' t1) l2 b) = (f h1' (@HD B l2) (ITLIST2' _18201 f t1 (@TL B l2) b)))) (@pair nat (prod nat (prod nat (prod nat (prod nat (prod nat nat))))) ((BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 0)))))))) (@pair nat (prod nat (prod nat (prod nat (prod nat nat)))) ((BIT0 (BIT0 (BIT1 (BIT0 (BIT1 (BIT0 (BIT1 0)))))))) (@pair nat (prod nat (prod nat (prod nat nat))) ((BIT0 (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 0)))))))) (@pair nat (prod nat (prod nat nat)) ((BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 0)))))))) (@pair nat (prod nat nat) ((BIT1 (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 0)))))))) (@pair nat nat ((BIT0 (BIT0 (BIT1 (BIT0 (BIT1 (BIT0 (BIT1 0)))))))) ((BIT0 (BIT1 (BIT0 (BIT0 (BIT1 (BIT1 0)))))))))))))).
-Proof. by total_align. Qed.
-
-Definition HD {A : Type'} : (hlist A) -> A := @ε ((hprod num num) -> (hlist A) -> A) (fun HD' : (hprod num num) -> (hlist A) -> A => all (fun h18090 : hprod num num => all (fun t : hlist A => all (fun h : A => heq (HD' h18090 (@CONS A h t)) h)))) (@hpair num num (NUMERAL (BIT0 (BIT0 (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT0 (BIT0 (BIT0 (BIT1 h0))))))))).
-Lemma HD_def {A : Type'} : heq (@HD A) (@ε ((hprod num num) -> (hlist A) -> A) (fun HD' : (hprod num num) -> (hlist A) -> A => all (fun h18090 : hprod num num => all (fun t : hlist A => all (fun h : A => heq (HD' h18090 (@CONS A h t)) h)))) (@hpair num num (NUMERAL (BIT0 (BIT0 (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT0 (BIT0 (BIT0 (BIT1 h0)))))))))).
-Proof. exact (REFL (@HD A)). Qed.
-Definition TL {A : Type'} : (hlist A) -> hlist A := @ε ((hprod num num) -> (hlist A) -> hlist A) (fun TL' : (hprod num num) -> (hlist A) -> hlist A => all (fun h18094 : hprod num num => all (fun h : A => all (fun t : hlist A => heq (TL' h18094 (@CONS A h t)) t)))) (@hpair num num (NUMERAL (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 h0))))))))).
-Lemma TL_def {A : Type'} : heq (@TL A) (@ε ((hprod num num) -> (hlist A) -> hlist A) (fun TL' : (hprod num num) -> (hlist A) -> hlist A => all (fun h18094 : hprod num num => all (fun h : A => all (fun t : hlist A => heq (TL' h18094 (@CONS A h t)) t)))) (@hpair num num (NUMERAL (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))))).
-Proof. exact (REFL (@TL A)). Qed.
-Definition APPEND {A : Type'} : (hlist A) -> (hlist A) -> hlist A := @ε ((hprod num (hprod num (hprod num (hprod num (hprod num num))))) -> (hlist A) -> (hlist A) -> hlist A) (fun APPEND' : (hprod num (hprod num (hprod num (hprod num (hprod num num))))) -> (hlist A) -> (hlist A) -> hlist A => all (fun h18098 : hprod num (hprod num (hprod num (hprod num (hprod num num)))) => hand (all (fun l : hlist A => heq (APPEND' h18098 (@NIL A) l) l)) (all (fun h : A => all (fun t : hlist A => all (fun l : hlist A => heq (APPEND' h18098 (@CONS A h t) l) (@CONS A h (APPEND' h18098 t l)))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num num)))) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num num))) (NUMERAL (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num num)) (NUMERAL (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num num) (NUMERAL (BIT1 (BIT0 (BIT1 (BIT0 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num num (NUMERAL (BIT0 (BIT1 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT0 (BIT0 (BIT0 (BIT1 h0))))))))))))).
-Lemma APPEND_def {A : Type'} : heq (@APPEND A) (@ε ((hprod num (hprod num (hprod num (hprod num (hprod num num))))) -> (hlist A) -> (hlist A) -> hlist A) (fun APPEND' : (hprod num (hprod num (hprod num (hprod num (hprod num num))))) -> (hlist A) -> (hlist A) -> hlist A => all (fun h18098 : hprod num (hprod num (hprod num (hprod num (hprod num num)))) => hand (all (fun l : hlist A => heq (APPEND' h18098 (@NIL A) l) l)) (all (fun h : A => all (fun t : hlist A => all (fun l : hlist A => heq (APPEND' h18098 (@CONS A h t) l) (@CONS A h (APPEND' h18098 t l)))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num num)))) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num num))) (NUMERAL (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num num)) (NUMERAL (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num num) (NUMERAL (BIT1 (BIT0 (BIT1 (BIT0 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num num (NUMERAL (BIT0 (BIT1 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT0 (BIT0 (BIT0 (BIT1 h0)))))))))))))).
-Proof. exact (REFL (@APPEND A)). Qed.
-Definition REVERSE {A : Type'} : (hlist A) -> hlist A := @ε ((hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num)))))) -> (hlist A) -> hlist A) (fun REVERSE' : (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num)))))) -> (hlist A) -> hlist A => all (fun h18102 : hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num))))) => hand (heq (REVERSE' h18102 (@NIL A)) (@NIL A)) (all (fun l : hlist A => all (fun x : A => heq (REVERSE' h18102 (@CONS A x l)) (@APPEND A (REVERSE' h18102 l) (@CONS A x (@NIL A)))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num (hprod num num))))) (NUMERAL (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num num)))) (NUMERAL (BIT1 (BIT0 (BIT1 (BIT0 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num num))) (NUMERAL (BIT0 (BIT1 (BIT1 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num num)) (NUMERAL (BIT1 (BIT0 (BIT1 (BIT0 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num num) (NUMERAL (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (@hpair num num (NUMERAL (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (NUMERAL (BIT1 (BIT0 (BIT1 (BIT0 (BIT0 (BIT0 (BIT1 h0)))))))))))))).
-Lemma REVERSE_def {A : Type'} : heq (@REVERSE A) (@ε ((hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num)))))) -> (hlist A) -> hlist A) (fun REVERSE' : (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num)))))) -> (hlist A) -> hlist A => all (fun h18102 : hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num))))) => hand (heq (REVERSE' h18102 (@NIL A)) (@NIL A)) (all (fun l : hlist A => all (fun x : A => heq (REVERSE' h18102 (@CONS A x l)) (@APPEND A (REVERSE' h18102 l) (@CONS A x (@NIL A)))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num (hprod num num))))) (NUMERAL (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num num)))) (NUMERAL (BIT1 (BIT0 (BIT1 (BIT0 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num num))) (NUMERAL (BIT0 (BIT1 (BIT1 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num num)) (NUMERAL (BIT1 (BIT0 (BIT1 (BIT0 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num num) (NUMERAL (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (@hpair num num (NUMERAL (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (NUMERAL (BIT1 (BIT0 (BIT1 (BIT0 (BIT0 (BIT0 (BIT1 h0))))))))))))))).
-Proof. exact (REFL (@REVERSE A)). Qed.
-Definition LENGTH {A : Type'} : (hlist A) -> num := @ε ((hprod num (hprod num (hprod num (hprod num (hprod num num))))) -> (hlist A) -> num) (fun LENGTH' : (hprod num (hprod num (hprod num (hprod num (hprod num num))))) -> (hlist A) -> num => all (fun h18106 : hprod num (hprod num (hprod num (hprod num (hprod num num)))) => hand (heq (LENGTH' h18106 (@NIL A)) (NUMERAL h0)) (all (fun h : A => all (fun t : hlist A => heq (LENGTH' h18106 (@CONS A h t)) (SUC (LENGTH' h18106 t))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num num)))) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num num))) (NUMERAL (BIT1 (BIT0 (BIT1 (BIT0 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num num)) (NUMERAL (BIT0 (BIT1 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num num) (NUMERAL (BIT1 (BIT1 (BIT1 (BIT0 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num num (NUMERAL (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (NUMERAL (BIT0 (BIT0 (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 h0))))))))))))).
-Lemma LENGTH_def {A : Type'} : heq (@LENGTH A) (@ε ((hprod num (hprod num (hprod num (hprod num (hprod num num))))) -> (hlist A) -> num) (fun LENGTH' : (hprod num (hprod num (hprod num (hprod num (hprod num num))))) -> (hlist A) -> num => all (fun h18106 : hprod num (hprod num (hprod num (hprod num (hprod num num)))) => hand (heq (LENGTH' h18106 (@NIL A)) (NUMERAL h0)) (all (fun h : A => all (fun t : hlist A => heq (LENGTH' h18106 (@CONS A h t)) (SUC (LENGTH' h18106 t))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num num)))) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num num))) (NUMERAL (BIT1 (BIT0 (BIT1 (BIT0 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num num)) (NUMERAL (BIT0 (BIT1 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num num) (NUMERAL (BIT1 (BIT1 (BIT1 (BIT0 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num num (NUMERAL (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (NUMERAL (BIT0 (BIT0 (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))))))))).
-Proof. exact (REFL (@LENGTH A)). Qed.
-Definition MAP {A B : Type'} : (A -> B) -> (hlist A) -> hlist B := @ε ((hprod num (hprod num num)) -> (A -> B) -> (hlist A) -> hlist B) (fun MAP' : (hprod num (hprod num num)) -> (A -> B) -> (hlist A) -> hlist B => all (fun h18113 : hprod num (hprod num num) => hand (all (fun f : A -> B => heq (MAP' h18113 f (@NIL A)) (@NIL B))) (all (fun f : A -> B => all (fun h : A => all (fun t : hlist A => heq (MAP' h18113 f (@CONS A h t)) (@CONS B (f h) (MAP' h18113 f t)))))))) (@hpair num (hprod num num) (NUMERAL (BIT1 (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num num (NUMERAL (BIT1 (BIT0 (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 h0)))))))) (NUMERAL (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))))).
-Lemma MAP_def {A B : Type'} : heq (@MAP A B) (@ε ((hprod num (hprod num num)) -> (A -> B) -> (hlist A) -> hlist B) (fun MAP' : (hprod num (hprod num num)) -> (A -> B) -> (hlist A) -> hlist B => all (fun h18113 : hprod num (hprod num num) => hand (all (fun f : A -> B => heq (MAP' h18113 f (@NIL A)) (@NIL B))) (all (fun f : A -> B => all (fun h : A => all (fun t : hlist A => heq (MAP' h18113 f (@CONS A h t)) (@CONS B (f h) (MAP' h18113 f t)))))))) (@hpair num (hprod num num) (NUMERAL (BIT1 (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num num (NUMERAL (BIT1 (BIT0 (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 h0)))))))) (NUMERAL (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 h0))))))))))).
-Proof. exact (REFL (@MAP A B)). Qed.
-Definition LAST {A : Type'} : (hlist A) -> A := @ε ((hprod num (hprod num (hprod num num))) -> (hlist A) -> A) (fun LAST' : (hprod num (hprod num (hprod num num))) -> (hlist A) -> A => all (fun h18117 : hprod num (hprod num (hprod num num)) => all (fun h : A => all (fun t : hlist A => heq (LAST' h18117 (@CONS A h t)) (@COND A (heq t (@NIL A)) h (LAST' h18117 t)))))) (@hpair num (hprod num (hprod num num)) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num num) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num num (NUMERAL (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 (BIT0 (BIT1 h0))))))))))).
-Lemma LAST_def {A : Type'} : heq (@LAST A) (@ε ((hprod num (hprod num (hprod num num))) -> (hlist A) -> A) (fun LAST' : (hprod num (hprod num (hprod num num))) -> (hlist A) -> A => all (fun h18117 : hprod num (hprod num (hprod num num)) => all (fun h : A => all (fun t : hlist A => heq (LAST' h18117 (@CONS A h t)) (@COND A (heq t (@NIL A)) h (LAST' h18117 t)))))) (@hpair num (hprod num (hprod num num)) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num num) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num num (NUMERAL (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))))))).
-Proof. exact (REFL (@LAST A)). Qed.
-Definition BUTLAST {A : Type'} : (hlist A) -> hlist A := @ε ((hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num)))))) -> (hlist A) -> hlist A) (fun BUTLAST' : (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num)))))) -> (hlist A) -> hlist A => all (fun h18121 : hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num))))) => hand (heq (BUTLAST' h18121 (@NIL A)) (@NIL A)) (all (fun h : A => all (fun t : hlist A => heq (BUTLAST' h18121 (@CONS A h t)) (@COND (hlist A) (heq t (@NIL A)) (@NIL A) (@CONS A h (BUTLAST' h18121 t)))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num (hprod num num))))) (NUMERAL (BIT0 (BIT1 (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num num)))) (NUMERAL (BIT1 (BIT0 (BIT1 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num num))) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num num)) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num num) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num num (NUMERAL (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))))))))).
-Lemma BUTLAST_def {A : Type'} : heq (@BUTLAST A) (@ε ((hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num)))))) -> (hlist A) -> hlist A) (fun BUTLAST' : (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num)))))) -> (hlist A) -> hlist A => all (fun h18121 : hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num))))) => hand (heq (BUTLAST' h18121 (@NIL A)) (@NIL A)) (all (fun h : A => all (fun t : hlist A => heq (BUTLAST' h18121 (@CONS A h t)) (@COND (hlist A) (heq t (@NIL A)) (@NIL A) (@CONS A h (BUTLAST' h18121 t)))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num (hprod num num))))) (NUMERAL (BIT0 (BIT1 (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num num)))) (NUMERAL (BIT1 (BIT0 (BIT1 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num num))) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num num)) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num num) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num num (NUMERAL (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 (BIT0 (BIT1 h0))))))))))))))).
-Proof. exact (REFL (@BUTLAST A)). Qed.
-Definition REPLICATE {A : Type'} : num -> A -> hlist A := @ε ((hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num)))))))) -> num -> A -> hlist A) (fun REPLICATE' : (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num)))))))) -> num -> A -> hlist A => all (fun h18125 : hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num))))))) => hand (all (fun x : A => heq (REPLICATE' h18125 (NUMERAL h0) x) (@NIL A))) (all (fun n : num => all (fun x : A => heq (REPLICATE' h18125 (SUC n) x) (@CONS A x (REPLICATE' h18125 n x))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num))))))) (NUMERAL (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num)))))) (NUMERAL (BIT1 (BIT0 (BIT1 (BIT0 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num (hprod num num))))) (NUMERAL (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num num)))) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num num))) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num num)) (NUMERAL (BIT1 (BIT1 (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num num) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num num (NUMERAL (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (NUMERAL (BIT1 (BIT0 (BIT1 (BIT0 (BIT0 (BIT0 (BIT1 h0)))))))))))))))).
-Lemma REPLICATE_def {A : Type'} : heq (@REPLICATE A) (@ε ((hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num)))))))) -> num -> A -> hlist A) (fun REPLICATE' : (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num)))))))) -> num -> A -> hlist A => all (fun h18125 : hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num))))))) => hand (all (fun x : A => heq (REPLICATE' h18125 (NUMERAL h0) x) (@NIL A))) (all (fun n : num => all (fun x : A => heq (REPLICATE' h18125 (SUC n) x) (@CONS A x (REPLICATE' h18125 n x))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num))))))) (NUMERAL (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num)))))) (NUMERAL (BIT1 (BIT0 (BIT1 (BIT0 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num (hprod num num))))) (NUMERAL (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num num)))) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num num))) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num num)) (NUMERAL (BIT1 (BIT1 (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num num) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num num (NUMERAL (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (NUMERAL (BIT1 (BIT0 (BIT1 (BIT0 (BIT0 (BIT0 (BIT1 h0))))))))))))))))).
-Proof. exact (REFL (@REPLICATE A)). Qed.
-Definition NULL {A : Type'} : (hlist A) -> Prop := @ε ((hprod num (hprod num (hprod num num))) -> (hlist A) -> Prop) (fun NULL' : (hprod num (hprod num (hprod num num))) -> (hlist A) -> Prop => all (fun h18129 : hprod num (hprod num (hprod num num)) => hand (heq (NULL' h18129 (@NIL A)) htrue) (all (fun h : A => all (fun t : hlist A => heq (NULL' h18129 (@CONS A h t)) hfalse))))) (@hpair num (hprod num (hprod num num)) (NUMERAL (BIT0 (BIT1 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num num) (NUMERAL (BIT1 (BIT0 (BIT1 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (@hpair num num (NUMERAL (BIT0 (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 h0))))))))))).
-Lemma NULL_def {A : Type'} : heq (@NULL A) (@ε ((hprod num (hprod num (hprod num num))) -> (hlist A) -> Prop) (fun NULL' : (hprod num (hprod num (hprod num num))) -> (hlist A) -> Prop => all (fun h18129 : hprod num (hprod num (hprod num num)) => hand (heq (NULL' h18129 (@NIL A)) htrue) (all (fun h : A => all (fun t : hlist A => heq (NULL' h18129 (@CONS A h t)) hfalse))))) (@hpair num (hprod num (hprod num num)) (NUMERAL (BIT0 (BIT1 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num num) (NUMERAL (BIT1 (BIT0 (BIT1 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (@hpair num num (NUMERAL (BIT0 (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))))))).
-Proof. exact (REFL (@NULL A)). Qed.
-Definition ALL (A : Type') := (@ε ((hprod num (hprod num num)) -> (A -> Prop) -> (hlist A) -> Prop) (fun ALL' : (hprod num (hprod num num)) -> (A -> Prop) -> (hlist A) -> Prop => all (fun h18136 : hprod num (hprod num num) => hand (all (fun P : A -> Prop => heq (ALL' h18136 P (@NIL A)) htrue)) (all (fun h : A => all (fun P : A -> Prop => all (fun t : hlist A => heq (ALL' h18136 P (@CONS A h t)) (hand (P h) (ALL' h18136 P t)))))))) (@hpair num (hprod num num) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num num (NUMERAL (BIT0 (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 h0))))))))))).
-Lemma ALL_def {A : Type'} : heq (@ALL A) (@ε ((hprod num (hprod num num)) -> (A -> Prop) -> (hlist A) -> Prop) (fun ALL' : (hprod num (hprod num num)) -> (A -> Prop) -> (hlist A) -> Prop => all (fun h18136 : hprod num (hprod num num) => hand (all (fun P : A -> Prop => heq (ALL' h18136 P (@NIL A)) htrue)) (all (fun h : A => all (fun P : A -> Prop => all (fun t : hlist A => heq (ALL' h18136 P (@CONS A h t)) (hand (P h) (ALL' h18136 P t)))))))) (@hpair num (hprod num num) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num num (NUMERAL (BIT0 (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 h0))))))))))).
-Proof. exact (REFL (@ALL A)). Qed.
-Definition EX {A : Type'} : (A -> Prop) -> (hlist A) -> Prop := @ε ((hprod num num) -> (A -> Prop) -> (hlist A) -> Prop) (fun EX' : (hprod num num) -> (A -> Prop) -> (hlist A) -> Prop => all (fun h18143 : hprod num num => hand (all (fun P : A -> Prop => heq (EX' h18143 P (@NIL A)) hfalse)) (all (fun h : A => all (fun P : A -> Prop => all (fun t : hlist A => heq (EX' h18143 P (@CONS A h t)) (hor (P h) (EX' h18143 P t)))))))) (@hpair num num (NUMERAL (BIT1 (BIT0 (BIT1 (BIT0 (BIT0 (BIT0 (BIT1 h0)))))))) (NUMERAL (BIT0 (BIT0 (BIT0 (BIT1 (BIT1 (BIT0 (BIT1 h0))))))))).
-Lemma EX_def {A : Type'} : heq (@EX A) (@ε ((hprod num num) -> (A -> Prop) -> (hlist A) -> Prop) (fun EX' : (hprod num num) -> (A -> Prop) -> (hlist A) -> Prop => all (fun h18143 : hprod num num => hand (all (fun P : A -> Prop => heq (EX' h18143 P (@NIL A)) hfalse)) (all (fun h : A => all (fun P : A -> Prop => all (fun t : hlist A => heq (EX' h18143 P (@CONS A h t)) (hor (P h) (EX' h18143 P t)))))))) (@hpair num num (NUMERAL (BIT1 (BIT0 (BIT1 (BIT0 (BIT0 (BIT0 (BIT1 h0)))))))) (NUMERAL (BIT0 (BIT0 (BIT0 (BIT1 (BIT1 (BIT0 (BIT1 h0)))))))))).
-Proof. exact (REFL (@EX A)). Qed.
-Definition ITLIST {A B : Type'} : (A -> B -> B) -> (hlist A) -> B -> B := @ε ((hprod num (hprod num (hprod num (hprod num (hprod num num))))) -> (A -> B -> B) -> (hlist A) -> B -> B) (fun ITLIST' : (hprod num (hprod num (hprod num (hprod num (hprod num num))))) -> (A -> B -> B) -> (hlist A) -> B -> B => all (fun h18151 : hprod num (hprod num (hprod num (hprod num (hprod num num)))) => hand (all (fun f : A -> B -> B => all (fun b : B => heq (ITLIST' h18151 f (@NIL A) b) b))) (all (fun h : A => all (fun f : A -> B -> B => all (fun t : hlist A => all (fun b : B => heq (ITLIST' h18151 f (@CONS A h t) b) (f h (ITLIST' h18151 f t b))))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num num)))) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num num))) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num num)) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num num) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num num (NUMERAL (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 (BIT0 (BIT1 h0))))))))))))).
-Lemma ITLIST_def {A B : Type'} : heq (@ITLIST A B) (@ε ((hprod num (hprod num (hprod num (hprod num (hprod num num))))) -> (A -> B -> B) -> (hlist A) -> B -> B) (fun ITLIST' : (hprod num (hprod num (hprod num (hprod num (hprod num num))))) -> (A -> B -> B) -> (hlist A) -> B -> B => all (fun h18151 : hprod num (hprod num (hprod num (hprod num (hprod num num)))) => hand (all (fun f : A -> B -> B => all (fun b : B => heq (ITLIST' h18151 f (@NIL A) b) b))) (all (fun h : A => all (fun f : A -> B -> B => all (fun t : hlist A => all (fun b : B => heq (ITLIST' h18151 f (@CONS A h t) b) (f h (ITLIST' h18151 f t b))))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num num)))) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num num))) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num num)) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num num) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num num (NUMERAL (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))))))))).
-Proof. exact (REFL (@ITLIST A B)). Qed.
-Definition MEM {A : Type'} : A -> (hlist A) -> Prop := @ε ((hprod num (hprod num num)) -> A -> (hlist A) -> Prop) (fun MEM' : (hprod num (hprod num num)) -> A -> (hlist A) -> Prop => all (fun h18158 : hprod num (hprod num num) => hand (all (fun x : A => heq (MEM' h18158 x (@NIL A)) hfalse)) (all (fun h : A => all (fun x : A => all (fun t : hlist A => heq (MEM' h18158 x (@CONS A h t)) (hor (heq x h) (MEM' h18158 x t)))))))) (@hpair num (hprod num num) (NUMERAL (BIT1 (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num num (NUMERAL (BIT1 (BIT0 (BIT1 (BIT0 (BIT0 (BIT0 (BIT1 h0)))))))) (NUMERAL (BIT1 (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))))).
-Lemma MEM_def {A : Type'} : heq (@MEM A) (@ε ((hprod num (hprod num num)) -> A -> (hlist A) -> Prop) (fun MEM' : (hprod num (hprod num num)) -> A -> (hlist A) -> Prop => all (fun h18158 : hprod num (hprod num num) => hand (all (fun x : A => heq (MEM' h18158 x (@NIL A)) hfalse)) (all (fun h : A => all (fun x : A => all (fun t : hlist A => heq (MEM' h18158 x (@CONS A h t)) (hor (heq x h) (MEM' h18158 x t)))))))) (@hpair num (hprod num num) (NUMERAL (BIT1 (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num num (NUMERAL (BIT1 (BIT0 (BIT1 (BIT0 (BIT0 (BIT0 (BIT1 h0)))))))) (NUMERAL (BIT1 (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 h0))))))))))).
-Proof. exact (REFL (@MEM A)). Qed.
-Definition ALL2 {A B : Type'} : (A -> B -> Prop) -> (hlist A) -> (hlist B) -> Prop := @ε ((hprod num (hprod num (hprod num num))) -> (A -> B -> Prop) -> (hlist A) -> (hlist B) -> Prop) (fun ALL2' : (hprod num (hprod num (hprod num num))) -> (A -> B -> Prop) -> (hlist A) -> (hlist B) -> Prop => all (fun h18166 : hprod num (hprod num (hprod num num)) => hand (all (fun P : A -> B -> Prop => all (fun l2 : hlist B => heq (ALL2' h18166 P (@NIL A) l2) (heq l2 (@NIL B))))) (all (fun h1' : A => all (fun P : A -> B -> Prop => all (fun t1 : hlist A => all (fun l2 : hlist B => heq (ALL2' h18166 P (@CONS A h1' t1) l2) (@COND Prop (heq l2 (@NIL B)) hfalse (hand (P h1' (@HD B l2)) (ALL2' h18166 P t1 (@TL B l2))))))))))) (@hpair num (hprod num (hprod num num)) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num num) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num num (NUMERAL (BIT0 (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (NUMERAL (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 (BIT1 h0)))))))))).
-Lemma ALL2_def {A B : Type'} : heq (@ALL2 A B) (@ε ((hprod num (hprod num (hprod num num))) -> (A -> B -> Prop) -> (hlist A) -> (hlist B) -> Prop) (fun ALL2' : (hprod num (hprod num (hprod num num))) -> (A -> B -> Prop) -> (hlist A) -> (hlist B) -> Prop => all (fun h18166 : hprod num (hprod num (hprod num num)) => hand (all (fun P : A -> B -> Prop => all (fun l2 : hlist B => heq (ALL2' h18166 P (@NIL A) l2) (heq l2 (@NIL B))))) (all (fun h1' : A => all (fun P : A -> B -> Prop => all (fun t1 : hlist A => all (fun l2 : hlist B => heq (ALL2' h18166 P (@CONS A h1' t1) l2) (@COND Prop (heq l2 (@NIL B)) hfalse (hand (P h1' (@HD B l2)) (ALL2' h18166 P t1 (@TL B l2))))))))))) (@hpair num (hprod num (hprod num num)) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num num) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num num (NUMERAL (BIT0 (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (NUMERAL (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 (BIT1 h0))))))))))).
-Proof. exact (REFL (@ALL2 A B)). Qed.
-Definition MAP2 {A B C : Type'} : (A -> B -> C) -> (hlist A) -> (hlist B) -> hlist C := @ε ((hprod num (hprod num (hprod num num))) -> (A -> B -> C) -> (hlist A) -> (hlist B) -> hlist C) (fun MAP2' : (hprod num (hprod num (hprod num num))) -> (A -> B -> C) -> (hlist A) -> (hlist B) -> hlist C => all (fun h18174 : hprod num (hprod num (hprod num num)) => hand (all (fun f : A -> B -> C => all (fun l : hlist B => heq (MAP2' h18174 f (@NIL A) l) (@NIL C)))) (all (fun h1' : A => all (fun f : A -> B -> C => all (fun t1 : hlist A => all (fun l : hlist B => heq (MAP2' h18174 f (@CONS A h1' t1) l) (@CONS C (f h1' (@HD B l)) (MAP2' h18174 f t1 (@TL B l)))))))))) (@hpair num (hprod num (hprod num num)) (NUMERAL (BIT1 (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num num) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num num (NUMERAL (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (NUMERAL (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 (BIT1 h0)))))))))).
-Lemma MAP2_def {A B C : Type'} : heq (@MAP2 A B C) (@ε ((hprod num (hprod num (hprod num num))) -> (A -> B -> C) -> (hlist A) -> (hlist B) -> hlist C) (fun MAP2' : (hprod num (hprod num (hprod num num))) -> (A -> B -> C) -> (hlist A) -> (hlist B) -> hlist C => all (fun h18174 : hprod num (hprod num (hprod num num)) => hand (all (fun f : A -> B -> C => all (fun l : hlist B => heq (MAP2' h18174 f (@NIL A) l) (@NIL C)))) (all (fun h1' : A => all (fun f : A -> B -> C => all (fun t1 : hlist A => all (fun l : hlist B => heq (MAP2' h18174 f (@CONS A h1' t1) l) (@CONS C (f h1' (@HD B l)) (MAP2' h18174 f t1 (@TL B l)))))))))) (@hpair num (hprod num (hprod num num)) (NUMERAL (BIT1 (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num num) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num num (NUMERAL (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (NUMERAL (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 (BIT1 h0))))))))))).
-Proof. exact (REFL (@MAP2 A B C)). Qed.
-Definition EL {A : Type'} : num -> (hlist A) -> A := @ε ((hprod num num) -> num -> (hlist A) -> A) (fun EL' : (hprod num num) -> num -> (hlist A) -> A => all (fun h18178 : hprod num num => hand (all (fun l : hlist A => heq (EL' h18178 (NUMERAL h0) l) (@HD A l))) (all (fun n : num => all (fun l : hlist A => heq (EL' h18178 (SUC n) l) (EL' h18178 n (@TL A l))))))) (@hpair num num (NUMERAL (BIT1 (BIT0 (BIT1 (BIT0 (BIT0 (BIT0 (BIT1 h0)))))))) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 h0))))))))).
-Lemma EL_def {A : Type'} : heq (@EL A) (@ε ((hprod num num) -> num -> (hlist A) -> A) (fun EL' : (hprod num num) -> num -> (hlist A) -> A => all (fun h18178 : hprod num num => hand (all (fun l : hlist A => heq (EL' h18178 (NUMERAL h0) l) (@HD A l))) (all (fun n : num => all (fun l : hlist A => heq (EL' h18178 (SUC n) l) (EL' h18178 n (@TL A l))))))) (@hpair num num (NUMERAL (BIT1 (BIT0 (BIT1 (BIT0 (BIT0 (BIT0 (BIT1 h0)))))))) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))))).
-Proof. exact (REFL (@EL A)). Qed.
-Definition FILTER {A : Type'} : (A -> Prop) -> (hlist A) -> hlist A := @ε ((hprod num (hprod num (hprod num (hprod num (hprod num num))))) -> (A -> Prop) -> (hlist A) -> hlist A) (fun FILTER' : (hprod num (hprod num (hprod num (hprod num (hprod num num))))) -> (A -> Prop) -> (hlist A) -> hlist A => all (fun h18185 : hprod num (hprod num (hprod num (hprod num (hprod num num)))) => hand (all (fun P : A -> Prop => heq (FILTER' h18185 P (@NIL A)) (@NIL A))) (all (fun h : A => all (fun P : A -> Prop => all (fun t : hlist A => heq (FILTER' h18185 P (@CONS A h t)) (@COND (hlist A) (P h) (@CONS A h (FILTER' h18185 P t)) (FILTER' h18185 P t)))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num num)))) (NUMERAL (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num num))) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num num)) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num num) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (@hpair num num (NUMERAL (BIT1 (BIT0 (BIT1 (BIT0 (BIT0 (BIT0 (BIT1 h0)))))))) (NUMERAL (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 h0))))))))))))).
-Lemma FILTER_def {A : Type'} : heq (@FILTER A) (@ε ((hprod num (hprod num (hprod num (hprod num (hprod num num))))) -> (A -> Prop) -> (hlist A) -> hlist A) (fun FILTER' : (hprod num (hprod num (hprod num (hprod num (hprod num num))))) -> (A -> Prop) -> (hlist A) -> hlist A => all (fun h18185 : hprod num (hprod num (hprod num (hprod num (hprod num num)))) => hand (all (fun P : A -> Prop => heq (FILTER' h18185 P (@NIL A)) (@NIL A))) (all (fun h : A => all (fun P : A -> Prop => all (fun t : hlist A => heq (FILTER' h18185 P (@CONS A h t)) (@COND (hlist A) (P h) (@CONS A h (FILTER' h18185 P t)) (FILTER' h18185 P t)))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num num)))) (NUMERAL (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num num))) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num num)) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num num) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (@hpair num num (NUMERAL (BIT1 (BIT0 (BIT1 (BIT0 (BIT0 (BIT0 (BIT1 h0)))))))) (NUMERAL (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))))))))).
-Proof. exact (REFL (@FILTER A)). Qed.
-Definition ASSOC {A B : Type'} : A -> (hlist (hprod A B)) -> B := @ε ((hprod num (hprod num (hprod num (hprod num num)))) -> A -> (hlist (hprod A B)) -> B) (fun ASSOC' : (hprod num (hprod num (hprod num (hprod num num)))) -> A -> (hlist (hprod A B)) -> B => all (fun h18192 : hprod num (hprod num (hprod num (hprod num num))) => all (fun h : hprod A B => all (fun a : A => all (fun t : hlist (hprod A B) => heq (ASSOC' h18192 a (@CONS (hprod A B) h t)) (@COND B (heq (@FST A B h) a) (@SND A B h) (ASSOC' h18192 a t))))))) (@hpair num (hprod num (hprod num (hprod num num))) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num num)) (NUMERAL (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num num) (NUMERAL (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (@hpair num num (NUMERAL (BIT1 (BIT1 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (NUMERAL (BIT1 (BIT1 (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 h0)))))))))))).
-Lemma ASSOC_def {A B : Type'} : heq (@ASSOC A B) (@ε ((hprod num (hprod num (hprod num (hprod num num)))) -> A -> (hlist (hprod A B)) -> B) (fun ASSOC' : (hprod num (hprod num (hprod num (hprod num num)))) -> A -> (hlist (hprod A B)) -> B => all (fun h18192 : hprod num (hprod num (hprod num (hprod num num))) => all (fun h : hprod A B => all (fun a : A => all (fun t : hlist (hprod A B) => heq (ASSOC' h18192 a (@CONS (hprod A B) h t)) (@COND B (heq (@FST A B h) a) (@SND A B h) (ASSOC' h18192 a t))))))) (@hpair num (hprod num (hprod num (hprod num num))) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num num)) (NUMERAL (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num num) (NUMERAL (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (@hpair num num (NUMERAL (BIT1 (BIT1 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (NUMERAL (BIT1 (BIT1 (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 h0))))))))))))).
-Proof. exact (REFL (@ASSOC A B)). Qed.
-Definition ITLIST2 {A B C : Type'} : (A -> B -> C -> C) -> (hlist A) -> (hlist B) -> C -> C := @ε ((hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num)))))) -> (A -> B -> C -> C) -> (hlist A) -> (hlist B) -> C -> C) (fun ITLIST2' : (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num)))))) -> (A -> B -> C -> C) -> (hlist A) -> (hlist B) -> C -> C => all (fun h18201 : hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num))))) => hand (all (fun f : A -> B -> C -> C => all (fun l2 : hlist B => all (fun b : C => heq (ITLIST2' h18201 f (@NIL A) l2 b) b)))) (all (fun h1' : A => all (fun f : A -> B -> C -> C => all (fun t1 : hlist A => all (fun l2 : hlist B => all (fun b : C => heq (ITLIST2' h18201 f (@CONS A h1' t1) l2 b) (f h1' (@HD B l2) (ITLIST2' h18201 f t1 (@TL B l2) b)))))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num (hprod num num))))) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num num)))) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num num))) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num num)) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num num) (NUMERAL (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (@hpair num num (NUMERAL (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (NUMERAL (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 (BIT1 h0))))))))))))).
-Lemma ITLIST2_def {A B C : Type'} : heq (@ITLIST2 A B C) (@ε ((hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num)))))) -> (A -> B -> C -> C) -> (hlist A) -> (hlist B) -> C -> C) (fun ITLIST2' : (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num)))))) -> (A -> B -> C -> C) -> (hlist A) -> (hlist B) -> C -> C => all (fun h18201 : hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num))))) => hand (all (fun f : A -> B -> C -> C => all (fun l2 : hlist B => all (fun b : C => heq (ITLIST2' h18201 f (@NIL A) l2 b) b)))) (all (fun h1' : A => all (fun f : A -> B -> C -> C => all (fun t1 : hlist A => all (fun l2 : hlist B => all (fun b : C => heq (ITLIST2' h18201 f (@CONS A h1' t1) l2 b) (f h1' (@HD B l2) (ITLIST2' h18201 f t1 (@TL B l2) b)))))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num (hprod num num))))) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num num)))) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num num))) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num num)) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num num) (NUMERAL (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (@hpair num num (NUMERAL (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (NUMERAL (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 (BIT1 h0)))))))))))))).
-Proof. exact (REFL (@ITLIST2 A B C)). Qed.
-Definition ZIP {A B : Type'} : (hlist A) -> (hlist B) -> hlist (hprod A B) := @ε ((hprod num (hprod num num)) -> (hlist A) -> (hlist B) -> hlist (hprod A B)) (fun ZIP' : (hprod num (hprod num num)) -> (hlist A) -> (hlist B) -> hlist (hprod A B) => all (fun h18205 : hprod num (hprod num num) => hand (all (fun l2 : hlist B => heq (ZIP' h18205 (@NIL A) l2) (@NIL (hprod A B)))) (all (fun h1' : A => all (fun t1 : hlist A => all (fun l2 : hlist B => heq (ZIP' h18205 (@CONS A h1' t1) l2) (@CONS (hprod A B) (@hpair A B h1' (@HD B l2)) (ZIP' h18205 t1 (@TL B l2))))))))) (@hpair num (hprod num num) (NUMERAL (BIT0 (BIT1 (BIT0 (BIT1 (BIT1 (BIT0 (BIT1 h0)))))))) (@hpair num num (NUMERAL (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (NUMERAL (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))))).
-Lemma ZIP_def {A B : Type'} : heq (@ZIP A B) (@ε ((hprod num (hprod num num)) -> (hlist A) -> (hlist B) -> hlist (hprod A B)) (fun ZIP' : (hprod num (hprod num num)) -> (hlist A) -> (hlist B) -> hlist (hprod A B) => all (fun h18205 : hprod num (hprod num num) => hand (all (fun l2 : hlist B => heq (ZIP' h18205 (@NIL A) l2) (@NIL (hprod A B)))) (all (fun h1' : A => all (fun t1 : hlist A => all (fun l2 : hlist B => heq (ZIP' h18205 (@CONS A h1' t1) l2) (@CONS (hprod A B) (@hpair A B h1' (@HD B l2)) (ZIP' h18205 t1 (@TL B l2))))))))) (@hpair num (hprod num num) (NUMERAL (BIT0 (BIT1 (BIT0 (BIT1 (BIT1 (BIT0 (BIT1 h0)))))))) (@hpair num num (NUMERAL (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (NUMERAL (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 h0))))))))))).
-Proof. exact (REFL (@ZIP A B)). Qed.
-Definition ALLPAIRS {A B : Type'} : (A -> B -> Prop) -> (hlist A) -> (hlist B) -> Prop := @ε ((hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num))))))) -> (A -> B -> Prop) -> (hlist A) -> (hlist B) -> Prop) (fun ALLPAIRS' : (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num))))))) -> (A -> B -> Prop) -> (hlist A) -> (hlist B) -> Prop => all (fun h18213 : hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num)))))) => hand (all (fun f : A -> B -> Prop => all (fun l : hlist B => heq (ALLPAIRS' h18213 f (@NIL A) l) htrue))) (all (fun h : A => all (fun f : A -> B -> Prop => all (fun t : hlist A => all (fun l : hlist B => heq (ALLPAIRS' h18213 f (@CONS A h t) l) (hand (@ALL B (f h) l) (ALLPAIRS' h18213 f t l))))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num)))))) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num (hprod num num))))) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num num)))) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num num))) (NUMERAL (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num num)) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num num) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num num (NUMERAL (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (NUMERAL (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 h0))))))))))))))).
-Lemma ALLPAIRS_def {A B : Type'} : heq (@ALLPAIRS A B) (@ε ((hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num))))))) -> (A -> B -> Prop) -> (hlist A) -> (hlist B) -> Prop) (fun ALLPAIRS' : (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num))))))) -> (A -> B -> Prop) -> (hlist A) -> (hlist B) -> Prop => all (fun h18213 : hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num)))))) => hand (all (fun f : A -> B -> Prop => all (fun l : hlist B => heq (ALLPAIRS' h18213 f (@NIL A) l) htrue))) (all (fun h : A => all (fun f : A -> B -> Prop => all (fun t : hlist A => all (fun l : hlist B => heq (ALLPAIRS' h18213 f (@CONS A h t) l) (hand (@ALL B (f h) l) (ALLPAIRS' h18213 f t l))))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num)))))) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num (hprod num num))))) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num num)))) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num num))) (NUMERAL (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num num)) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num num) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num num (NUMERAL (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (NUMERAL (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))))))))))).
-Proof. exact (REFL (@ALLPAIRS A B)). Qed.
-Definition PAIRWISE {A : Type'} : (A -> A -> Prop) -> (hlist A) -> Prop := @ε ((hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num))))))) -> (A -> A -> Prop) -> (hlist A) -> Prop) (fun PAIRWISE' : (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num))))))) -> (A -> A -> Prop) -> (hlist A) -> Prop => all (fun h18220 : hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num)))))) => hand (all (fun r : A -> A -> Prop => heq (PAIRWISE' h18220 r (@NIL A)) htrue)) (all (fun h : A => all (fun r : A -> A -> Prop => all (fun t : hlist A => heq (PAIRWISE' h18220 r (@CONS A h t)) (hand (@ALL A (r h) t) (PAIRWISE' h18220 r t)))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num)))))) (NUMERAL (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num (hprod num num))))) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num num)))) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num num))) (NUMERAL (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num num)) (NUMERAL (BIT1 (BIT1 (BIT1 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num num) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num num (NUMERAL (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (NUMERAL (BIT1 (BIT0 (BIT1 (BIT0 (BIT0 (BIT0 (BIT1 h0))))))))))))))).
-Lemma PAIRWISE_def {A : Type'} : heq (@PAIRWISE A) (@ε ((hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num))))))) -> (A -> A -> Prop) -> (hlist A) -> Prop) (fun PAIRWISE' : (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num))))))) -> (A -> A -> Prop) -> (hlist A) -> Prop => all (fun h18220 : hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num)))))) => hand (all (fun r : A -> A -> Prop => heq (PAIRWISE' h18220 r (@NIL A)) htrue)) (all (fun h : A => all (fun r : A -> A -> Prop => all (fun t : hlist A => heq (PAIRWISE' h18220 r (@CONS A h t)) (hand (@ALL A (r h) t) (PAIRWISE' h18220 r t)))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num)))))) (NUMERAL (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num (hprod num num))))) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num num)))) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num num))) (NUMERAL (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num num)) (NUMERAL (BIT1 (BIT1 (BIT1 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num num) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num num (NUMERAL (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (NUMERAL (BIT1 (BIT0 (BIT1 (BIT0 (BIT0 (BIT0 (BIT1 h0)))))))))))))))).
-Proof. exact (REFL (@PAIRWISE A)). Qed.
-Definition list_of_seq {A : Type'} : (num -> A) -> num -> hlist A := @ε ((hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num)))))))))) -> (num -> A) -> num -> hlist A) (fun list_of_seq' : (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num)))))))))) -> (num -> A) -> num -> hlist A => all (fun h18227 : hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num))))))))) => hand (all (fun s : num -> A => heq (list_of_seq' h18227 s (NUMERAL h0)) (@NIL A))) (all (fun s : num -> A => all (fun n : num => heq (list_of_seq' h18227 s (SUC n)) (@APPEND A (list_of_seq' h18227 s n) (@CONS A (s n) (@NIL A)))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num))))))))) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT1 (BIT0 (BIT1 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num)))))))) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num))))))) (NUMERAL (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 (BIT1 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num)))))) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 (BIT1 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num (hprod num num))))) (NUMERAL (BIT1 (BIT1 (BIT1 (BIT1 (BIT1 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num num)))) (NUMERAL (BIT1 (BIT1 (BIT1 (BIT1 (BIT0 (BIT1 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num num))) (NUMERAL (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num num)) (NUMERAL (BIT1 (BIT1 (BIT1 (BIT1 (BIT1 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num num) (NUMERAL (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 (BIT1 (BIT1 h0)))))))) (@hpair num num (NUMERAL (BIT1 (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 (BIT1 h0)))))))) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT0 (BIT1 (BIT1 (BIT1 h0)))))))))))))))))).
 Lemma list_of_seq_def {A : Type'} : heq (@list_of_seq A) (@ε ((hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num)))))))))) -> (num -> A) -> num -> hlist A) (fun list_of_seq' : (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num)))))))))) -> (num -> A) -> num -> hlist A => all (fun h18227 : hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num))))))))) => hand (all (fun s : num -> A => heq (list_of_seq' h18227 s (NUMERAL h0)) (@NIL A))) (all (fun s : num -> A => all (fun n : num => heq (list_of_seq' h18227 s (SUC n)) (@APPEND A (list_of_seq' h18227 s n) (@CONS A (s n) (@NIL A)))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num))))))))) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT1 (BIT0 (BIT1 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num)))))))) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num))))))) (NUMERAL (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 (BIT1 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num)))))) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 (BIT1 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num (hprod num num))))) (NUMERAL (BIT1 (BIT1 (BIT1 (BIT1 (BIT1 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num num)))) (NUMERAL (BIT1 (BIT1 (BIT1 (BIT1 (BIT0 (BIT1 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num num))) (NUMERAL (BIT0 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num num)) (NUMERAL (BIT1 (BIT1 (BIT1 (BIT1 (BIT1 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num num) (NUMERAL (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 (BIT1 (BIT1 h0)))))))) (@hpair num num (NUMERAL (BIT1 (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 (BIT1 h0)))))))) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT0 (BIT1 (BIT1 (BIT1 h0))))))))))))))))))).
-Proof. exact (REFL (@list_of_seq A)). Qed.
+Proof.
+  by total_align=> //0= * ; rewrite/list_of_seq/APPEND mkseqS cats1.
+Qed.
 
-Fact char_gen : (fun a : recspace (hprod Prop (hprod Prop (hprod Prop (hprod Prop (hprod Prop (hprod Prop (hprod Prop Prop))))))) => all (fun char' : (recspace (hprod Prop (hprod Prop (hprod Prop (hprod Prop (hprod Prop (hprod Prop (hprod Prop Prop)))))))) -> Prop => (all (fun a' : recspace (hprod Prop (hprod Prop (hprod Prop (hprod Prop (hprod Prop (hprod Prop (hprod Prop Prop))))))) => (hex (fun a0 : Prop => hex (fun a1 : Prop => hex (fun a2 : Prop => hex (fun a3 : Prop => hex (fun a4 : Prop => hex (fun a5 : Prop => hex (fun a6 : Prop => hex (fun a7 : Prop => heq a' ((fun a0' : Prop => fun a1' : Prop => fun a2' : Prop => fun a3' : Prop => fun a4' : Prop => fun a5' : Prop => fun a6' : Prop => fun a7' : Prop => @CONSTR (hprod Prop (hprod Prop (hprod Prop (hprod Prop (hprod Prop (hprod Prop (hprod Prop Prop))))))) (NUMERAL h0) (@hpair Prop (hprod Prop (hprod Prop (hprod Prop (hprod Prop (hprod Prop (hprod Prop Prop)))))) a0' (@hpair Prop (hprod Prop (hprod Prop (hprod Prop (hprod Prop (hprod Prop Prop))))) a1' (@hpair Prop (hprod Prop (hprod Prop (hprod Prop (hprod Prop Prop)))) a2' (@hpair Prop (hprod Prop (hprod Prop (hprod Prop Prop))) a3' (@hpair Prop (hprod Prop (hprod Prop Prop)) a4' (@hpair Prop (hprod Prop Prop) a5' (@hpair Prop Prop a6' a7'))))))) (fun n : num => @BOTTOM (hprod Prop (hprod Prop (hprod Prop (hprod Prop (hprod Prop (hprod Prop (hprod Prop Prop))))))))) a0 a1 a2 a3 a4 a5 a6 a7)))))))))) -> char' a')) -> char' a)) (CONSTR (NUMERAL h0) (hpair True (hpair True (hpair True (hpair True (hpair True (hpair True (hpair True True))))))) (fun=> BOTTOM)).
-Proof. intro ; apply ; (do! exists True) ; reflexivity. Qed.
+Canonical Structure char := is_Type' Ascii.zero.
 
-Definition char := subtype' char_gen.
-Definition hmk_char := mk char_gen.
-Definition hdest_char := dest char_gen.
+Definition hdest_char : ascii -> recspace (Prop*(Prop*(Prop*(Prop*(Prop*(Prop*(Prop*(Prop))))))))%type :=
+  fun a => match a with
+  | Ascii a0 a1 a2 a3 a4 a5 a6 a7 => CONSTR 0
+    ((fun a0 a1 a2 a3 a4 a5 a6 a7 : Prop => (a0,(a1,(a2,(a3,(a4,(a5,(a6,(a7)))))))))
+    a0 a1 a2 a3 a4 a5 a6 a7) []_rec end.
+
+Definition hmk_char := finv hdest_char.
+
 Lemma axiom_17 : forall (a : char), heq (hmk_char (hdest_char a)) a.
-Proof. exact (mk_dest char_gen). Qed.
-Lemma axiom_18 : forall (r : recspace (hprod Prop (hprod Prop (hprod Prop (hprod Prop (hprod Prop (hprod Prop (hprod Prop Prop)))))))), heq ((fun a : recspace (hprod Prop (hprod Prop (hprod Prop (hprod Prop (hprod Prop (hprod Prop (hprod Prop Prop))))))) => all (fun char' : (recspace (hprod Prop (hprod Prop (hprod Prop (hprod Prop (hprod Prop (hprod Prop (hprod Prop Prop)))))))) -> Prop => (all (fun a' : recspace (hprod Prop (hprod Prop (hprod Prop (hprod Prop (hprod Prop (hprod Prop (hprod Prop Prop))))))) => (hex (fun a0 : Prop => hex (fun a1 : Prop => hex (fun a2 : Prop => hex (fun a3 : Prop => hex (fun a4 : Prop => hex (fun a5 : Prop => hex (fun a6 : Prop => hex (fun a7 : Prop => heq a' ((fun a0' : Prop => fun a1' : Prop => fun a2' : Prop => fun a3' : Prop => fun a4' : Prop => fun a5' : Prop => fun a6' : Prop => fun a7' : Prop => @CONSTR (hprod Prop (hprod Prop (hprod Prop (hprod Prop (hprod Prop (hprod Prop (hprod Prop Prop))))))) (NUMERAL h0) (@hpair Prop (hprod Prop (hprod Prop (hprod Prop (hprod Prop (hprod Prop (hprod Prop Prop)))))) a0' (@hpair Prop (hprod Prop (hprod Prop (hprod Prop (hprod Prop (hprod Prop Prop))))) a1' (@hpair Prop (hprod Prop (hprod Prop (hprod Prop (hprod Prop Prop)))) a2' (@hpair Prop (hprod Prop (hprod Prop (hprod Prop Prop))) a3' (@hpair Prop (hprod Prop (hprod Prop Prop)) a4' (@hpair Prop (hprod Prop Prop) a5' (@hpair Prop Prop a6' a7'))))))) (fun n : num => @BOTTOM (hprod Prop (hprod Prop (hprod Prop (hprod Prop (hprod Prop (hprod Prop (hprod Prop Prop))))))))) a0 a1 a2 a3 a4 a5 a6 a7)))))))))) -> char' a')) -> char' a)) r) (heq (hdest_char (hmk_char r)) r).
-Proof. exact (dest_mk char_gen). Qed.
+Proof.
+  finv_inv_l ; intros [] [] [=] * ; f_equal ; exact: is_true_inj.
+Qed.
 
-Definition h22943 : Prop -> Prop -> Prop -> Prop -> Prop -> Prop -> Prop -> Prop -> char := fun a0 : Prop => fun a1 : Prop => fun a2 : Prop => fun a3 : Prop => fun a4 : Prop => fun a5 : Prop => fun a6 : Prop => fun a7 : Prop => hmk_char ((fun a0' : Prop => fun a1' : Prop => fun a2' : Prop => fun a3' : Prop => fun a4' : Prop => fun a5' : Prop => fun a6' : Prop => fun a7' : Prop => @CONSTR (hprod Prop (hprod Prop (hprod Prop (hprod Prop (hprod Prop (hprod Prop (hprod Prop Prop))))))) (NUMERAL h0) (@hpair Prop (hprod Prop (hprod Prop (hprod Prop (hprod Prop (hprod Prop (hprod Prop Prop)))))) a0' (@hpair Prop (hprod Prop (hprod Prop (hprod Prop (hprod Prop (hprod Prop Prop))))) a1' (@hpair Prop (hprod Prop (hprod Prop (hprod Prop (hprod Prop Prop)))) a2' (@hpair Prop (hprod Prop (hprod Prop (hprod Prop Prop))) a3' (@hpair Prop (hprod Prop (hprod Prop Prop)) a4' (@hpair Prop (hprod Prop Prop) a5' (@hpair Prop Prop a6' a7'))))))) (fun n : num => @BOTTOM (hprod Prop (hprod Prop (hprod Prop (hprod Prop (hprod Prop (hprod Prop (hprod Prop Prop))))))))) a0 a1 a2 a3 a4 a5 a6 a7).
+Lemma axiom_18 : forall (r : recspace (hprod Prop (hprod Prop (hprod Prop (hprod Prop (hprod Prop (hprod Prop (hprod Prop Prop)))))))), heq ((fun a : recspace (hprod Prop (hprod Prop (hprod Prop (hprod Prop (hprod Prop (hprod Prop (hprod Prop Prop))))))) => all (fun char' : (recspace (hprod Prop (hprod Prop (hprod Prop (hprod Prop (hprod Prop (hprod Prop (hprod Prop Prop)))))))) -> Prop => (all (fun a' : recspace (hprod Prop (hprod Prop (hprod Prop (hprod Prop (hprod Prop (hprod Prop (hprod Prop Prop))))))) => (hex (fun a0 : Prop => hex (fun a1 : Prop => hex (fun a2 : Prop => hex (fun a3 : Prop => hex (fun a4 : Prop => hex (fun a5 : Prop => hex (fun a6 : Prop => hex (fun a7 : Prop => heq a' ((fun a0' : Prop => fun a1' : Prop => fun a2' : Prop => fun a3' : Prop => fun a4' : Prop => fun a5' : Prop => fun a6' : Prop => fun a7' : Prop => @CONSTR (hprod Prop (hprod Prop (hprod Prop (hprod Prop (hprod Prop (hprod Prop (hprod Prop Prop))))))) (NUMERAL h0) (@hpair Prop (hprod Prop (hprod Prop (hprod Prop (hprod Prop (hprod Prop (hprod Prop Prop)))))) a0' (@hpair Prop (hprod Prop (hprod Prop (hprod Prop (hprod Prop (hprod Prop Prop))))) a1' (@hpair Prop (hprod Prop (hprod Prop (hprod Prop (hprod Prop Prop)))) a2' (@hpair Prop (hprod Prop (hprod Prop (hprod Prop Prop))) a3' (@hpair Prop (hprod Prop (hprod Prop Prop)) a4' (@hpair Prop (hprod Prop Prop) a5' (@hpair Prop Prop a6' a7'))))))) (fun n : num => @BOTTOM (hprod Prop (hprod Prop (hprod Prop (hprod Prop (hprod Prop (hprod Prop (hprod Prop Prop))))))))) a0 a1 a2 a3 a4 a5 a6 a7)))))))))) -> char' a')) -> char' a)) r) (heq (hdest_char (hmk_char r)) r).
+Proof.
+  _dest_mk_inductive.
+  by exists (Ascii x0 x1 x2 x3 x4 x5 x6 x7) ; rewrite/= 8!asboolE.
+Qed.
+
+Definition h22943 : Prop -> Prop -> Prop -> Prop -> Prop -> Prop -> Prop -> Prop -> char := Ascii.
+
+Lemma h22943_def0 : Ascii = (fun a0 a1 a2 a3 a4 a5 a6 a7 => hmk_char ((fun a0' : Prop => fun a1' : Prop => fun a2' : Prop => fun a3' : Prop => fun a4' : Prop => fun a5' : Prop => fun a6' : Prop => fun a7' : Prop => @CONSTR (hprod Prop (hprod Prop (hprod Prop (hprod Prop (hprod Prop (hprod Prop (hprod Prop Prop))))))) (NUMERAL h0) (@hpair Prop (hprod Prop (hprod Prop (hprod Prop (hprod Prop (hprod Prop (hprod Prop Prop)))))) a0' (@hpair Prop (hprod Prop (hprod Prop (hprod Prop (hprod Prop (hprod Prop Prop))))) a1' (@hpair Prop (hprod Prop (hprod Prop (hprod Prop (hprod Prop Prop)))) a2' (@hpair Prop (hprod Prop (hprod Prop (hprod Prop Prop))) a3' (@hpair Prop (hprod Prop (hprod Prop Prop)) a4' (@hpair Prop (hprod Prop Prop) a5' (@hpair Prop Prop a6' a7'))))))) (fun n : num => @BOTTOM (hprod Prop (hprod Prop (hprod Prop (hprod Prop (hprod Prop (hprod Prop (hprod Prop Prop))))))))) a0 a1 a2 a3 a4 a5 a6 a7)).
+Proof. constr_align axiom_17. Qed.
+
 Lemma h22943_def : heq h22943 (fun a0 : Prop => fun a1 : Prop => fun a2 : Prop => fun a3 : Prop => fun a4 : Prop => fun a5 : Prop => fun a6 : Prop => fun a7 : Prop => hmk_char ((fun a0' : Prop => fun a1' : Prop => fun a2' : Prop => fun a3' : Prop => fun a4' : Prop => fun a5' : Prop => fun a6' : Prop => fun a7' : Prop => @CONSTR (hprod Prop (hprod Prop (hprod Prop (hprod Prop (hprod Prop (hprod Prop (hprod Prop Prop))))))) (NUMERAL h0) (@hpair Prop (hprod Prop (hprod Prop (hprod Prop (hprod Prop (hprod Prop (hprod Prop Prop)))))) a0' (@hpair Prop (hprod Prop (hprod Prop (hprod Prop (hprod Prop (hprod Prop Prop))))) a1' (@hpair Prop (hprod Prop (hprod Prop (hprod Prop (hprod Prop Prop)))) a2' (@hpair Prop (hprod Prop (hprod Prop (hprod Prop Prop))) a3' (@hpair Prop (hprod Prop (hprod Prop Prop)) a4' (@hpair Prop (hprod Prop Prop) a5' (@hpair Prop Prop a6' a7'))))))) (fun n : num => @BOTTOM (hprod Prop (hprod Prop (hprod Prop (hprod Prop (hprod Prop (hprod Prop (hprod Prop Prop))))))))) a0 a1 a2 a3 a4 a5 a6 a7)).
-Proof. exact (REFL h22943). Qed.
-Definition ASCII : Prop -> Prop -> Prop -> Prop -> Prop -> Prop -> Prop -> Prop -> char := h22943.
+Proof.
+  by rewrite/h22943 h22943_def0 => /` * ; rewrite 8!asboolE.
+Qed.
+
+Definition ASCII : Prop -> Prop -> Prop -> Prop -> Prop -> Prop -> Prop -> Prop -> char := Ascii.
 Lemma ASCII_def : heq ASCII h22943.
 Proof. exact (REFL ASCII). Qed.
 
-Fact Real_gen : (fun s : (hprod hreal hreal) -> Prop => hex (fun x : hprod hreal hreal => heq s (treal_eq x))) (treal_eq (hreal_of_num 0, hreal_of_num 0)).
-Proof. eexists ; reflexivity. Qed.
+(*****************************************************************************)
+(* Proof that Rocq's R is a fourcolor.model of real numbers. *)
+(*****************************************************************************)
 
-Definition Real := subtype' Real_gen.
-Definition mk_real := mk Real_gen.
-Definition dest_real := dest Real_gen.
+Open Scope ring_scope.
+Delimit Scope ring_scope with mcR.
+
+Definition R_struct : structure := {|
+  Real.val := R;
+  Real.le := Order.le;
+  Real.sup := sup;
+  Real.add := GRing.add;
+  Real.zero := 0;
+  Real.opp := opp;
+  Real.mul := GRing.mul;
+  Real.one := 1;
+  Real.inv := inv
+|}.
+
+Canonical R_struct.
+
+(* Remark: in fourcolor, le is primitive and eq is defined as the
+intersection of le and the inverse of le, but in coq, lt is primitive
+and le is defined from lt and Logic.eq. *)
+
+Lemma eq_R_struct : @Real.eq R_struct = @eq R.
+Proof.
+  ext=> [x y [h i]| x y h].
+  - by apply le_anti ; apply/andP.
+  - subst y. split ; exact: le_refl.
+Qed.
+
+Lemma R_ltNge {x y : R} : ((x < y) : Prop) = (~ (y <= x)).
+Proof.
+  rewrite real_ltNge ; try exact:num_real.
+  symmetry ; exact: negP**.
+Qed.
+
+Lemma R_leNgt {x y : R} : (~(x < y)) = (y <= x).
+Proof.
+  rewrite R_ltNge. exact:not_notE.
+Qed.
+
+Lemma neqE {A : eqType} {x y : A} : (x <> y) = (x != y).
+Proof. by ext ; move/eqP. Qed.
+
+Ltac simp_R_struct := rewrite/Real.set/Real.val/Real.le/Real.sup/Real.add/Real.zero
+  /Real.opp/Real.mul/Real.one/Real.inv/R_struct/=-/R_struct-/(set R).
+
+Lemma RealdownE : @Real.down R_struct = @down _ _.
+Proof. funext => * ; exact: exists2E. Qed.
+
+Lemma R_axioms : axioms R_struct.
+Proof.
+  apply Axioms ; rewrite ?eq_R_struct.
+  - exact: le_refl.
+  - move/[swap]. exact: le_trans.
+  - exact: sup_upper_bound.
+  - simp_R_struct. rewrite RealdownE. exact: sup_total.
+  - move=> *; exact: lerD.
+  - exact: addrC.
+  - exact: addrA.
+  - exact: add0r.
+  - exact: subrr.
+  - move=> * ; exact: ler_wpM2l.
+  - exact:mulrC.
+  - exact:mulrA.
+  - exact: mulrDr.
+  - exact: mul1r.
+  - move=> ? ; rewrite eqP** negP** => ? ; exact: divrr.
+  - rewrite eqP** negP** ; exact: oner_neq0.
+Qed.
+
+Definition R_model : model := {|
+  model_structure := R_struct;
+  model_axioms := R_axioms;
+|}.
+
+Lemma eq_R_model :
+  @Real.eq (model_structure R_model) = @eq R.
+Proof. exact eq_R_struct. Qed.
+
+(*****************************************************************************)
+(* Proof that real is a fourcolor.model of real numbers. *)
+(*****************************************************************************)
+
+Local Notation preReal := Real_with_nat.Real.
+Local Notation prereal_add := Real_with_nat.real_add.
+Local Notation prereal_le := Real_with_nat.real_le.
+Local Notation prereal_of_num := Real_with_nat.real_of_num.
+Local Notation prereal_neg := Real_with_nat.real_neg.
+Local Notation prereal_mul := Real_with_nat.real_mul.
+Local Notation prereal_inv := Real_with_nat.real_inv.
+
+Definition real_sup : (preReal -> Prop) -> preReal.
+Proof.
+  intro P. case (pselect (exists x, P x)); intro h.
+  case (pselect (exists M, forall x, (P x) -> prereal_le x M)); intro i.
+  set (Q := fun M => (forall x : preReal, P x -> prereal_le x M) /\
+                    (forall M' : preReal, (forall x : preReal, P x -> prereal_le x M')
+                                  -> prereal_le M M')).
+  exact (ε Q). exact (prereal_of_num 0). exact (prereal_of_num 0).
+Defined.
+
+Canonical Structure real_struct : structure := {|
+  Real.val := preReal;
+  Real.le := prereal_le;
+  Real.sup := real_sup;
+  Real.add := prereal_add;
+  Real.zero := prereal_of_num 0;
+  Real.opp := prereal_neg;
+  Real.mul := prereal_mul;
+  Real.one := prereal_of_num 1;
+  Real.inv := prereal_inv
+|}.
+
+Lemma real_sup_is_lub E :
+  Real.has_sup E -> ub E (real_sup E) /\ (forall b, ub E b -> prereal_le (real_sup E) b).
+Proof.
+  move=> [i j] ; rewrite/real_sup.
+  case (pselect (exists x : preReal, E x)) ; last contradiction.
+  case (pselect (exists M : preReal, forall x : preReal, E x -> prereal_le x M)) ; last contradiction.
+  by (ε_spec by exact (thm_REAL_COMPLETE E (conj i j))) => ? -[].
+Qed.
+
+Lemma real_sup_upper_bound E : Real.has_sup E -> ub E (real_sup E).
+Proof. intro h. apply (proj1 (real_sup_is_lub h)). Qed.
+
+Lemma real_sup_total E x : Real.has_sup E -> Real.down E x \/ prereal_le (real_sup E) x.
+Proof.
+  intro h. case (EM (Real.down E x)); intro k. auto. right.
+  generalize (real_sup_is_lub h); intros [i j]. apply j.
+  intros y hy.
+  rewrite/Real.down exists2E -forallNE in k.
+  generalize (k y); intro k'. rewrite not_andE orNp in k'.
+  apply thm_REAL_LT_IMP_LE. apply k'. apply hy.
+Qed.
+
+Lemma eq_real_struct: @Real.eq real_struct = @eq preReal.
+Proof.
+  by ext => x y ; rewrite/Real.eq ; move:thm_REAL_LE_ANTISYM =>/0= ->.
+Qed.
+
+Lemma real_axioms : axioms real_struct.
+Proof.
+  apply Axioms.
+  apply thm_REAL_LE_REFL.
+  intros x y z xy yz; apply (thm_REAL_LE_TRANS x y z (conj xy yz)).
+  apply real_sup_upper_bound.
+  apply real_sup_total.
+  intros x y z yz; rewrite -> thm_REAL_LE_LADD; exact yz.
+  intros x y. rewrite eq_real_struct. apply thm_REAL_ADD_SYM.
+  intros x y z. rewrite eq_real_struct. apply thm_REAL_ADD_ASSOC.
+  intro x. rewrite eq_real_struct. apply thm_REAL_ADD_LID.
+  intro x. rewrite eq_real_struct. rewrite -> thm_REAL_ADD_SYM. apply thm_REAL_ADD_LINV.
+  intros x y z hx yz. exact: thm_REAL_LE_LMUL.
+  intros x y. rewrite eq_real_struct. apply thm_REAL_MUL_SYM.
+  intros x y z. rewrite eq_real_struct. apply thm_REAL_MUL_ASSOC.
+  intros x y z. rewrite eq_real_struct. apply thm_REAL_ADD_LDISTRIB.
+  intro x. rewrite eq_real_struct. apply thm_REAL_MUL_LID.
+  intro x. rewrite eq_real_struct. rewrite -> thm_REAL_MUL_SYM. apply thm_REAL_MUL_LINV.
+  by rewrite/= eq_real_struct ; move: thm_REAL_OF_NUM_EQ => /0= ->.
+Qed.
+
+Definition real_model : model := {|
+  model_structure := real_struct;
+  model_axioms := real_axioms;
+|}.
+
+Lemma eq_real_model:
+  @Real.eq (model_structure real_model) = @eq preReal.
+Proof. exact eq_real_struct. Qed.
+
+Definition R_of_real := @Rmorph_to real_model R_model.
+Definition real_of_R := @Rmorph_to R_model real_model.
+
+Lemma R_of_realK : cancel real_of_R R_of_real.
+Proof. move=> r ; rewrite -eq_R_model. exact: Rmorph_to_inv. Qed.
+
+Lemma real_of_RK : cancel R_of_real real_of_R.
+Proof. move=> r ; rewrite -eq_real_model. exact: Rmorph_to_inv. Qed.
+
+Lemma real_injE x y :  (x = R_of_real y) = (real_of_R x = y).
+Proof.
+  ext=> ?.
+  - by rewrite -(real_of_RK y) ; f_equal.
+  - by rewrite -(R_of_realK x) ; f_equal.
+Qed.
+
+Canonical Structure Real := {|
+  type := R ;
+  point := 0
+|}.
+
+Definition mk_real : ((prod hreal hreal) -> Prop) -> Real := fun x => R_of_real (Real_with_nat.mk_real x).
+
+Definition dest_real : Real -> (prod hreal hreal) -> Prop := fun x => Real_with_nat.dest_real (real_of_R x).
+
 Lemma axiom_23 : forall (a : Real), heq (mk_real (dest_real a)) a.
-Proof. exact (mk_dest Real_gen). Qed.
-Lemma axiom_24 : forall (r : (hprod hreal hreal) -> Prop), heq ((fun s : (hprod hreal hreal) -> Prop => hex (fun x : hprod hreal hreal => heq s (treal_eq x))) r) (heq (dest_real (mk_real r)) r).
-Proof. exact (dest_mk Real_gen). Qed.
+Proof.
+  by move=> ? ; rewrite/mk_real/dest_real Real_with_nat.axiom_23 R_of_realK.
+Qed.
 
-Definition real_of_num : num -> Real := fun m : num => mk_real (fun u : hprod hreal hreal => treal_eq (treal_of_num m) u).
+Lemma axiom_24 : forall (r : (hprod hreal hreal) -> Prop), heq ((fun s : (hprod hreal hreal) -> Prop => hex (fun x : hprod hreal hreal => heq s (treal_eq x))) r) (heq (dest_real (mk_real r)) r).
+Proof.
+  by move=> c ; rewrite/dest_real/mk_real real_of_RK -Real_with_nat.axiom_24.
+Qed.
+
+Lemma real_of_R_morph : morphism real_of_R.
+Proof. exact: Rmorph_toP. Qed.
+
+Lemma R_of_real_morph : morphism R_of_real.
+Proof. exact: Rmorph_toP. Qed.
+
+Lemma zero_eq : 0 = R_of_real (prereal_of_num 0).
+Proof.
+  rewrite real_injE -eq_real_model. exact: (morph_zero real_of_R_morph).
+Qed.
+
+Lemma one_eq : 1%R = R_of_real (prereal_of_num 1).
+Proof.
+  rewrite real_injE -eq_real_model. exact: (morph_one real_of_R_morph).
+Qed.
+
+Definition real_of_num : num -> Real := fun n => n%:R.
+
 Lemma real_of_num_def : heq real_of_num (fun m : num => mk_real (fun u : hprod hreal hreal => treal_eq (treal_of_num m) u)).
-Proof. exact (REFL real_of_num). Qed.
-Definition real_neg : Real -> Real := fun x1 : Real => mk_real (fun u : hprod hreal hreal => hex (fun x1' : hprod hreal hreal => hand (treal_eq (treal_neg x1') u) (dest_real x1 x1'))).
+Proof.
+  ext=>n. rewrite/real_of_num/mk_real-/(prereal_of_num n).
+  induction n ; first exact: zero_eq.
+  rewrite/real_of_num-addn1 natrD IHn -thm_REAL_OF_NUM_ADD one_eq sym -eq_R_model.
+  exact:(Real.morph_add R_of_real_morph).
+Qed.
+
+Definition real_neg : Real -> Real := opp.
+
 Lemma real_neg_def : heq real_neg (fun x1 : Real => mk_real (fun u : hprod hreal hreal => hex (fun x1' : hprod hreal hreal => hand (treal_eq (treal_neg x1') u) (dest_real x1 x1')))).
-Proof. exact (REFL real_neg). Qed.
-Definition real_add : Real -> Real -> Real := fun x1 : Real => fun y1 : Real => mk_real (fun u : hprod hreal hreal => hex (fun x1' : hprod hreal hreal => hex (fun y1' : hprod hreal hreal => hand (treal_eq (treal_add x1' y1') u) (hand (dest_real x1 x1') (dest_real y1 y1'))))).
+Proof.
+  ext=> x. rewrite -[X in _ = X]/(R_of_real (prereal_neg (real_of_R x))).
+  rewrite real_injE -eq_real_model. exact: (Real.morph_opp real_of_R_morph).
+Qed.
+
+Definition real_add : Real -> Real -> Real := GRing.add.
+
 Lemma real_add_def : heq real_add (fun x1 : Real => fun y1 : Real => mk_real (fun u : hprod hreal hreal => hex (fun x1' : hprod hreal hreal => hex (fun y1' : hprod hreal hreal => hand (treal_eq (treal_add x1' y1') u) (hand (dest_real x1 x1') (dest_real y1 y1')))))).
-Proof. exact (REFL real_add). Qed.
-Definition real_mul : Real -> Real -> Real := fun x1 : Real => fun y1 : Real => mk_real (fun u : hprod hreal hreal => hex (fun x1' : hprod hreal hreal => hex (fun y1' : hprod hreal hreal => hand (treal_eq (treal_mul x1' y1') u) (hand (dest_real x1 x1') (dest_real y1 y1'))))).
+Proof.
+  ext=> x y.
+  rewrite -[X in _ = X]/(R_of_real (prereal_add (real_of_R x) (real_of_R y))).
+  rewrite real_injE -eq_real_model. exact: (Real.morph_add real_of_R_morph).
+Qed.
+
+Definition real_mul : Real -> Real -> Real := GRing.mul.
+
 Lemma real_mul_def : heq real_mul (fun x1 : Real => fun y1 : Real => mk_real (fun u : hprod hreal hreal => hex (fun x1' : hprod hreal hreal => hex (fun y1' : hprod hreal hreal => hand (treal_eq (treal_mul x1' y1') u) (hand (dest_real x1 x1') (dest_real y1 y1')))))).
-Proof. exact (REFL real_mul). Qed.
-Definition real_le : Real -> Real -> Prop := fun x1 : Real => fun y1 : Real => @ε Prop (fun u : Prop => hex (fun x1' : hprod hreal hreal => hex (fun y1' : hprod hreal hreal => hand (heq (treal_le x1' y1') u) (hand (dest_real x1 x1') (dest_real y1 y1'))))).
+Proof.
+  ext=> x y.
+  rewrite -[X in _ = X]/(R_of_real (prereal_mul (real_of_R x) (real_of_R y))).
+  rewrite real_injE -eq_real_model. exact: (Real.morph_mul real_of_R_morph).
+Qed.
+
+Definition real_le : Real -> Real -> Prop := Order.le.
+
 Lemma real_le_def : heq real_le (fun x1 : Real => fun y1 : Real => @ε Prop (fun u : Prop => hex (fun x1' : hprod hreal hreal => hex (fun y1' : hprod hreal hreal => hand (heq (treal_le x1' y1') u) (hand (dest_real x1 x1') (dest_real y1 y1')))))).
-Proof. exact (REFL real_le). Qed.
-Definition real_inv : Real -> Real := fun x : Real => mk_real (fun u : hprod hreal hreal => hex (fun x' : hprod hreal hreal => hand (treal_eq (treal_inv x') u) (dest_real x x'))).
+Proof.
+  funext => x y. rewrite-[X in _ = X]/(prereal_le (real_of_R x) (real_of_R y)).
+  by ext ; case (morph_le real_of_R_morph x y).
+Qed.
+
+Definition real_inv : Real -> Real := inv.
+
 Lemma real_inv_def : heq real_inv (fun x : Real => mk_real (fun u : hprod hreal hreal => hex (fun x' : hprod hreal hreal => hand (treal_eq (treal_inv x') u) (dest_real x x')))).
-Proof. exact (REFL real_inv). Qed.
-Definition real_sub : Real -> Real -> Real := fun h24112 : Real => fun h24113 : Real => real_add h24112 (real_neg h24113).
+Proof.
+  ext=> x. rewrite -[X in _ = X]/(R_of_real (prereal_inv (real_of_R x))).
+  rewrite real_injE. case (EM (x = 0)) => [->|h].
+  - by rewrite/real_inv invr0 zero_eq real_of_RK thm_REAL_INV_0.
+  - rewrite -eq_real_model. apply (morph_inv real_of_R_morph).
+    rewrite eq_R_model. exact h.
+Qed.
+
+Definition real_sub : Real -> Real -> Real := fun x y => x - y.
+
 Lemma real_sub_def : heq real_sub (fun h24112 : Real => fun h24113 : Real => real_add h24112 (real_neg h24113)).
 Proof. exact (REFL real_sub). Qed.
-Definition real_lt : Real -> Real -> Prop := fun h24124 : Real => fun h24125 : Real => not (real_le h24125 h24124).
+
+Definition real_lt : Real -> Real -> Prop := Order.lt.
+
 Lemma real_lt_def : heq real_lt (fun h24124 : Real => fun h24125 : Real => not (real_le h24125 h24124)).
-Proof. exact (REFL real_lt). Qed.
-Definition real_ge : Real -> Real -> Prop := fun h24136 : Real => fun h24137 : Real => real_le h24137 h24136.
+Proof.
+  funext => x y. exact: R_ltNge.
+Qed.
+
+Definition real_ge : Real -> Real -> Prop := fun x y => x >= y.
+
 Lemma real_ge_def : heq real_ge (fun h24136 : Real => fun h24137 : Real => real_le h24137 h24136).
 Proof. exact (REFL real_ge). Qed.
-Definition real_gt : Real -> Real -> Prop := fun h24148 : Real => fun h24149 : Real => real_lt h24149 h24148.
+
+Definition real_gt : Real -> Real -> Prop := fun x y => x > y.
+
 Lemma real_gt_def : heq real_gt (fun h24148 : Real => fun h24149 : Real => real_lt h24149 h24148).
 Proof. exact (REFL real_gt). Qed.
-Definition real_abs : Real -> Real := fun h24160 : Real => @COND Real (real_le (real_of_num (NUMERAL h0)) h24160) h24160 (real_neg h24160).
+
+Definition real_abs : Real -> Real := Num.norm.
+
 Lemma real_abs_def : heq real_abs (fun h24160 : Real => @COND Real (real_le (real_of_num (NUMERAL h0)) h24160) h24160 (real_neg h24160)).
-Proof. exact (REFL real_abs). Qed.
-Definition real_pow : Real -> num -> Real := @ε ((hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num))))))) -> Real -> num -> Real) (fun real_pow' : (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num))))))) -> Real -> num -> Real => all (fun h24171 : hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num)))))) => hand (all (fun x : Real => heq (real_pow' h24171 x (NUMERAL h0)) (real_of_num (NUMERAL (BIT1 h0))))) (all (fun x : Real => all (fun n : num => heq (real_pow' h24171 x (SUC n)) (real_mul x (real_pow' h24171 x n))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num)))))) (NUMERAL (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 (BIT1 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num (hprod num num))))) (NUMERAL (BIT1 (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num num)))) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num num))) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT1 (BIT0 (BIT1 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num num)) (NUMERAL (BIT1 (BIT1 (BIT1 (BIT1 (BIT1 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num num) (NUMERAL (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 (BIT1 (BIT1 h0)))))))) (@hpair num num (NUMERAL (BIT1 (BIT1 (BIT1 (BIT1 (BIT0 (BIT1 (BIT1 h0)))))))) (NUMERAL (BIT1 (BIT1 (BIT1 (BIT0 (BIT1 (BIT1 (BIT1 h0))))))))))))))).
+Proof.
+  ext=> /= r ; rewrite/real_le/real_abs ; if_intro => ?.
+  - by rewrite ger0_norm.
+  - by rewrite ltr0_norm ?R_ltNge.
+Qed.
+
+Definition real_pow : Real -> num -> Real := fun r n => r ^+ n.
+
 Lemma real_pow_def : heq real_pow (@ε ((hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num))))))) -> Real -> num -> Real) (fun real_pow' : (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num))))))) -> Real -> num -> Real => all (fun h24171 : hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num)))))) => hand (all (fun x : Real => heq (real_pow' h24171 x (NUMERAL h0)) (real_of_num (NUMERAL (BIT1 h0))))) (all (fun x : Real => all (fun n : num => heq (real_pow' h24171 x (SUC n)) (real_mul x (real_pow' h24171 x n))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num)))))) (NUMERAL (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 (BIT1 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num (hprod num num))))) (NUMERAL (BIT1 (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num num)))) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num num))) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT1 (BIT0 (BIT1 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num num)) (NUMERAL (BIT1 (BIT1 (BIT1 (BIT1 (BIT1 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num num) (NUMERAL (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 (BIT1 (BIT1 h0)))))))) (@hpair num num (NUMERAL (BIT1 (BIT1 (BIT1 (BIT1 (BIT0 (BIT1 (BIT1 h0)))))))) (NUMERAL (BIT1 (BIT1 (BIT1 (BIT0 (BIT1 (BIT1 (BIT1 h0)))))))))))))))).
-Proof. exact (REFL real_pow). Qed.
-Definition real_div : Real -> Real -> Real := fun h24172 : Real => fun h24173 : Real => real_mul h24172 (real_inv h24173).
+Proof.
+  by total_align => /0= * ; rewrite/real_pow // exprS.
+Qed.
+
+Definition real_div : Real -> Real -> Real := fun x y => x/y.
+
 Lemma real_div_def : heq real_div (fun h24172 : Real => fun h24173 : Real => real_mul h24172 (real_inv h24173)).
 Proof. exact (REFL real_div). Qed.
-Definition real_max : Real -> Real -> Real := fun h24184 : Real => fun h24185 : Real => @COND Real (real_le h24184 h24185) h24185 h24184.
+
+Definition real_max : Real -> Real -> Real := max.
+
 Lemma real_max_def : heq real_max (fun h24184 : Real => fun h24185 : Real => @COND Real (real_le h24184 h24185) h24185 h24184).
-Proof. exact (REFL real_max). Qed.
-Definition real_min : Real -> Real -> Real := fun h24196 : Real => fun h24197 : Real => @COND Real (real_le h24196 h24197) h24196 h24197.
+Proof.
+  rewrite/real_max/max => /` x y /c`.
+  - rewrite lt_neqAle => -> ; case (EM (x=y)) ; last by move/eqP=> ->.
+    by move =>-> ; rewrite eqtype.eq_refl.
+  - by move/negP/negbTE ; rewrite lt_neqAle Bool.andb_comm => ->.
+Qed.
+
+Definition real_min : Real -> Real -> Real := min.
+
 Lemma real_min_def : heq real_min (fun h24196 : Real => fun h24197 : Real => @COND Real (real_le h24196 h24197) h24196 h24197).
-Proof. exact (REFL real_min). Qed.
-Definition real_sgn : Real -> Real := fun h26684 : Real => @COND Real (real_lt (real_of_num (NUMERAL h0)) h26684) (real_of_num (NUMERAL (BIT1 h0))) (@COND Real (real_lt h26684 (real_of_num (NUMERAL h0))) (real_neg (real_of_num (NUMERAL (BIT1 h0)))) (real_of_num (NUMERAL h0))).
+Proof.
+  rewrite/real_min/min => /` x y /c`.
+  - rewrite lt_neqAle => ->.
+    case (EM (x=y)) ; last by move/eqP=>->.
+    by move =>-> ; rewrite eqtype.eq_refl.
+  - by move/negP/negbTE ; rewrite lt_neqAle Bool.andb_comm => ->.
+Qed.
+
+Definition real_sgn : Real -> Real := Num.sg.
+
+Variant real_sgn_spec (r : R) : R -> R -> Type :=
+  | real_sgn_pos_spec : 0 < r -> real_sgn_spec r r 1
+  | real_sgn_neg_spec : r < 0 -> real_sgn_spec r r (-1)
+  | real_sgn0_spec : real_sgn_spec r 0 0.
+
+Lemma real_sgn_elim (r : R) : real_sgn_spec r r (real_sgn r).
+Proof.
+  rewrite/real_sgn. case (pselect (0<r)).
+    { move/[dup]/gtr0_sg =>-> ; exact: real_sgn_pos_spec. }
+  case (pselect (r<0)%mcR).
+    { move/[dup]/ltr0_sg =>-> + _ ; exact: real_sgn_neg_spec. }
+  rewrite 2!R_leNgt => ? ?; have -> : r = 0 by apply le_anti ; apply/andP.
+  rewrite sgr0 ; exact:real_sgn0_spec.
+Qed.
+
 Lemma real_sgn_def : heq real_sgn (fun h26684 : Real => @COND Real (real_lt (real_of_num (NUMERAL h0)) h26684) (real_of_num (NUMERAL (BIT1 h0))) (@COND Real (real_lt h26684 (real_of_num (NUMERAL h0))) (real_neg (real_of_num (NUMERAL (BIT1 h0)))) (real_of_num (NUMERAL h0)))).
-Proof. exact (REFL real_sgn). Qed.
-Definition sqrt : Real -> Real := fun h27235 : Real => @ε Real (fun y : Real => hand (heq (real_sgn y) (real_sgn h27235)) (heq (real_pow y (NUMERAL (BIT0 (BIT1 h0)))) (real_abs h27235))).
+Proof.
+  rewrite/COND/real_lt ; ext => /= r ; case (real_sgn_elim r).
+  - by move=>? ; if_triv.
+  - move=> neg_0 ; rewrite if_triv_False ; first by if_triv.
+    by move/(lt_trans neg_0) ; rewrite lt_irreflexive.
+  - by rewrite lt_irreflexive ; do 2 if_triv.
+Qed.
+
+Lemma inj_square_pos (r r' : R) : r ^+ 2 = r' ^+ 2 ->
+  0 < r -> 0 < r' -> r = r'.
+Proof.
+  move=> eqsq pos_r pos_r'. apply: (@pexpIrn _ 2%N).
+  - by [].
+  - by move: pos_r ; rewrite lt_neqAle -andP** => -[].
+  - by move: pos_r' ; rewrite lt_neqAle -andP** => -[].
+  - by [].
+Qed.
+
+Definition sqrt : Real -> Real := fun r => if 0 <= r then Num.sqrt r else -Num.sqrt (-r).
+
 Lemma sqrt_def : heq sqrt (fun h27235 : Real => @ε Real (fun y : Real => hand (heq (real_sgn y) (real_sgn h27235)) (heq (real_pow y (NUMERAL (BIT0 (BIT1 h0)))) (real_abs h27235)))).
-Proof. exact (REFL sqrt). Qed.
-Definition DECIMAL : num -> num -> Real := fun h27914 : num => fun h27915 : num => real_div (real_of_num h27914) (real_of_num h27915).
+Proof.
+  funext=> /= r. align_ε.
+  - rewrite/sqrt -(asboolb (0 <= r)%mcR).
+    apply if_intro with (P := fun r' => real_sgn r' = real_sgn r /\ real_pow r' 2 = `|r|);
+    [move=>pos_r | rewrite -R_ltNge => neg_r] ; split.
+    + case (EM (r = 0)) => [-> | neq_r_0] ; first by rewrite sqrtr0.
+      have spos_r : 0 < r by rewrite lt_neqAle -andP** -negP** -eqP** sym.
+      by rewrite/real_sgn !gtr0_sg // sqrtr_gt0.
+    + rewrite/real_pow ; case (sqrtrP r) ; [by rewrite R_ltNge|move=>/={}r{}pos_r].
+      rewrite ger0_norm ; [exact: erefl | exact: sqr_ge0].
+    + rewrite/real_sgn ltr0_sg ; first by rewrite ltr0_sg ?RltE.
+      by rewrite oppr_lt0 sqrtr_gt0 -oppr_lt0 opprK.
+    + rewrite/real_pow -{2}(opprK r). set k := -r. case (sqrtrP (k)) => /=.
+      * rewrite oppr_lt0 => pos_r. have := lt_trans neg_r pos_r.
+        by rewrite lt_irreflexive.
+      * move =>{k neg_r}r pos_r.
+        rewrite sqrrN normrN ger0_norm ; [exact: erefl | exact: sqr_ge0].
+  - set (s_r := sqrt r : R) ; move=> s_r' [<- <-] [].
+    rewrite/real_pow ; case (real_sgn_elim s_r) ; case (real_sgn_elim s_r') => //=.
+    2-4,6-8: cbn ; lra.
+    + by move=> * ; apply inj_square_pos.
+    + move=> neg_s_r' neg_s_r _ ; rewrite -sqrrN -(sqrrN s_r) => eqsq.
+      by apply oppr_inj ; apply inj_square_pos ; rewrite ?oppr_gt0.
+Qed.
+
+Definition DECIMAL : num -> num -> Real := fun n m => n%:R/m%:R.
+
 Lemma DECIMAL_def : heq DECIMAL (fun h27914 : num => fun h27915 : num => real_div (real_of_num h27914) (real_of_num h27915)).
 Proof. exact (REFL DECIMAL). Qed.
-Definition integer : Real -> Prop := fun h28801 : Real => hex (fun n : num => heq (real_abs h28801) (real_of_num n)).
+
+(*****************************************************************************)
+(* Mapping of integers. *)
+(*****************************************************************************)
+
+Open Scope int_scope.
+
+Canonical Structure int := is_Type' 0.
+
+Definition integer : Real -> Prop := fun x => x \is a Num.int.
+
 Lemma integer_def : heq integer (fun h28801 : Real => hex (fun n : num => heq (real_abs h28801) (real_of_num n))).
-Proof. exact (REFL integer). Qed.
-
-Lemma axiom_20_imp r : is_nadd r -> dest_nadd (mk_nadd r) = r.
-Proof. by rewrite axiom_20. Qed.
-Lemma axiom_22_imp r : (exists x, r  = nadd_eq x) -> dest_hreal (mk_hreal r) = r.
-Proof. by move:axiom_22 => /0= ->. Qed.
-Lemma axiom_24_imp r : (exists x, r = treal_eq x) -> dest_real (mk_real r) = r.
-Proof. by move:axiom_24 => /0= ->. Qed.
-
-Lemma is_nadd_add_aux f g : is_nadd f -> is_nadd g -> is_nadd (fun n => f n + g n).
 Proof.
-  rewrite/is_nadd/le/dist/add/mul/minus/0= => /= -[b i] [c j]. exists (b+c) => x y.
-  have:= (conj (i x y) (j x y)) ; lia.
+  ext => r ; rewrite/integer intrE -orP** -2!natrP**.
+  - move=>[[n ->]|[n nreq]]; exists n ; first by rewrite/real_abs normr_nat.
+    by rewrite/real_abs -(opprK r) normrN nreq normr_nat.
+  - case=>n; rewrite/real_abs /0= eqP** eqr_norml-andP**-orP**-2!eqP**=> -[[->|->] _].
+    + by left ; exists n.
+    + by right ; exists n ; rewrite opprK.
 Qed.
 
-Lemma is_nadd_add f g : is_nadd (fun n => dest_nadd f n + dest_nadd g n).
-Proof.
-  destruct f as [f hf]. destruct g as [g hg]. simpl.
-  apply is_nadd_add_aux. exact hf. exact hg.
-Qed.
+Definition int_of_real : Real -> int := Num.floor.
+Definition real_of_int : int -> Real := intr.
 
-Lemma nadd_add_compat f f' g g' : nadd_eq f f' -> nadd_eq g g' ->
-  nadd_eq (nadd_add f g) (nadd_add f' g').
-Proof.
-  intros [b ff'] [c gg']. exists (b+c). intro n.
-  generalize (ff' n); intro ff'n. generalize (gg' n); intro gg'n.
-  unfold nadd_add. rewrite !axiom_20_imp. 2,3 : exact: is_nadd_add.
-  unfold le,dist,add,minus in *. simpl in *. lia.
-Qed.
-
-Lemma ltn_sub_telescope x y z : x - z <= x - y + (y - z).
-Proof.
-  elim: y x z => [|y IHy] x z ; first by rewrite subn0 sub0n addn0 leq_subr.
-  case:x=> [|x] ; [by rewrite sub0n leq0n | case:z=> [|z]].
-  - by rewrite subSS addnS ltnS -{1}(subn0 x) -{2}(subn0 y).
-  - by rewrite 3! subSS.
-Qed.
-
-Lemma DIST_TRIANGLE x y z : dist (x,z) <= dist (x,y) + dist (y,z).
-Proof.
-  rewrite/dist/= addnACA (addnC (y-x)); apply leq_add; exact:ltn_sub_telescope.
-Qed.
-
-Lemma nadd_eq_trans g f h : nadd_eq f g -> nadd_eq g h -> nadd_eq f h.
-Proof.
-  intros [b fg] [c gh]. exists (b+c). intro n.
-  apply (leq_trans (@DIST_TRIANGLE _ (dest_nadd g n) _)).
-  apply leq_add ; [exact: fg | exact: gh].
-Qed.
-
-Lemma NADD_EQ_REFL f : nadd_eq f f.
-Proof.
-  by exists 0=> n ; rewrite/dist/le/minus/add/= subnn addn0.
-Qed.
-
-Lemma hreal_add_of_mk_hreal p q :
-  hreal_add (mk_hreal (nadd_eq p)) (mk_hreal (nadd_eq q))
-  = mk_hreal (nadd_eq (nadd_add p q)).
-Proof.
-  unfold hreal_add. apply f_equal. ext=> x h.
-
-  destruct h as [p' [q' [h1 [h2 h3]]]].
-  rewrite !axiom_22_imp in h2,h3 |- ; do? by eexists.
-  exact: (nadd_eq_trans (nadd_add_compat _ _) h1).
-
-  exists p. exists q. split. exact h.
-  rewrite !axiom_22_imp ; do? by eexists.
-  split ; exact:NADD_EQ_REFL.
-Qed.
-
-Lemma is_hreal_dest_hreal x : exists x', dest_hreal x = nadd_eq x'.
-Proof.
-  by move:axiom_22 => /0= -> ; rewrite axiom_21.
-Qed.
-
-Lemma is_mk_hreal_hreal x : exists x', x = mk_hreal (nadd_eq x').
-Proof.
-  have [x' destxe] := is_hreal_dest_hreal x.
-  by exists x' ; rewrite -destxe axiom_21.
-Qed.
-
-Lemma NADD_ADD_ASSOC p q r :
-  nadd_add (nadd_add p q) r = nadd_add p (nadd_add q r).
-Proof.
-  rewrite/nadd_add ; f_equal => /` x. rewrite !axiom_20_imp.
-  2,3 : exact: is_nadd_add. by rewrite/add addnA.
-Qed.
-
-Lemma hreal_add_ASSOC p q r :
-  hreal_add (hreal_add p q) r = hreal_add p (hreal_add q r).
-Proof.
-  have [? ->] := (is_mk_hreal_hreal p).
-  have [? ->] := (is_mk_hreal_hreal q).
-  have [? ->] := (is_mk_hreal_hreal r). rewrite !hreal_add_of_mk_hreal.
-  f_equal. rewrite NADD_ADD_ASSOC. reflexivity.
-Qed.
-
-Lemma NADD_ADD_SYM p q : nadd_add p q = nadd_add q p.
-Proof. unfold nadd_add, add. f_equal. ext=>x. exact: addnC. Qed.
-
-Lemma hreal_add_sym p q : hreal_add p q = hreal_add q p.
-Proof.
-  unfold hreal_add. f_equal. ext=>x [y [z [h1 [h2 h3]]]].
-  exists z. exists y. by split ; rewrite // NADD_ADD_SYM.
-  exists z. exists y. by split ; rewrite // NADD_ADD_SYM.
-Qed.
-
-Lemma is_nadd_dest_nadd x : is_nadd (dest_nadd x).
-Proof.
-  by move:axiom_20 => /0= -> ; rewrite axiom_19.
-Qed.
-
-Lemma NADD_ADD_LCANCEL : forall x y z,
-  nadd_eq (nadd_add x y) (nadd_add x z) -> nadd_eq y z.
-Proof.
-  case => x naddx [y naddy] [z naddz] [B h]. exists B=> n ; have:= h n.
-  rewrite/nadd_add/dest_nadd/mk_nadd/= !dest_mk_aux. 2,3: exact:is_nadd_add_aux.
-  rewrite/le/dist/add/minus/= ; lia.
-Qed.
-
-Lemma DIST_SYM x y : dist (x,y) = dist (y,x).
-Proof. by rewrite/dist/add/= addnC. Qed.
-
-Lemma nadd_eq_sym f g : nadd_eq f g -> nadd_eq g f.
-Proof. intros [b fg]. exists b. intro n. rewrite DIST_SYM. apply fg. Qed.
-
-Lemma hreal_add_lcancel p q r : hreal_add p r = hreal_add q r -> p = q.
-Proof.
-  have [{}p ->] := (is_mk_hreal_hreal p).
-  have [{}q ->] := (is_mk_hreal_hreal q).
-  have [{}r ->] := (is_mk_hreal_hreal r).
-  rewrite !hreal_add_of_mk_hreal; intro e.
-  unfold mk_hreal, mk_quotient in e. apply mk_inj in e.
-  2: apply is_eq_class_of. 2: apply is_eq_class_of.
-  apply eq_class_elim in e. 2: apply NADD_EQ_REFL.
-  rewrite NADD_ADD_SYM (NADD_ADD_SYM q) in e.
-  apply NADD_ADD_LCANCEL in e.
-  f_equal. apply eq_class_intro. apply nadd_eq_sym.
-  intros ? ? ; apply nadd_eq_trans.
-  exact e.
-Qed.
-
-Lemma treal_eq_trans y x z : treal_eq x y -> treal_eq y z -> treal_eq x z.
-Proof.
-  unfold treal_eq.
-  destruct x as [x1 x2]; destruct y as [y1 y2]; destruct z as [z1 z2]; simpl.
-  intros xy yz.
-  assert (h: hreal_add (hreal_add x1 z2) (hreal_add y1 y2)
-             = hreal_add (hreal_add z1 x2) (hreal_add y1 y2)).
-  rewrite hreal_add_ASSOC. rewrite <- (hreal_add_ASSOC z2).
-  rewrite (hreal_add_sym _ y2). rewrite <- hreal_add_ASSOC.
-  rewrite (hreal_add_sym z2). rewrite xy yz.
-
-  rewrite hreal_add_ASSOC. rewrite (hreal_add_sym (hreal_add z1 x2)).
-  rewrite hreal_add_ASSOC. rewrite (hreal_add_sym y2).
-  rewrite (hreal_add_sym z1 x2). rewrite hreal_add_ASSOC.
-  reflexivity. apply hreal_add_lcancel in h. exact h.
-Qed.
-
-Lemma nadd_add0x x : nadd_add (nadd_of_num 0) x = x.
-Proof.
-  rewrite/nadd_of_num/nadd_add.
-  rewrite axiom_20_imp ; [exact:axiom_19 | exact : nadd_gen].
-Qed.
-
-Lemma hreal_add0x x : hreal_add (hreal_of_num 0) x = x.
-Proof.
-  rewrite/hreal_of_num.
-  have [{}x ->] := (is_mk_hreal_hreal x).
-  by rewrite hreal_add_of_mk_hreal nadd_add0x.
-Qed.
-
-Lemma hreal_addx0 x : hreal_add x (hreal_of_num 0) = x.
-Proof.
-  by rewrite hreal_add_sym hreal_add0x.
-Qed.
-
-Lemma treal_eq0 x y : treal_eq (treal_of_num 0) (x,y) -> x = y.
-Proof.
-  rewrite/treal_of_num/treal_eq/FST/SND/hpair/0=/=.
-  by rewrite hreal_add0x hreal_addx0.
-Qed.
-
-Fact int_gen : integer (real_of_num 0).
-Proof.
-  exists 0 ; rewrite/real_abs => /c` // _.
-  rewrite/real_neg/treal_neg/real_of_num/0= axiom_24_imp ; last by eexists.
-  f_equal => /` /=.
-  - move=> y [x [eqxy eq0x]].
-    by apply (treal_eq_trans eq0x) ; case: x eq0x eqxy => x1 x2 /treal_eq0 ->.
-  - by case => [_ x] /[dup] /treal_eq0 -> ? ; exists (x,x).
-Qed.
-
-Definition int := subtype' int_gen.
-Definition int_of_real := mk int_gen.
-Definition real_of_int := dest int_gen.
 Lemma axiom_25 : forall (a : int), heq (int_of_real (real_of_int a)) a.
-Proof. exact (mk_dest int_gen). Qed.
-Lemma axiom_26 : forall (r : Real), heq ((fun x : Real => integer x) r) (heq (real_of_int (int_of_real r)) r).
-Proof. exact (dest_mk int_gen). Qed.
+Proof. exact: intrKfloor. Qed.
 
-Definition int_le : int -> int -> Prop := fun h28827 : int => fun h28828 : int => real_le (real_of_int h28827) (real_of_int h28828).
+Lemma axiom_26 : forall (r : Real), heq ((fun x : Real => integer x) r) (heq (real_of_int (int_of_real r)) r).
+Proof.
+  by move=>r ; rewrite/integer intrEfloor -eqP**.
+Qed.
+
+Definition int_le : int -> int -> Prop := Order.le.
+
 Lemma int_le_def : heq int_le (fun h28827 : int => fun h28828 : int => real_le (real_of_int h28827) (real_of_int h28828)).
-Proof. exact (REFL int_le). Qed.
-Definition int_lt : int -> int -> Prop := fun h28839 : int => fun h28840 : int => real_lt (real_of_int h28839) (real_of_int h28840).
+Proof.
+  by funext =>* ; rewrite/real_le/real_of_int ler_int.
+Qed.
+
+Definition int_lt : int -> int -> Prop := Order.lt.
+
 Lemma int_lt_def : heq int_lt (fun h28839 : int => fun h28840 : int => real_lt (real_of_int h28839) (real_of_int h28840)).
-Proof. exact (REFL int_lt). Qed.
-Definition int_ge : int -> int -> Prop := fun h28851 : int => fun h28852 : int => real_ge (real_of_int h28851) (real_of_int h28852).
+Proof.
+  by funext =>* ; rewrite/real_lt/real_of_int ltr_int.
+Qed.
+
+Definition int_ge : int -> int -> Prop := fun n m => n >= m.
+
 Lemma int_ge_def : heq int_ge (fun h28851 : int => fun h28852 : int => real_ge (real_of_int h28851) (real_of_int h28852)).
-Proof. exact (REFL int_ge). Qed.
-Definition int_gt : int -> int -> Prop := fun h28863 : int => fun h28864 : int => real_gt (real_of_int h28863) (real_of_int h28864).
+Proof.
+  by funext =>* ; rewrite/real_ge/real_of_int ler_int.
+Qed.
+
+Definition int_gt : int -> int -> Prop := fun n m => n > m.
+
 Lemma int_gt_def : heq int_gt (fun h28863 : int => fun h28864 : int => real_gt (real_of_int h28863) (real_of_int h28864)).
-Proof. exact (REFL int_gt). Qed.
-Definition int_of_num : num -> int := fun h28875 : num => int_of_real (real_of_num h28875).
+Proof.
+  by funext =>* ; rewrite/real_gt/real_of_int ltr_int.
+Qed.
+
+Definition int_of_num : num -> int := fun n => n%:Z.
+
+Lemma floor_natz {R : archiNumDomainType} (n : nat) : @Num.floor R n%:R = n.
+Proof.
+  by rewrite pmulrn intrKfloor.
+Qed.
+
 Lemma int_of_num_def : heq int_of_num (fun h28875 : num => int_of_real (real_of_num h28875)).
-Proof. exact (REFL int_of_num). Qed.
-Definition int_neg : int -> int := fun h28880 : int => int_of_real (real_neg (real_of_int h28880)).
+Proof.
+  by ext => n ; rewrite/real_of_num/int_of_real floor_natz.
+Qed.
+
+Definition int_neg : int -> int := opp.
+
 Lemma int_neg_def : heq int_neg (fun h28880 : int => int_of_real (real_neg (real_of_int h28880))).
-Proof. exact (REFL int_neg). Qed.
-Definition int_add : int -> int -> int := fun h28889 : int => fun h28890 : int => int_of_real (real_add (real_of_int h28889) (real_of_int h28890)).
+Proof.
+  by ext=>* ; rewrite/real_neg/real_of_int/int_of_real -intrN intrKfloor.
+Qed.
+
+Definition int_add : int -> int -> int := GRing.add.
+
 Lemma int_add_def : heq int_add (fun h28889 : int => fun h28890 : int => int_of_real (real_add (real_of_int h28889) (real_of_int h28890))).
-Proof. exact (REFL int_add). Qed.
-Definition int_sub : int -> int -> int := fun h28921 : int => fun h28922 : int => int_of_real (real_sub (real_of_int h28921) (real_of_int h28922)).
+Proof.
+  by ext=>* ; rewrite/real_add/real_of_int/int_of_real -intrD intrKfloor.
+Qed.
+
+Definition int_sub : int -> int -> int := fun n m => n - m.
+
 Lemma int_sub_def : heq int_sub (fun h28921 : int => fun h28922 : int => int_of_real (real_sub (real_of_int h28921) (real_of_int h28922))).
-Proof. exact (REFL int_sub). Qed.
-Definition int_mul : int -> int -> int := fun h28933 : int => fun h28934 : int => int_of_real (real_mul (real_of_int h28933) (real_of_int h28934)).
+Proof.
+  by ext=>* ; rewrite/real_sub/real_of_int/int_of_real -intrB intrKfloor.
+Qed.
+
+Definition int_mul : int -> int -> int := GRing.mul.
+
 Lemma int_mul_def : heq int_mul (fun h28933 : int => fun h28934 : int => int_of_real (real_mul (real_of_int h28933) (real_of_int h28934))).
-Proof. exact (REFL int_mul). Qed.
-Definition int_abs : int -> int := fun h28953 : int => int_of_real (real_abs (real_of_int h28953)).
+Proof.
+  by ext=>* ; rewrite/real_mul/real_of_int/int_of_real -intrM intrKfloor.
+Qed.
+
+Definition int_abs : int -> int := Num.norm.
+
 Lemma int_abs_def : heq int_abs (fun h28953 : int => int_of_real (real_abs (real_of_int h28953))).
-Proof. exact (REFL int_abs). Qed.
-Definition int_sgn : int -> int := fun h28964 : int => int_of_real (real_sgn (real_of_int h28964)).
+Proof.
+  by ext=>* ; rewrite/real_abs/real_of_int/int_of_real -intr_norm intrKfloor.
+Qed.
+
+Definition int_sgn : int -> int := Num.sg.
+
 Lemma int_sgn_def : heq int_sgn (fun h28964 : int => int_of_real (real_sgn (real_of_int h28964))).
-Proof. exact (REFL int_sgn). Qed.
-Definition int_max : int -> int -> int := fun h29024 : int => fun h29025 : int => int_of_real (real_max (real_of_int h29024) (real_of_int h29025)).
+Proof.
+  by ext=>* ; rewrite/real_sgn/real_of_int/int_of_real -intr_sg intrKfloor.
+Qed.
+
+
+Lemma intr_max (R : numDomainType) (n m : int) :
+  (max n m)%:~R = max n%:~R m%:~R :> R.
+Proof.
+  by rewrite/max ltr_int ; case (n<m).
+Qed.
+
+Lemma intr_min (R : numDomainType) (n m : int) :
+  (min n m)%:~R = min n%:~R m%:~R :> R.
+Proof.
+  by rewrite/min ltr_int ; case (n<m).
+Qed.
+
+Definition int_max : int -> int -> int := max.
+
 Lemma int_max_def : heq int_max (fun h29024 : int => fun h29025 : int => int_of_real (real_max (real_of_int h29024) (real_of_int h29025))).
-Proof. exact (REFL int_max). Qed.
-Definition int_min : int -> int -> int := fun h29042 : int => fun h29043 : int => int_of_real (real_min (real_of_int h29042) (real_of_int h29043)).
+Proof.
+  by ext=>* ; rewrite/real_max/real_of_int/int_of_real -intr_max intrKfloor.
+Qed.
+
+Definition int_min : int -> int -> int := min.
+
 Lemma int_min_def : heq int_min (fun h29042 : int => fun h29043 : int => int_of_real (real_min (real_of_int h29042) (real_of_int h29043))).
-Proof. exact (REFL int_min). Qed.
-Definition int_pow : int -> num -> int := fun h29060 : int => fun h29061 : num => int_of_real (real_pow (real_of_int h29060) h29061).
+Proof.
+  by ext=>* ; rewrite/real_min/real_of_int/int_of_real -intr_min intrKfloor.
+Qed.
+
+Lemma intr_exp (R : pzRingType) (z : int) (n : nat) :
+  (z ^+ n)%:~R = z%:~R ^+ n :> R.
+Proof.
+  by elim:n=>[|n IHn] ; [rewrite expr0 | rewrite 2!exprS intrM IHn].
+Qed.
+
+Definition int_pow : int -> num -> int := fun z n => z ^+ n.
+
 Lemma int_pow_def : heq int_pow (fun h29060 : int => fun h29061 : num => int_of_real (real_pow (real_of_int h29060) h29061)).
-Proof. exact (REFL int_pow). Qed.
-Definition div : int -> int -> int := @ε ((hprod num (hprod num num)) -> int -> int -> int) (fun q : (hprod num (hprod num num)) -> int -> int -> int => all (fun h29412 : hprod num (hprod num num) => hex (fun r : int -> int -> int => all (fun m : int => all (fun n : int => @COND Prop (heq n (int_of_num (NUMERAL h0))) (hand (heq (q h29412 m n) (int_of_num (NUMERAL h0))) (heq (r m n) m)) (hand (int_le (int_of_num (NUMERAL h0)) (r m n)) (hand (int_lt (r m n) (int_abs n)) (heq m (int_add (int_mul (q h29412 m n) n) (r m n)))))))))) (@hpair num (hprod num num) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 (BIT1 h0)))))))) (@hpair num num (NUMERAL (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 (BIT1 h0)))))))) (NUMERAL (BIT0 (BIT1 (BIT1 (BIT0 (BIT1 (BIT1 (BIT1 h0)))))))))).
+Proof.
+  by ext=>* ; rewrite/real_pow/real_of_int/int_of_real -intr_exp intrKfloor.
+Qed.
+
+Definition div : int -> int -> int := divz.
+
 Lemma div_def : heq div (@ε ((hprod num (hprod num num)) -> int -> int -> int) (fun q : (hprod num (hprod num num)) -> int -> int -> int => all (fun h29412 : hprod num (hprod num num) => hex (fun r : int -> int -> int => all (fun m : int => all (fun n : int => @COND Prop (heq n (int_of_num (NUMERAL h0))) (hand (heq (q h29412 m n) (int_of_num (NUMERAL h0))) (heq (r m n) m)) (hand (int_le (int_of_num (NUMERAL h0)) (r m n)) (hand (int_lt (r m n) (int_abs n)) (heq m (int_add (int_mul (q h29412 m n) n) (r m n)))))))))) (@hpair num (hprod num num) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 (BIT1 h0)))))))) (@hpair num num (NUMERAL (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 (BIT1 h0)))))))) (NUMERAL (BIT0 (BIT1 (BIT1 (BIT0 (BIT1 (BIT1 (BIT1 h0))))))))))).
-Proof. exact (REFL div). Qed.
-Definition rem : int -> int -> int := @ε ((hprod num (hprod num num)) -> int -> int -> int) (fun r : (hprod num (hprod num num)) -> int -> int -> int => all (fun h29413 : hprod num (hprod num num) => all (fun m : int => all (fun n : int => @COND Prop (heq n (int_of_num (NUMERAL h0))) (hand (heq (div m n) (int_of_num (NUMERAL h0))) (heq (r h29413 m n) m)) (hand (int_le (int_of_num (NUMERAL h0)) (r h29413 m n)) (hand (int_lt (r h29413 m n) (int_abs n)) (heq m (int_add (int_mul (div m n) n) (r h29413 m n))))))))) (@hpair num (hprod num num) (NUMERAL (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 (BIT1 (BIT1 h0)))))))) (@hpair num num (NUMERAL (BIT1 (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 (BIT1 h0)))))))) (NUMERAL (BIT1 (BIT0 (BIT1 (BIT1 (BIT0 (BIT1 (BIT1 h0)))))))))).
+Proof.
+  rewrite/int_lt/int_abs/int_add/int_mul/int_of_num/int_le/=. align_ε.
+  - exists modz => n m ; if_intro.
+    + move=>-> ; split ; [exact: divz0 | exact: modz0].
+    + move/eqP; repeat split; [exact: modz_ge0|exact: ltz_mod|exact: divz_eq].
+  - move=> div' _ [rem div'_def] ; ext=> m n ; specialize (div'_def m n).
+    eapply if_elim with (1 := div'_def) ; first (move=>->[-> _] ; exact: divz0).
+    move=> ? [? [? {1}->]] ; rewrite/div divzMDl ; last by apply/eqP.
+    by rewrite divz_small -?andP** ?addr0.
+Qed.
+
+Definition rem : int -> int -> int := modz.
+
 Lemma rem_def : heq rem (@ε ((hprod num (hprod num num)) -> int -> int -> int) (fun r : (hprod num (hprod num num)) -> int -> int -> int => all (fun h29413 : hprod num (hprod num num) => all (fun m : int => all (fun n : int => @COND Prop (heq n (int_of_num (NUMERAL h0))) (hand (heq (div m n) (int_of_num (NUMERAL h0))) (heq (r h29413 m n) m)) (hand (int_le (int_of_num (NUMERAL h0)) (r h29413 m n)) (hand (int_lt (r h29413 m n) (int_abs n)) (heq m (int_add (int_mul (div m n) n) (r h29413 m n))))))))) (@hpair num (hprod num num) (NUMERAL (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 (BIT1 (BIT1 h0)))))))) (@hpair num num (NUMERAL (BIT1 (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 (BIT1 h0)))))))) (NUMERAL (BIT1 (BIT0 (BIT1 (BIT1 (BIT0 (BIT1 (BIT1 h0))))))))))).
-Proof. exact (REFL rem). Qed.
-Definition eq2 {A : Type'} : A -> A -> (A -> A -> Prop) -> Prop := fun h29688 : A => fun h29689 : A => fun h29690 : A -> A -> Prop => h29690 h29688 h29689.
+Proof.
+  rewrite/int_lt/int_abs/int_add/int_mul/int_of_num/int_le/=. align_ε.
+  - move=> n m ; if_intro.
+    + move=>-> ; split ; [exact: divz0 | exact: modz0].
+    + move/eqP; repeat split; [exact: modz_ge0|exact: ltz_mod|exact: divz_eq].
+  - move=> rem' _ rem'_def ; ext => n m ; specialize (rem'_def n m).
+    eapply if_elim with (1 := rem'_def) ; first(move=>->[_ ->]; exact:modz0).
+    by move => ? [? [? {1}->]] ; rewrite/rem modzMDl -modz_abs modz_small -?andP**.
+Qed.
+
+(* Used in HOL Light as syntax for equivalence relations/congruence. *)
+Definition eq2 {A : Type'} : A -> A -> (A -> A -> Prop) -> Prop := fun a a' R => R a a'.
+
 Lemma eq2_def {A : Type'} : heq (@eq2 A) (fun h29688 : A => fun h29689 : A => fun h29690 : A -> A -> Prop => h29690 h29688 h29689).
 Proof. exact (REFL (@eq2 A)). Qed.
-Definition real_mod : Real -> Real -> Real -> Prop := fun h29709 : Real => fun h29710 : Real => fun h29711 : Real => hex (fun q : Real => hand (integer q) (heq (real_sub h29710 h29711) (real_mul q h29709))).
+
+(* I have not found a notion of congruence modulo a submodule in mathcomp *)
+
+Definition congruent_modz {R : pzRingType} (a b c : R) :=
+  exists k : int, b - c = a *~ k.
+
+Definition real_mod : Real -> Real -> Real -> Prop := congruent_modz.
+
 Lemma real_mod_def : heq real_mod (fun h29709 : Real => fun h29710 : Real => fun h29711 : Real => hex (fun q : Real => hand (integer q) (heq (real_sub h29710 h29711) (real_mul q h29709)))).
-Proof. exact (REFL real_mod). Qed.
-Definition int_divides : int -> int -> Prop := fun h29730 : int => fun h29731 : int => hex (fun x : int => heq h29731 (int_mul h29730 x)).
+Proof.
+  ext=> a b c; rewrite/real_mod/congruent_modz.
+  - case=> k e ; exists (real_of_int k) ; split ; first exact: intr_int.
+    by rewrite/real_mul/real_of_int mulrzl.
+  - by case=>?; rewrite/integer -intrP**=> -[[k ->] ?]; exists k; rewrite -mulrzl.
+Qed.
+
+Definition int_divides : int -> int -> Prop := fun d n => d %| n.
+
 Lemma int_divides_def : heq int_divides (fun h29730 : int => fun h29731 : int => hex (fun x : int => heq h29731 (int_mul h29730 x))).
-Proof. exact (REFL int_divides). Qed.
+Proof.
+  by ext=> a b => [/dvdzP |] [x ->]; [|apply/dvdzP]; exists x; rewrite mulrC.
+Qed.
+
 Definition int_mod : int -> int -> int -> Prop := fun h29750 : int => fun h29751 : int => fun h29752 : int => int_divides h29750 (int_sub h29751 h29752).
 Lemma int_mod_def : heq int_mod (fun h29750 : int => fun h29751 : int => fun h29752 : int => int_divides h29750 (int_sub h29751 h29752)).
 Proof. exact (REFL int_mod). Qed.
