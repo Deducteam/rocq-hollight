@@ -826,7 +826,7 @@ Ltac _mk_dest_record := finv_inv_l ; instance_uniqueness.
 (* tries proving [H1 /\ ... /\ Hn -> P] with hypothesis [H1 -> ... -> Hn -> P]
    or the converse. *)
 
-Ltac and_arrow := try (move=>* ; full_destruct ; match goal with
+Ltac and_arrow := try (rewrite/all/imp=> * ; full_destruct ; match goal with
   | Hyp : _ |- _ => exact: Hyp end).
 
 (* finv_inv_r gives us two goals, we can only fully automate one :
@@ -6048,13 +6048,20 @@ Qed.
 
 (* Variant *)
 Lemma SPEC_IMAGE (A B : Type') (f : A -> B) (s : set A) :
-  GSPEC (fun y => exists x, SETSPEC y (IN x s) (f x)) = f @` s.
-Proof. fold (IMAGE f s). now rewrite IMAGE_def SPEC_elim. Qed.
+  GSPEC (fun y => exists x, SETSPEC y (IN x s) (f x)) = [set f x | x in s].
+Proof. by rewrite -/(IMAGE f s) IMAGE_def SPEC_elim. Qed.
+
+Lemma SPEC_IMAGE2 (A B C : Type') (f : A -> B -> C) (s : set A) (s' : set B) :
+  GSPEC (fun z => exists x y, SETSPEC z (IN x s /\ IN y s') (f x y)) =
+    [set f x y | x in s & y in s'].
+Proof.
+  by ext => [z [x [y [[??] ->]]]| z [x ? [y ? <-]]] ; exists x => // ; exists y.
+Qed.
 
 (* pattern /3= simplifies HOL_Light set functions to rocq ones *)
 Ltac ssrsimpl3 :=
-  rewrite ?SPEC_IMAGE?SPEC_elim/GSPEC/SETSPEC/DELETE/IMAGE/INTERS/UNIONS/
-  INSERT/BIT1/BIT0/NUMERAL?setU0/IN.
+  rewrite ?SPEC_elim?SPEC_IMAGE?SPEC_IMAGE2/GSPEC/SETSPEC/
+  DELETE/IMAGE/INTERS/UNIONS/INSERT/BIT1/BIT0/NUMERAL?setU0/IN.
 
 (*****************************************************************************)
 (* Finite sets. *)
@@ -6422,8 +6429,7 @@ Definition CROSS {A B : Type'} : (A -> Prop) -> (B -> Prop) -> (hprod A B) -> Pr
 
 Lemma CROSS_def {A B : Type'} : heq (@CROSS A B) (fun h47408 : A -> Prop => fun h47409 : B -> Prop => @GSPEC (hprod A B) (fun GEN_PVAR_132 : hprod A B => hex (fun x : A => hex (fun y : B => @SETSPEC (hprod A B) GEN_PVAR_132 (hand (@IN A x h47408) (@IN B y h47409)) (@hpair A B x y))))).
 Proof.
-  ext=> s s' c /3= [] ; first by move=> H1 H2 ; exist c.1 c.2 ; case: c H1 H2.
-  by move=> x [y /= [[? ?] ->]].
+  by ext=> s s' [] => [a b [*] | _ _ [? [? [[? ?] ->]]]] ; first exist a b.
 Qed.
 
 Definition ARB {A : Type'} : A := @ε A (fun x : A => hfalse).
@@ -6434,7 +6440,7 @@ Definition EXTENSIONAL {A B : Type'} : (A -> Prop) -> (A -> B) -> Prop :=
   fun s => [set f | forall a, ~ s a -> f a = ARB].
 
 Lemma EXTENSIONAL_def {A B : Type'} : heq (@EXTENSIONAL A B) (fun h48182 : A -> Prop => @GSPEC (A -> B) (fun GEN_PVAR_141 : A -> B => hex (fun f : A -> B => @SETSPEC (A -> B) GEN_PVAR_141 (all (fun x : A => (not (@IN A x h48182)) -> heq (f x) (@ARB B))) f))).
-Proof. by move=> /1` ? /3= ; rewrite image_id. Qed.
+Proof. by move=> /1` ? /3=. Qed.
 
 Definition RESTRICTION {A B : Type'} : (A -> Prop) -> (A -> B) -> A -> B :=
   fun s f => fun x => if s x then f x else ARB.
@@ -6446,7 +6452,7 @@ Definition cartesian_product {A K : Type'} : (K -> Prop) -> (K -> A -> Prop) -> 
   fun s S => [set v | EXTENSIONAL s v /\ forall i, s i -> S i (v i)].
 
 Lemma cartesian_product_def {A K : Type'} : heq (@cartesian_product A K) (fun h48429 : K -> Prop => fun h48430 : K -> A -> Prop => @GSPEC (K -> A) (fun GEN_PVAR_142 : K -> A => hex (fun f : K -> A => @SETSPEC (K -> A) GEN_PVAR_142 (hand (@EXTENSIONAL K A h48429 f) (all (fun i : K => (@IN K i h48429) -> @IN A (f i) (h48430 i)))) f))).
-Proof. by move => /2` s S /3= ; rewrite image_id. Qed.
+Proof. by extall=> /3=. Qed.
 
 Definition product_map {A B K : Type'} : (K -> Prop) -> (K -> A -> B) -> (K -> A) -> K -> B :=
   fun s f v => RESTRICTION s (fun i => f i (v i)).
@@ -6626,16 +6632,16 @@ Definition dotdot : num -> num -> num -> Prop := fun n m => `[n, m].
 
 (* The one to actually use in proofs, to take advantage of lia
    for example. *)
-Lemma dotdotE : dotdot = fun n m k => (n <= k <= m)%nat.
-Proof. by []. Qed.
+Lemma dotdotE : dotdot = fun n m k => (n <= k /\ k <= m)%nat.
+Proof. by funext => * ; rewrite andP**. Qed.
 
 (* Add rewriting dotdotE to pattern /3=. *)
 Ltac ssrsimpl3 ::=
-  rewrite ?SPEC_elim?SPEC_IMAGE/GSPEC/SETSPEC/DELETE/IMAGE/INTERS/UNIONS/
-  INSERT/BIT1/BIT0/NUMERAL?setU0/IN?dotdotE.
+  rewrite ?SPEC_elim?SPEC_IMAGE?SPEC_IMAGE2/GSPEC/SETSPEC/DELETE/IMAGE
+  /INTERS/UNIONS/INSERT/BIT1/BIT0/NUMERAL?setU0/IN?dotdotE.
 
 Lemma dotdot_def : heq dotdot (fun h67008 : num => fun h67009 : num => @GSPEC num (fun GEN_PVAR_231 : num => hex (fun x : num => @SETSPEC num GEN_PVAR_231 (hand (le h67008 x) (le x h67009)) x))).
-Proof. by funext=> * /3= ; rewrite/le/0= andP**. Qed.
+Proof. by rewrite dotdotE => /f` * /3=. Qed.
 
 Section enum_type.
 (* Basically finite ordinal arithmetic with types. *)
@@ -6653,7 +6659,7 @@ HB.instance Definition _ := isPointed.Build enum_pointed_type (Ordinal H).
 Definition enum_type : Type' := enum_pointed_type%'.
 
 Local Lemma inhabits_to_ord k : inhabits k -> k.-1 < n.
-Proof. by rewrite/inhabits/3= ; elim: k. Qed.
+Proof. by case:k. Qed.
 
 Definition mk_enum (k : num) : enum_type :=
   match pselect (inhabits k) with
@@ -6665,7 +6671,7 @@ Definition dest_enum (k : enum_type) : num := k.+1.
 Lemma mk_dest_enum : forall k : enum_type, mk_enum (dest_enum k) = k.
 Proof.
   case=> k ink. rewrite/dest_enum/mk_enum.
-  case (pselect (inhabits (Ordinal ink).+1)) ; last by rewrite/inhabits/3=.
+  case (pselect (inhabits (Ordinal ink).+1)) ; last by [].
   move=> ink' ; move:{ink'}(inhabits_to_ord ink').
   rewrite -pred_Sn => ? ; f_equal ; exact: Prop_irrelevance.
 Qed.
@@ -6984,7 +6990,7 @@ Proof.
   case (pselect (inhabits (dimindex [set: N']) n)).
   - move=>? ; exact: coordE.
   - case: {N'}(dimindex [set: N']) (finite_image_gen N') M ; first by [].
-    rewrite/inhabits/coord/3= => m mgt0 M ; rewrite -andP** not_andE 2!negP**.
+    rewrite/inhabits/coord/3= => m mgt0 M ; rewrite not_andE 2!negP**.
     rewrite -2!ltnNge ltnS leqn0 ; case.
     + move/eqP=> -> /= ; f_equal ; exact: inord_lt.
     + move=> ltSmn ; rewrite inord_gt ; last by elim:n ltSmn.
@@ -7084,11 +7090,7 @@ Qed.
 Definition PCROSS {A M N' : Type'} : ((cart A M) -> Prop) -> ((cart A N') -> Prop) -> (cart A (finite_sum M N')) -> Prop := fun s s' => [set pastecart u v | u in s & v in s'].
 
 Lemma PCROSS_def {A M N' : Type'} : heq (@PCROSS A M N') (fun h102146 : (cart A M) -> Prop => fun h102147 : (cart A N') -> Prop => @GSPEC (cart A (finite_sum M N')) (fun GEN_PVAR_363 : cart A (finite_sum M N') => hex (fun x : cart A M => hex (fun y : cart A N' => @SETSPEC (cart A (finite_sum M N')) GEN_PVAR_363 (hand (@IN (cart A M) x h102146) (@IN (cart A N') y h102147)) (@pastecart A M N' x y))))).
-Proof.
-  ext => s s' ? [] => [x ? [y ? <-] | x [y [[? ?] ->]]].
-  - by exist x y.
-  - by exists x => // ; exists y.
-Qed.
+Proof. by extall=> /3=. Qed.
 
 Definition CASEWISE {h138002 h138038 h138042 h138043 : Type'} : (hlist (hprod (h138038 -> h138042) (h138043 -> h138038 -> h138002))) -> h138043 -> h138042 -> h138002 := @ε ((hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num))))))) -> (hlist (hprod (h138038 -> h138042) (h138043 -> h138038 -> h138002))) -> h138043 -> h138042 -> h138002) (fun CASEWISE' : (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num))))))) -> (hlist (hprod (h138038 -> h138042) (h138043 -> h138038 -> h138002))) -> h138043 -> h138042 -> h138002 => all (fun h102751 : hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num)))))) => hand (all (fun f : h138043 => all (fun x : h138042 => heq (CASEWISE' h102751 (@NIL (hprod (h138038 -> h138042) (h138043 -> h138038 -> h138002))) f x) (@ε h138002 (fun y : h138002 => htrue))))) (all (fun h : hprod (h138038 -> h138042) (h138043 -> h138038 -> h138002) => all (fun t : hlist (hprod (h138038 -> h138042) (h138043 -> h138038 -> h138002)) => all (fun f : h138043 => all (fun x : h138042 => heq (CASEWISE' h102751 (@CONS (hprod (h138038 -> h138042) (h138043 -> h138038 -> h138002)) h t) f x) (@COND h138002 (hex (fun y : h138038 => heq (@FST (h138038 -> h138042) (h138043 -> h138038 -> h138002) h y) x)) (@SND (h138038 -> h138042) (h138043 -> h138038 -> h138002) h f (@ε h138038 (fun y : h138038 => heq (@FST (h138038 -> h138042) (h138043 -> h138038 -> h138002) h y) x))) (CASEWISE' h102751 t f x))))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num)))))) (NUMERAL (BIT1 (BIT1 (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num (hprod num num))))) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num num)))) (NUMERAL (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num num))) (NUMERAL (BIT1 (BIT0 (BIT1 (BIT0 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num num)) (NUMERAL (BIT1 (BIT1 (BIT1 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num num) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num num (NUMERAL (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (NUMERAL (BIT1 (BIT0 (BIT1 (BIT0 (BIT0 (BIT0 (BIT1 h0))))))))))))))).
 Lemma CASEWISE_def {h138002 h138038 h138042 h138043 : Type'} : heq (@CASEWISE h138002 h138038 h138042 h138043) (@ε ((hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num))))))) -> (hlist (hprod (h138038 -> h138042) (h138043 -> h138038 -> h138002))) -> h138043 -> h138042 -> h138002) (fun CASEWISE' : (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num))))))) -> (hlist (hprod (h138038 -> h138042) (h138043 -> h138038 -> h138002))) -> h138043 -> h138042 -> h138002 => all (fun h102751 : hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num)))))) => hand (all (fun f : h138043 => all (fun x : h138042 => heq (CASEWISE' h102751 (@NIL (hprod (h138038 -> h138042) (h138043 -> h138038 -> h138002))) f x) (@ε h138002 (fun y : h138002 => htrue))))) (all (fun h : hprod (h138038 -> h138042) (h138043 -> h138038 -> h138002) => all (fun t : hlist (hprod (h138038 -> h138042) (h138043 -> h138038 -> h138002)) => all (fun f : h138043 => all (fun x : h138042 => heq (CASEWISE' h102751 (@CONS (hprod (h138038 -> h138042) (h138043 -> h138038 -> h138002)) h t) f x) (@COND h138002 (hex (fun y : h138038 => heq (@FST (h138038 -> h138042) (h138043 -> h138038 -> h138002) h y) x)) (@SND (h138038 -> h138042) (h138043 -> h138038 -> h138002) h f (@ε h138038 (fun y : h138038 => heq (@FST (h138038 -> h138042) (h138043 -> h138038 -> h138002) h y) x))) (CASEWISE' h102751 t f x))))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num)))))) (NUMERAL (BIT1 (BIT1 (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num (hprod num num))))) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num num)))) (NUMERAL (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num num))) (NUMERAL (BIT1 (BIT0 (BIT1 (BIT0 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num num)) (NUMERAL (BIT1 (BIT1 (BIT1 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num num) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num num (NUMERAL (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (NUMERAL (BIT1 (BIT0 (BIT1 (BIT0 (BIT0 (BIT0 (BIT1 h0)))))))))))))))).
@@ -7262,23 +7264,29 @@ Definition ITER {h238145 : Type'} : num -> (h238145 -> h238145) -> h238145 -> h2
 Lemma ITER_def {h238145 : Type'} : heq (@ITER h238145) (@ε ((hprod num (hprod num (hprod num num))) -> num -> (h238145 -> h238145) -> h238145 -> h238145) (fun ITER' : (hprod num (hprod num (hprod num num))) -> num -> (h238145 -> h238145) -> h238145 -> h238145 => all (fun h337704 : hprod num (hprod num (hprod num num)) => hand (all (fun x : h238145 => all (fun f : h238145 -> h238145 => heq (ITER' h337704 (NUMERAL h0) f x) x))) (all (fun x : h238145 => all (fun f : h238145 -> h238145 => all (fun n : num => heq (ITER' h337704 (SUC n) f x) (f (ITER' h337704 n f x)))))))) (@hpair num (hprod num (hprod num num)) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num num) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))) (@hpair num num (NUMERAL (BIT1 (BIT0 (BIT1 (BIT0 (BIT0 (BIT0 (BIT1 h0)))))))) (NUMERAL (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 h0)))))))))))).
 Proof. exact (REFL (@ITER h238145)). Qed.
 
-Fact frag_gen (A : Type') : (fun f : A -> int => @FINITE A (@GSPEC A (fun GEN_PVAR_709 : A => hex (fun x : A => @SETSPEC A GEN_PVAR_709 (not (heq (f x) (int_of_num (NUMERAL h0)))) x)))) (fun=> int_of_num 0).
+(*****************************************************************************)
+(* Library.Frag.frag (free Abelian group) *)
+(*****************************************************************************)
+
+Fact frag_gen (A : Type') : (fun f : A -> int => @FINITE A (@GSPEC A (fun GEN_PVAR_709 : A => hex (fun x : A => @SETSPEC A GEN_PVAR_709 (not (heq (f x) (int_of_num (NUMERAL h0)))) x)))) (fun=> 0).
 Proof.
-  by move=> _ /ltac:(apply ; left) /` // ? [? [[]]].
+  by rewrite/FINITE/0=/3= ; have -> : (fun=> 0 <> 0) = set0 by move=> * /`.
 Qed.
 
 Definition frag A := subtype' (@frag_gen A).
 Definition mk_frag A := mk (@frag_gen A).
-Definition dest_frag A := dest (@frag_gen A).
+Definition dest_frag A : frag A -> A -> int := dest (@frag_gen A).
+Coercion dest_frag : type >-> Funclass.
 Lemma axiom_41 : forall {A : Type'} (a : frag A), heq (@mk_frag A (@dest_frag A a)) a.
 Proof. exact (fun A => mk_dest (@frag_gen A)). Qed.
 Lemma axiom_42 : forall {A : Type'} (r : A -> int), heq ((fun f : A -> int => @FINITE A (@GSPEC A (fun GEN_PVAR_709 : A => hex (fun x : A => @SETSPEC A GEN_PVAR_709 (not (heq (f x) (int_of_num (NUMERAL h0)))) x)))) r) (heq (@dest_frag A (@mk_frag A r)) r).
 Proof. exact (fun A => dest_mk (@frag_gen A)). Qed.
 
-Definition frag_support {A : Type'} : (frag A) -> A -> Prop := fun h338887 : frag A => @GSPEC A (fun GEN_PVAR_710 : A => hex (fun a : A => @SETSPEC A GEN_PVAR_710 (not (heq (@dest_frag A h338887 a) (int_of_num (NUMERAL h0)))) a)).
+Definition frag_support {A : Type'} : (frag A) -> set A := fun G a => 0.-support G a.
 Lemma frag_support_def {A : Type'} : heq (@frag_support A) (fun h338887 : frag A => @GSPEC A (fun GEN_PVAR_710 : A => hex (fun a : A => @SETSPEC A GEN_PVAR_710 (not (heq (@dest_frag A h338887 a) (int_of_num (NUMERAL h0)))) a))).
-Proof. exact (REFL (@frag_support A)). Qed.
-Definition frag_0 {A : Type'} : frag A := @mk_frag A (fun x : A => int_of_num (NUMERAL h0)).
+Proof. by rewrite/frag_support=> /` > /3=/=/eqP. Qed.
+
+Definition frag_0 {A : Type'} : frag A := mk_frag (fun=> 0).
 Lemma frag_0_def {A : Type'} : heq (@frag_0 A) (@mk_frag A (fun x : A => int_of_num (NUMERAL h0))).
 Proof. exact (REFL (@frag_0 A)). Qed.
 Definition frag_of {A : Type'} : A -> frag A := fun h338892 : A => @mk_frag A (fun a : A => @COND int (heq a h338892) (int_of_num (NUMERAL (BIT1 h0))) (int_of_num (NUMERAL h0))).
@@ -7303,59 +7311,120 @@ Definition index : num -> num -> num := fun h346720 : num => fun h346721 : num =
 Lemma index_def : heq index (fun h346720 : num => fun h346721 : num => @COND num (hor (le h346720 (NUMERAL (BIT1 h0))) (heq h346721 (NUMERAL h0))) (NUMERAL h0) (@CARD num (@GSPEC num (fun GEN_PVAR_729 : num => hex (fun j : num => @SETSPEC num GEN_PVAR_729 (hand (le (NUMERAL (BIT1 h0)) j) (num_divides (EXP h346720 j) h346721)) j))))).
 Proof. exact (REFL index). Qed.
 
-Fact group_gen (A : Type') : (fun z : hprod (A -> Prop) (hprod A (hprod (A -> A) (A -> A -> A))) => hand (@IN A (@FST A (hprod (A -> A) (A -> A -> A)) (@SND (A -> Prop) (hprod A (hprod (A -> A) (A -> A -> A))) z)) (@FST (A -> Prop) (hprod A (hprod (A -> A) (A -> A -> A))) z)) (hand (all (fun x : A => (@IN A x (@FST (A -> Prop) (hprod A (hprod (A -> A) (A -> A -> A))) z)) -> @IN A (@FST (A -> A) (A -> A -> A) (@SND A (hprod (A -> A) (A -> A -> A)) (@SND (A -> Prop) (hprod A (hprod (A -> A) (A -> A -> A))) z)) x) (@FST (A -> Prop) (hprod A (hprod (A -> A) (A -> A -> A))) z))) (hand (all (fun x : A => all (fun y : A => (hand (@IN A x (@FST (A -> Prop) (hprod A (hprod (A -> A) (A -> A -> A))) z)) (@IN A y (@FST (A -> Prop) (hprod A (hprod (A -> A) (A -> A -> A))) z))) -> @IN A (@SND (A -> A) (A -> A -> A) (@SND A (hprod (A -> A) (A -> A -> A)) (@SND (A -> Prop) (hprod A (hprod (A -> A) (A -> A -> A))) z)) x y) (@FST (A -> Prop) (hprod A (hprod (A -> A) (A -> A -> A))) z)))) (hand (all (fun x : A => all (fun y : A => all (fun z' : A => (hand (@IN A x (@FST (A -> Prop) (hprod A (hprod (A -> A) (A -> A -> A))) z)) (hand (@IN A y (@FST (A -> Prop) (hprod A (hprod (A -> A) (A -> A -> A))) z)) (@IN A z' (@FST (A -> Prop) (hprod A (hprod (A -> A) (A -> A -> A))) z)))) -> heq (@SND (A -> A) (A -> A -> A) (@SND A (hprod (A -> A) (A -> A -> A)) (@SND (A -> Prop) (hprod A (hprod (A -> A) (A -> A -> A))) z)) x (@SND (A -> A) (A -> A -> A) (@SND A (hprod (A -> A) (A -> A -> A)) (@SND (A -> Prop) (hprod A (hprod (A -> A) (A -> A -> A))) z)) y z')) (@SND (A -> A) (A -> A -> A) (@SND A (hprod (A -> A) (A -> A -> A)) (@SND (A -> Prop) (hprod A (hprod (A -> A) (A -> A -> A))) z)) (@SND (A -> A) (A -> A -> A) (@SND A (hprod (A -> A) (A -> A -> A)) (@SND (A -> Prop) (hprod A (hprod (A -> A) (A -> A -> A))) z)) x y) z'))))) (hand (all (fun x : A => (@IN A x (@FST (A -> Prop) (hprod A (hprod (A -> A) (A -> A -> A))) z)) -> hand (heq (@SND (A -> A) (A -> A -> A) (@SND A (hprod (A -> A) (A -> A -> A)) (@SND (A -> Prop) (hprod A (hprod (A -> A) (A -> A -> A))) z)) (@FST A (hprod (A -> A) (A -> A -> A)) (@SND (A -> Prop) (hprod A (hprod (A -> A) (A -> A -> A))) z)) x) x) (heq (@SND (A -> A) (A -> A -> A) (@SND A (hprod (A -> A) (A -> A -> A)) (@SND (A -> Prop) (hprod A (hprod (A -> A) (A -> A -> A))) z)) x (@FST A (hprod (A -> A) (A -> A -> A)) (@SND (A -> Prop) (hprod A (hprod (A -> A) (A -> A -> A))) z))) x))) (all (fun x : A => (@IN A x (@FST (A -> Prop) (hprod A (hprod (A -> A) (A -> A -> A))) z)) -> hand (heq (@SND (A -> A) (A -> A -> A) (@SND A (hprod (A -> A) (A -> A -> A)) (@SND (A -> Prop) (hprod A (hprod (A -> A) (A -> A -> A))) z)) (@FST (A -> A) (A -> A -> A) (@SND A (hprod (A -> A) (A -> A -> A)) (@SND (A -> Prop) (hprod A (hprod (A -> A) (A -> A -> A))) z)) x) x) (@FST A (hprod (A -> A) (A -> A -> A)) (@SND (A -> Prop) (hprod A (hprod (A -> A) (A -> A -> A))) z))) (heq (@SND (A -> A) (A -> A -> A) (@SND A (hprod (A -> A) (A -> A -> A)) (@SND (A -> Prop) (hprod A (hprod (A -> A) (A -> A -> A))) z)) x (@FST (A -> A) (A -> A -> A) (@SND A (hprod (A -> A) (A -> A -> A)) (@SND (A -> Prop) (hprod A (hprod (A -> A) (A -> A -> A))) z)) x)) (@FST A (hprod (A -> A) (A -> A -> A)) (@SND (A -> Prop) (hprod A (hprod (A -> A) (A -> A -> A))) z)))))))))) (fun a => point A = a, point _).
-Proof. by []. Qed.
+(*****************************************************************************)
+(* Library.grouptheory.group *)
+(*****************************************************************************)
 
-Definition Group A := subtype' (group_gen A).
-Definition group A := mk (group_gen A).
-Definition group_operations A := dest (group_gen A).
+Record Group_record (A : Type') := {
+  group_carrier : set A ;
+  group_id : A ;
+  group_id_const : group_carrier group_id ;
+  group_mul : A -> A -> A ;
+  group_mul_const : forall x y, group_carrier x -> group_carrier y ->
+    group_carrier (group_mul x y) ;
+  group_inv : A -> A ;
+  group_inv_const : forall x, group_carrier x -> group_carrier (group_inv x) ;
+  group_mul_assoc : forall x y z, group_carrier x -> group_carrier y ->
+    group_carrier z -> group_mul x (group_mul y z) = group_mul (group_mul x y) z ;
+  group_mul_0_l : forall x, group_carrier x -> group_mul group_id x = x ;
+  group_mul_0_r : forall x, group_carrier x -> group_mul x group_id = x ;
+  group_inv_group_mul_l : forall x, group_carrier x -> group_mul (group_inv x) x = group_id ;
+  group_inv_group_mul_r : forall x, group_carrier x -> group_mul x (group_inv x) = group_id }.
+
+Program Definition singleton_group (A : Type') (a : A) : Group_record A :=
+  {| group_carrier := [set a] ; group_id := a ; group_mul _ _ := a ; group_inv _ := a |}.
+Solve All Obligations with by [].
+
+Definition Group A := is_Type' (@singleton_group A point).
+
+Definition group_operations {A : Type'} : Group A -> hprod (A -> Prop) (hprod A (hprod (A -> A) (A -> A -> A))) :=
+  fun G => (group_carrier G, (group_id G, (group_inv G, group_mul G))).
+
+Definition group {A : Type'} : hprod (A -> Prop) (hprod A (hprod (A -> A) (A -> A -> A))) -> Group A := finv group_operations.
+
 Lemma axiom_43 : forall {A : Type'} (a : Group A), heq (@group A (@group_operations A a)) a.
-Proof. exact (fun A => mk_dest (group_gen A)). Qed.
-Lemma axiom_44 : forall {A : Type'} (r : hprod (A -> Prop) (hprod A (hprod (A -> A) (A -> A -> A)))), heq ((fun z : hprod (A -> Prop) (hprod A (hprod (A -> A) (A -> A -> A))) => hand (@IN A (@FST A (hprod (A -> A) (A -> A -> A)) (@SND (A -> Prop) (hprod A (hprod (A -> A) (A -> A -> A))) z)) (@FST (A -> Prop) (hprod A (hprod (A -> A) (A -> A -> A))) z)) (hand (all (fun x : A => (@IN A x (@FST (A -> Prop) (hprod A (hprod (A -> A) (A -> A -> A))) z)) -> @IN A (@FST (A -> A) (A -> A -> A) (@SND A (hprod (A -> A) (A -> A -> A)) (@SND (A -> Prop) (hprod A (hprod (A -> A) (A -> A -> A))) z)) x) (@FST (A -> Prop) (hprod A (hprod (A -> A) (A -> A -> A))) z))) (hand (all (fun x : A => all (fun y : A => (hand (@IN A x (@FST (A -> Prop) (hprod A (hprod (A -> A) (A -> A -> A))) z)) (@IN A y (@FST (A -> Prop) (hprod A (hprod (A -> A) (A -> A -> A))) z))) -> @IN A (@SND (A -> A) (A -> A -> A) (@SND A (hprod (A -> A) (A -> A -> A)) (@SND (A -> Prop) (hprod A (hprod (A -> A) (A -> A -> A))) z)) x y) (@FST (A -> Prop) (hprod A (hprod (A -> A) (A -> A -> A))) z)))) (hand (all (fun x : A => all (fun y : A => all (fun z' : A => (hand (@IN A x (@FST (A -> Prop) (hprod A (hprod (A -> A) (A -> A -> A))) z)) (hand (@IN A y (@FST (A -> Prop) (hprod A (hprod (A -> A) (A -> A -> A))) z)) (@IN A z' (@FST (A -> Prop) (hprod A (hprod (A -> A) (A -> A -> A))) z)))) -> heq (@SND (A -> A) (A -> A -> A) (@SND A (hprod (A -> A) (A -> A -> A)) (@SND (A -> Prop) (hprod A (hprod (A -> A) (A -> A -> A))) z)) x (@SND (A -> A) (A -> A -> A) (@SND A (hprod (A -> A) (A -> A -> A)) (@SND (A -> Prop) (hprod A (hprod (A -> A) (A -> A -> A))) z)) y z')) (@SND (A -> A) (A -> A -> A) (@SND A (hprod (A -> A) (A -> A -> A)) (@SND (A -> Prop) (hprod A (hprod (A -> A) (A -> A -> A))) z)) (@SND (A -> A) (A -> A -> A) (@SND A (hprod (A -> A) (A -> A -> A)) (@SND (A -> Prop) (hprod A (hprod (A -> A) (A -> A -> A))) z)) x y) z'))))) (hand (all (fun x : A => (@IN A x (@FST (A -> Prop) (hprod A (hprod (A -> A) (A -> A -> A))) z)) -> hand (heq (@SND (A -> A) (A -> A -> A) (@SND A (hprod (A -> A) (A -> A -> A)) (@SND (A -> Prop) (hprod A (hprod (A -> A) (A -> A -> A))) z)) (@FST A (hprod (A -> A) (A -> A -> A)) (@SND (A -> Prop) (hprod A (hprod (A -> A) (A -> A -> A))) z)) x) x) (heq (@SND (A -> A) (A -> A -> A) (@SND A (hprod (A -> A) (A -> A -> A)) (@SND (A -> Prop) (hprod A (hprod (A -> A) (A -> A -> A))) z)) x (@FST A (hprod (A -> A) (A -> A -> A)) (@SND (A -> Prop) (hprod A (hprod (A -> A) (A -> A -> A))) z))) x))) (all (fun x : A => (@IN A x (@FST (A -> Prop) (hprod A (hprod (A -> A) (A -> A -> A))) z)) -> hand (heq (@SND (A -> A) (A -> A -> A) (@SND A (hprod (A -> A) (A -> A -> A)) (@SND (A -> Prop) (hprod A (hprod (A -> A) (A -> A -> A))) z)) (@FST (A -> A) (A -> A -> A) (@SND A (hprod (A -> A) (A -> A -> A)) (@SND (A -> Prop) (hprod A (hprod (A -> A) (A -> A -> A))) z)) x) x) (@FST A (hprod (A -> A) (A -> A -> A)) (@SND (A -> Prop) (hprod A (hprod (A -> A) (A -> A -> A))) z))) (heq (@SND (A -> A) (A -> A -> A) (@SND A (hprod (A -> A) (A -> A -> A)) (@SND (A -> Prop) (hprod A (hprod (A -> A) (A -> A -> A))) z)) x (@FST (A -> A) (A -> A -> A) (@SND A (hprod (A -> A) (A -> A -> A)) (@SND (A -> Prop) (hprod A (hprod (A -> A) (A -> A -> A))) z)) x)) (@FST A (hprod (A -> A) (A -> A -> A)) (@SND (A -> Prop) (hprod A (hprod (A -> A) (A -> A -> A))) z)))))))))) r) (heq (@group_operations A (@group A r)) r).
-Proof. exact (fun A => dest_mk (group_gen A)). Qed.
+Proof. by _mk_dest_record. Qed.
 
-Definition group_carrier {A : Type'} : (Group A) -> A -> Prop := fun g : Group A => @FST (A -> Prop) (hprod A (hprod (A -> A) (A -> A -> A))) (@group_operations A g).
+Lemma axiom_44 : forall {A : Type'} (r : hprod (A -> Prop) (hprod A (hprod (A -> A) (A -> A -> A)))), heq ((fun z : hprod (A -> Prop) (hprod A (hprod (A -> A) (A -> A -> A))) => hand (@IN A (@FST A (hprod (A -> A) (A -> A -> A)) (@SND (A -> Prop) (hprod A (hprod (A -> A) (A -> A -> A))) z)) (@FST (A -> Prop) (hprod A (hprod (A -> A) (A -> A -> A))) z)) (hand (all (fun x : A => (@IN A x (@FST (A -> Prop) (hprod A (hprod (A -> A) (A -> A -> A))) z)) -> @IN A (@FST (A -> A) (A -> A -> A) (@SND A (hprod (A -> A) (A -> A -> A)) (@SND (A -> Prop) (hprod A (hprod (A -> A) (A -> A -> A))) z)) x) (@FST (A -> Prop) (hprod A (hprod (A -> A) (A -> A -> A))) z))) (hand (all (fun x : A => all (fun y : A => (hand (@IN A x (@FST (A -> Prop) (hprod A (hprod (A -> A) (A -> A -> A))) z)) (@IN A y (@FST (A -> Prop) (hprod A (hprod (A -> A) (A -> A -> A))) z))) -> @IN A (@SND (A -> A) (A -> A -> A) (@SND A (hprod (A -> A) (A -> A -> A)) (@SND (A -> Prop) (hprod A (hprod (A -> A) (A -> A -> A))) z)) x y) (@FST (A -> Prop) (hprod A (hprod (A -> A) (A -> A -> A))) z)))) (hand (all (fun x : A => all (fun y : A => all (fun z' : A => (hand (@IN A x (@FST (A -> Prop) (hprod A (hprod (A -> A) (A -> A -> A))) z)) (hand (@IN A y (@FST (A -> Prop) (hprod A (hprod (A -> A) (A -> A -> A))) z)) (@IN A z' (@FST (A -> Prop) (hprod A (hprod (A -> A) (A -> A -> A))) z)))) -> heq (@SND (A -> A) (A -> A -> A) (@SND A (hprod (A -> A) (A -> A -> A)) (@SND (A -> Prop) (hprod A (hprod (A -> A) (A -> A -> A))) z)) x (@SND (A -> A) (A -> A -> A) (@SND A (hprod (A -> A) (A -> A -> A)) (@SND (A -> Prop) (hprod A (hprod (A -> A) (A -> A -> A))) z)) y z')) (@SND (A -> A) (A -> A -> A) (@SND A (hprod (A -> A) (A -> A -> A)) (@SND (A -> Prop) (hprod A (hprod (A -> A) (A -> A -> A))) z)) (@SND (A -> A) (A -> A -> A) (@SND A (hprod (A -> A) (A -> A -> A)) (@SND (A -> Prop) (hprod A (hprod (A -> A) (A -> A -> A))) z)) x y) z'))))) (hand (all (fun x : A => (@IN A x (@FST (A -> Prop) (hprod A (hprod (A -> A) (A -> A -> A))) z)) -> hand (heq (@SND (A -> A) (A -> A -> A) (@SND A (hprod (A -> A) (A -> A -> A)) (@SND (A -> Prop) (hprod A (hprod (A -> A) (A -> A -> A))) z)) (@FST A (hprod (A -> A) (A -> A -> A)) (@SND (A -> Prop) (hprod A (hprod (A -> A) (A -> A -> A))) z)) x) x) (heq (@SND (A -> A) (A -> A -> A) (@SND A (hprod (A -> A) (A -> A -> A)) (@SND (A -> Prop) (hprod A (hprod (A -> A) (A -> A -> A))) z)) x (@FST A (hprod (A -> A) (A -> A -> A)) (@SND (A -> Prop) (hprod A (hprod (A -> A) (A -> A -> A))) z))) x))) (all (fun x : A => (@IN A x (@FST (A -> Prop) (hprod A (hprod (A -> A) (A -> A -> A))) z)) -> hand (heq (@SND (A -> A) (A -> A -> A) (@SND A (hprod (A -> A) (A -> A -> A)) (@SND (A -> Prop) (hprod A (hprod (A -> A) (A -> A -> A))) z)) (@FST (A -> A) (A -> A -> A) (@SND A (hprod (A -> A) (A -> A -> A)) (@SND (A -> Prop) (hprod A (hprod (A -> A) (A -> A -> A))) z)) x) x) (@FST A (hprod (A -> A) (A -> A -> A)) (@SND (A -> Prop) (hprod A (hprod (A -> A) (A -> A -> A))) z))) (heq (@SND (A -> A) (A -> A -> A) (@SND A (hprod (A -> A) (A -> A -> A)) (@SND (A -> Prop) (hprod A (hprod (A -> A) (A -> A -> A))) z)) x (@FST (A -> A) (A -> A -> A) (@SND A (hprod (A -> A) (A -> A -> A)) (@SND (A -> Prop) (hprod A (hprod (A -> A) (A -> A -> A))) z)) x)) (@FST A (hprod (A -> A) (A -> A -> A)) (@SND (A -> Prop) (hprod A (hprod (A -> A) (A -> A -> A))) z)))))))))) r) (heq (@group_operations A (@group A r)) r).
+Proof.
+  _dest_mk_record by rewrite/3=.
+  record_exists {| group_carrier := r.1; group_id := r.2.1; group_inv := r.2.2.1; group_mul := r.2.2.2 |};
+  move=>* ; match goal with Hyp : _ |- _ => by apply Hyp end.
+Qed.
+
 Lemma group_carrier_def {A : Type'} : heq (@group_carrier A) (fun g : Group A => @FST (A -> Prop) (hprod A (hprod (A -> A) (A -> A -> A))) (@group_operations A g)).
 Proof. exact (REFL (@group_carrier A)). Qed.
-Definition group_id {A : Type'} : (Group A) -> A := fun g : Group A => @FST A (hprod (A -> A) (A -> A -> A)) (@SND (A -> Prop) (hprod A (hprod (A -> A) (A -> A -> A))) (@group_operations A g)).
 Lemma group_id_def {A : Type'} : heq (@group_id A) (fun g : Group A => @FST A (hprod (A -> A) (A -> A -> A)) (@SND (A -> Prop) (hprod A (hprod (A -> A) (A -> A -> A))) (@group_operations A g))).
 Proof. exact (REFL (@group_id A)). Qed.
-Definition group_inv {A : Type'} : (Group A) -> A -> A := fun g : Group A => @FST (A -> A) (A -> A -> A) (@SND A (hprod (A -> A) (A -> A -> A)) (@SND (A -> Prop) (hprod A (hprod (A -> A) (A -> A -> A))) (@group_operations A g))).
 Lemma group_inv_def {A : Type'} : heq (@group_inv A) (fun g : Group A => @FST (A -> A) (A -> A -> A) (@SND A (hprod (A -> A) (A -> A -> A)) (@SND (A -> Prop) (hprod A (hprod (A -> A) (A -> A -> A))) (@group_operations A g)))).
 Proof. exact (REFL (@group_inv A)). Qed.
-Definition group_mul {A : Type'} : (Group A) -> A -> A -> A := fun g : Group A => @SND (A -> A) (A -> A -> A) (@SND A (hprod (A -> A) (A -> A -> A)) (@SND (A -> Prop) (hprod A (hprod (A -> A) (A -> A -> A))) (@group_operations A g))).
 Lemma group_mul_def {A : Type'} : heq (@group_mul A) (fun g : Group A => @SND (A -> A) (A -> A -> A) (@SND A (hprod (A -> A) (A -> A -> A)) (@SND (A -> Prop) (hprod A (hprod (A -> A) (A -> A -> A))) (@group_operations A g)))).
 Proof. exact (REFL (@group_mul A)). Qed.
-Definition singleton_group {A : Type'} : A -> Group A := fun h354299 : A => @group A (@hpair (A -> Prop) (hprod A (hprod (A -> A) (A -> A -> A))) (@INSERT A h354299 (@EMPTY A)) (@hpair A (hprod (A -> A) (A -> A -> A)) h354299 (@hpair (A -> A) (A -> A -> A) (fun x : A => h354299) (fun x : A => fun y : A => h354299)))).
-Lemma singleton_group_def {A : Type'} : heq (@singleton_group A) (fun h354299 : A => @group A (@hpair (A -> Prop) (hprod A (hprod (A -> A) (A -> A -> A))) (@INSERT A h354299 (@EMPTY A)) (@hpair A (hprod (A -> A) (A -> A -> A)) h354299 (@hpair (A -> A) (A -> A -> A) (fun x : A => h354299) (fun x : A => fun y : A => h354299))))).
-Proof. exact (REFL (@singleton_group A)). Qed.
-Definition trivial_group {h255762 : Type'} : (Group h255762) -> Prop := fun h354304 : Group h255762 => heq (@group_carrier h255762 h354304) (@INSERT h255762 (@group_id h255762 h354304) (@EMPTY h255762)).
+
+Lemma singleton_group_def {A : Type'} : @heq (arr A (Group A)) (@singleton_group A) (fun h354299 : A => @group A (@hpair (A -> Prop) (hprod A (hprod (A -> A) (A -> A -> A))) (@INSERT A h354299 (@EMPTY A)) (@hpair A (hprod (A -> A) (A -> A -> A)) h354299 (@hpair (A -> A) (A -> A -> A) (fun x : A => h354299) (fun x : A => fun y : A => h354299))))).
+Proof. by ext=> x ; rewrite/3= -(axiom_43 (_ x)). Qed.
+
+Definition trivial_group {h255762 : Type'} : (Group h255762) -> Prop :=
+  fun G => group_carrier G = [set group_id G].
 Lemma trivial_group_def {h255762 : Type'} : heq (@trivial_group h255762) (fun h354304 : Group h255762 => heq (@group_carrier h255762 h354304) (@INSERT h255762 (@group_id h255762 h354304) (@EMPTY h255762))).
-Proof. exact (REFL (@trivial_group h255762)). Qed.
-Definition opposite_group {A : Type'} : (Group A) -> Group A := fun h354370 : Group A => @group A (@hpair (A -> Prop) (hprod A (hprod (A -> A) (A -> A -> A))) (@group_carrier A h354370) (@hpair A (hprod (A -> A) (A -> A -> A)) (@group_id A h354370) (@hpair (A -> A) (A -> A -> A) (@group_inv A h354370) (fun x : A => fun y : A => @group_mul A h354370 y x)))).
+Proof. by extall => /3=. Qed.
+
+Program Definition opposite_group {A : Type'} : (Group A) -> Group A :=
+  fun G => {| group_carrier := group_carrier G ; group_id := group_id G ; group_inv := group_inv G ; group_mul x y := group_mul G y x |}.
+Solve Obligations with try by move=> ? [].
+Next Obligation.
+  move=>* ; exact: group_mul_const.
+Qed.
+Final Obligation.
+  by move=>* ; rewrite/= group_mul_assoc.
+Qed.
+
 Lemma opposite_group_def {A : Type'} : heq (@opposite_group A) (fun h354370 : Group A => @group A (@hpair (A -> Prop) (hprod A (hprod (A -> A) (A -> A -> A))) (@group_carrier A h354370) (@hpair A (hprod (A -> A) (A -> A -> A)) (@group_id A h354370) (@hpair (A -> A) (A -> A -> A) (@group_inv A h354370) (fun x : A => fun y : A => @group_mul A h354370 y x))))).
-Proof. exact (REFL (@opposite_group A)). Qed.
-Definition group_div {h256135 : Type'} : (Group h256135) -> h256135 -> h256135 -> h256135 := fun h354375 : Group h256135 => fun h354376 : h256135 => fun h354377 : h256135 => @group_mul h256135 h354375 h354376 (@group_inv h256135 h354375 h354377).
+Proof. constr_align (@axiom_43 A). Qed.
+
+Definition group_div {h256135 : Type'} : (Group h256135) -> h256135 -> h256135 -> h256135 :=
+  fun G x y => group_mul G x (group_inv G y).
 Lemma group_div_def {h256135 : Type'} : heq (@group_div h256135) (fun h354375 : Group h256135 => fun h354376 : h256135 => fun h354377 : h256135 => @group_mul h256135 h354375 h354376 (@group_inv h256135 h354375 h354377)).
 Proof. exact (REFL (@group_div h256135)). Qed.
-Definition group_pow {h257327 : Type'} : (Group h257327) -> h257327 -> num -> h257327 := @ε ((hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num)))))))) -> (Group h257327) -> h257327 -> num -> h257327) (fun group_pow' : (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num)))))))) -> (Group h257327) -> h257327 -> num -> h257327 => all (fun h355010 : hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num))))))) => hand (all (fun x : h257327 => all (fun G : Group h257327 => heq (group_pow' h355010 G x (NUMERAL h0)) (@group_id h257327 G)))) (all (fun G : Group h257327 => all (fun x : h257327 => all (fun n : num => heq (group_pow' h355010 G x (SUC n)) (@group_mul h257327 G x (group_pow' h355010 G x n)))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num))))))) (NUMERAL (BIT1 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num)))))) (NUMERAL (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 (BIT1 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num (hprod num num))))) (NUMERAL (BIT1 (BIT1 (BIT1 (BIT1 (BIT0 (BIT1 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num num)))) (NUMERAL (BIT1 (BIT0 (BIT1 (BIT0 (BIT1 (BIT1 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num num))) (NUMERAL (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 (BIT1 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num num)) (NUMERAL (BIT1 (BIT1 (BIT1 (BIT1 (BIT1 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num num) (NUMERAL (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 (BIT1 (BIT1 h0)))))))) (@hpair num num (NUMERAL (BIT1 (BIT1 (BIT1 (BIT1 (BIT0 (BIT1 (BIT1 h0)))))))) (NUMERAL (BIT1 (BIT1 (BIT1 (BIT0 (BIT1 (BIT1 (BIT1 h0)))))))))))))))).
+
+Definition group_pow {h257327 : Type'} : (Group h257327) -> h257327 -> num -> h257327 :=
+  fix group_pow G x n := if n is k.+1
+    then group_mul G x (group_pow G x k) else group_id G.
+
 Lemma group_pow_def {h257327 : Type'} : heq (@group_pow h257327) (@ε ((hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num)))))))) -> (Group h257327) -> h257327 -> num -> h257327) (fun group_pow' : (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num)))))))) -> (Group h257327) -> h257327 -> num -> h257327 => all (fun h355010 : hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num))))))) => hand (all (fun x : h257327 => all (fun G : Group h257327 => heq (group_pow' h355010 G x (NUMERAL h0)) (@group_id h257327 G)))) (all (fun G : Group h257327 => all (fun x : h257327 => all (fun n : num => heq (group_pow' h355010 G x (SUC n)) (@group_mul h257327 G x (group_pow' h355010 G x n)))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num))))))) (NUMERAL (BIT1 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num)))))) (NUMERAL (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 (BIT1 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num (hprod num num))))) (NUMERAL (BIT1 (BIT1 (BIT1 (BIT1 (BIT0 (BIT1 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num num)))) (NUMERAL (BIT1 (BIT0 (BIT1 (BIT0 (BIT1 (BIT1 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num num))) (NUMERAL (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 (BIT1 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num num)) (NUMERAL (BIT1 (BIT1 (BIT1 (BIT1 (BIT1 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num num) (NUMERAL (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 (BIT1 (BIT1 h0)))))))) (@hpair num num (NUMERAL (BIT1 (BIT1 (BIT1 (BIT1 (BIT0 (BIT1 (BIT1 h0)))))))) (NUMERAL (BIT1 (BIT1 (BIT1 (BIT0 (BIT1 (BIT1 (BIT1 h0))))))))))))))))).
-Proof. exact (REFL (@group_pow h257327)). Qed.
-Definition group_zpow {A : Type'} : (Group A) -> A -> int -> A := fun h355070 : Group A => fun h355071 : A => fun h355072 : int => @COND A (int_le (int_of_num (NUMERAL h0)) h355072) (@group_pow A h355070 h355071 (num_of_int h355072)) (@group_inv A h355070 (@group_pow A h355070 h355071 (num_of_int (int_neg h355072)))).
+Proof. by total_align. Qed.
+
+Definition group_zpow {A : Type'} : (Group A) -> A -> int -> A :=
+  fun G x z => match z with
+  | Posz n => group_pow G x n
+  | Negz n => group_inv G (group_pow G x n.+1) end.
+
 Lemma group_zpow_def {A : Type'} : heq (@group_zpow A) (fun h355070 : Group A => fun h355071 : A => fun h355072 : int => @COND A (int_le (int_of_num (NUMERAL h0)) h355072) (@group_pow A h355070 h355071 (num_of_int h355072)) (@group_inv A h355070 (@group_pow A h355070 h355071 (num_of_int (int_neg h355072))))).
-Proof. exact (REFL (@group_zpow A)). Qed.
+Proof. by ext=> ? ? [] ? /1=. Qed.
+
 Definition abelian_group {A : Type'} : (Group A) -> Prop := fun h355258 : Group A => all (fun x : A => all (fun y : A => (hand (@IN A x (@group_carrier A h355258)) (@IN A y (@group_carrier A h355258))) -> heq (@group_mul A h355258 x y) (@group_mul A h355258 y x))).
 Lemma abelian_group_def {A : Type'} : heq (@abelian_group A) (fun h355258 : Group A => all (fun x : A => all (fun y : A => (hand (@IN A x (@group_carrier A h355258)) (@IN A y (@group_carrier A h355258))) -> heq (@group_mul A h355258 x y) (@group_mul A h355258 y x)))).
 Proof. exact (REFL (@abelian_group A)). Qed.
-Definition group_neg {h259163 : Type'} : (Group h259163) -> h259163 -> h259163 := fun h355475 : Group h259163 => fun h355476 : h259163 => @COND h259163 (@IN h259163 h355476 (@group_carrier h259163 h355475)) (@group_inv h259163 h355475 h355476) h355476.
+Definition group_neg {h259163 : Type'} : (Group h259163) -> h259163 -> h259163 :=
+  fun G x => if group_carrier G x then group_inv G x else x.
 Lemma group_neg_def {h259163 : Type'} : heq (@group_neg h259163) (fun h355475 : Group h259163 => fun h355476 : h259163 => @COND h259163 (@IN h259163 h355476 (@group_carrier h259163 h355475)) (@group_inv h259163 h355475 h355476) h355476).
 Proof. exact (REFL (@group_neg h259163)). Qed.
-Definition group_add {A : Type'} : (Group A) -> A -> A -> A := fun h355487 : Group A => fun h355488 : A => fun h355489 : A => @COND A (hand (@IN A h355488 (@group_carrier A h355487)) (@IN A h355489 (@group_carrier A h355487))) (@group_mul A h355487 h355488 h355489) (@COND A (@IN A h355488 (@group_carrier A h355487)) h355489 (@COND A (@IN A h355489 (@group_carrier A h355487)) h355488 (@ε A (fun w : A => not (@IN A w (@group_carrier A h355487)))))).
+Definition group_add {A : Type'} : (Group A) -> A -> A -> A := fun G x y =>
+  if group_carrier G x /\ group_carrier G y
+  then group_mul G x y
+  else if group_carrier G x then y
+  else if group_carrier G y then x
+  else ε (fun w => ~group_carrier G w).
 Lemma group_add_def {A : Type'} : heq (@group_add A) (fun h355487 : Group A => fun h355488 : A => fun h355489 : A => @COND A (hand (@IN A h355488 (@group_carrier A h355487)) (@IN A h355489 (@group_carrier A h355487))) (@group_mul A h355487 h355488 h355489) (@COND A (@IN A h355488 (@group_carrier A h355487)) h355489 (@COND A (@IN A h355489 (@group_carrier A h355487)) h355488 (@ε A (fun w : A => not (@IN A w (@group_carrier A h355487))))))).
 Proof. exact (REFL (@group_add A)). Qed.
-Definition group_nmul {h259244 : Type'} : (Group h259244) -> num -> h259244 -> h259244 := @ε ((hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num))))))))) -> (Group h259244) -> num -> h259244 -> h259244) (fun group_nmul' : (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num))))))))) -> (Group h259244) -> num -> h259244 -> h259244 => all (fun h355515 : hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num)))))))) => hand (all (fun x : h259244 => all (fun G : Group h259244 => heq (group_nmul' h355515 G (NUMERAL h0) x) (@group_id h259244 G)))) (all (fun G : Group h259244 => all (fun n : num => all (fun x : h259244 => heq (group_nmul' h355515 G (SUC n) x) (@group_add h259244 G x (group_nmul' h355515 G n x)))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num)))))))) (NUMERAL (BIT1 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num))))))) (NUMERAL (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 (BIT1 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num)))))) (NUMERAL (BIT1 (BIT1 (BIT1 (BIT1 (BIT0 (BIT1 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num (hprod num num))))) (NUMERAL (BIT1 (BIT0 (BIT1 (BIT0 (BIT1 (BIT1 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num num)))) (NUMERAL (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 (BIT1 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num num))) (NUMERAL (BIT1 (BIT1 (BIT1 (BIT1 (BIT1 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num num)) (NUMERAL (BIT0 (BIT1 (BIT1 (BIT1 (BIT0 (BIT1 (BIT1 h0)))))))) (@hpair num (hprod num num) (NUMERAL (BIT1 (BIT0 (BIT1 (BIT1 (BIT0 (BIT1 (BIT1 h0)))))))) (@hpair num num (NUMERAL (BIT1 (BIT0 (BIT1 (BIT0 (BIT1 (BIT1 (BIT1 h0)))))))) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT1 (BIT0 (BIT1 (BIT1 h0))))))))))))))))).
+
+Definition group_nmul {h259244 : Type'} : (Group h259244) -> num -> h259244 -> h259244 :=
+  fix group_nmul G n x :=
+    if n is k.+1 then group_add G x (group_nmul G k x) else group_id G.
+
 Lemma group_nmul_def {h259244 : Type'} : heq (@group_nmul h259244) (@ε ((hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num))))))))) -> (Group h259244) -> num -> h259244 -> h259244) (fun group_nmul' : (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num))))))))) -> (Group h259244) -> num -> h259244 -> h259244 => all (fun h355515 : hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num)))))))) => hand (all (fun x : h259244 => all (fun G : Group h259244 => heq (group_nmul' h355515 G (NUMERAL h0) x) (@group_id h259244 G)))) (all (fun G : Group h259244 => all (fun n : num => all (fun x : h259244 => heq (group_nmul' h355515 G (SUC n) x) (@group_add h259244 G x (group_nmul' h355515 G n x)))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num)))))))) (NUMERAL (BIT1 (BIT1 (BIT1 (BIT0 (BIT0 (BIT1 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num))))))) (NUMERAL (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 (BIT1 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num (hprod num (hprod num num)))))) (NUMERAL (BIT1 (BIT1 (BIT1 (BIT1 (BIT0 (BIT1 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num (hprod num num))))) (NUMERAL (BIT1 (BIT0 (BIT1 (BIT0 (BIT1 (BIT1 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num (hprod num num)))) (NUMERAL (BIT0 (BIT0 (BIT0 (BIT0 (BIT1 (BIT1 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num (hprod num num))) (NUMERAL (BIT1 (BIT1 (BIT1 (BIT1 (BIT1 (BIT0 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num num)) (NUMERAL (BIT0 (BIT1 (BIT1 (BIT1 (BIT0 (BIT1 (BIT1 h0)))))))) (@hpair num (hprod num num) (NUMERAL (BIT1 (BIT0 (BIT1 (BIT1 (BIT0 (BIT1 (BIT1 h0)))))))) (@hpair num num (NUMERAL (BIT1 (BIT0 (BIT1 (BIT0 (BIT1 (BIT1 (BIT1 h0)))))))) (NUMERAL (BIT0 (BIT0 (BIT1 (BIT1 (BIT0 (BIT1 (BIT1 h0)))))))))))))))))).
-Proof. exact (REFL (@group_nmul h259244)). Qed.
+Proof. by total_align. Qed.
+
 Definition group_product {h260356 A : Type'} : (Group A) -> (h260356 -> h260356 -> Prop) -> (h260356 -> Prop) -> (h260356 -> A) -> A := fun h355877 : Group A => @iterato A h260356 (@group_carrier A h355877) (@group_id A h355877) (@group_mul A h355877).
 Lemma group_product_def {h260356 A : Type'} : heq (@group_product h260356 A) (fun h355877 : Group A => @iterato A h260356 (@group_carrier A h355877) (@group_id A h355877) (@group_mul A h355877)).
 Proof. exact (REFL (@group_product h260356 A)). Qed.
@@ -7477,24 +7546,42 @@ Definition short_exact_sequence {A B C : Type'} : (hprod (Group A) (hprod (Group
 Lemma short_exact_sequence_def {A B C : Type'} : heq (@short_exact_sequence A B C) (fun h569097 : hprod (Group A) (hprod (Group B) (Group C)) => fun h569098 : hprod (A -> B) (B -> C) => hand (@group_monomorphism A B (@hpair (Group A) (Group B) (@FST (Group A) (hprod (Group B) (Group C)) h569097) (@FST (Group B) (Group C) (@SND (Group A) (hprod (Group B) (Group C)) h569097))) (@FST (A -> B) (B -> C) h569098)) (hand (@group_exactness A B C (@hpair (Group A) (hprod (Group B) (Group C)) (@FST (Group A) (hprod (Group B) (Group C)) h569097) (@hpair (Group B) (Group C) (@FST (Group B) (Group C) (@SND (Group A) (hprod (Group B) (Group C)) h569097)) (@SND (Group B) (Group C) (@SND (Group A) (hprod (Group B) (Group C)) h569097)))) (@hpair (A -> B) (B -> C) (@FST (A -> B) (B -> C) h569098) (@SND (A -> B) (B -> C) h569098))) (@group_epimorphism B C (@hpair (Group B) (Group C) (@FST (Group B) (Group C) (@SND (Group A) (hprod (Group B) (Group C)) h569097)) (@SND (Group B) (Group C) (@SND (Group A) (hprod (Group B) (Group C)) h569097))) (@SND (A -> B) (B -> C) h569098)))).
 Proof. exact (REFL (@short_exact_sequence A B C)). Qed.
 
-Fact Matroid_gen (A : Type') : (fun m : hprod (A -> Prop) ((A -> Prop) -> A -> Prop) => hand (all (fun s : A -> Prop => (@SUBSET A s (@FST (A -> Prop) ((A -> Prop) -> A -> Prop) m)) -> @SUBSET A (@SND (A -> Prop) ((A -> Prop) -> A -> Prop) m s) (@FST (A -> Prop) ((A -> Prop) -> A -> Prop) m))) (hand (all (fun s : A -> Prop => (@SUBSET A s (@FST (A -> Prop) ((A -> Prop) -> A -> Prop) m)) -> @SUBSET A s (@SND (A -> Prop) ((A -> Prop) -> A -> Prop) m s))) (hand (all (fun s : A -> Prop => all (fun t : A -> Prop => (hand (@SUBSET A s t) (@SUBSET A t (@FST (A -> Prop) ((A -> Prop) -> A -> Prop) m))) -> @SUBSET A (@SND (A -> Prop) ((A -> Prop) -> A -> Prop) m s) (@SND (A -> Prop) ((A -> Prop) -> A -> Prop) m t)))) (hand (all (fun s : A -> Prop => (@SUBSET A s (@FST (A -> Prop) ((A -> Prop) -> A -> Prop) m)) -> heq (@SND (A -> Prop) ((A -> Prop) -> A -> Prop) m (@SND (A -> Prop) ((A -> Prop) -> A -> Prop) m s)) (@SND (A -> Prop) ((A -> Prop) -> A -> Prop) m s))) (hand (all (fun s : A -> Prop => all (fun x : A => (hand (@SUBSET A s (@FST (A -> Prop) ((A -> Prop) -> A -> Prop) m)) (@IN A x (@SND (A -> Prop) ((A -> Prop) -> A -> Prop) m s))) -> hex (fun s' : A -> Prop => hand (@FINITE A s') (hand (@SUBSET A s' s) (@IN A x (@SND (A -> Prop) ((A -> Prop) -> A -> Prop) m s'))))))) (all (fun s : A -> Prop => all (fun x : A => all (fun y : A => (hand (@SUBSET A s (@FST (A -> Prop) ((A -> Prop) -> A -> Prop) m)) (hand (@IN A x (@FST (A -> Prop) ((A -> Prop) -> A -> Prop) m)) (hand (@IN A y (@SND (A -> Prop) ((A -> Prop) -> A -> Prop) m (@INSERT A x s))) (not (@IN A y (@SND (A -> Prop) ((A -> Prop) -> A -> Prop) m s)))))) -> @IN A x (@SND (A -> Prop) ((A -> Prop) -> A -> Prop) m (@INSERT A y s))))))))))) (point _).
+Record Matroid_record (A : Type') := {
+  matroid_set : set A ;
+  matroid_span : set A -> set A ;
+  matroid_span_matroid_set : forall s, s `<=` matroid_set -> matroid_span s `<=` matroid_set ;
+  matroid_span_subset : forall s, s `<=` matroid_set -> s `<=` matroid_span s ;
+  matroid_span_increasing : forall s s', s' `<=` matroid_set -> s `<=` s' ->
+    matroid_span s `<=` matroid_span s' ;
+  matroid_span_stationary : forall s, s `<=` matroid_set ->
+    matroid_span (matroid_span s) = matroid_span s ;
+  matroid_span_finitary_gen : forall s x, s `<=` matroid_set -> matroid_span s x ->
+    exists s', finite_set s' /\ s' `<=` s /\ matroid_span s' x ;
+  matroid_span_setU1_sym : forall s x y, s `<=` matroid_set -> matroid_set x ->
+    matroid_span (x |` s) y -> ~ matroid_span s y ->  matroid_span (y |` s) x }.
+
+Program Definition triv_matroid (A : Type') : Matroid_record A :=
+  {| matroid_set := set0 ; matroid_span := id |}.
+Solve Obligations with solve[firstorder].
+
+Definition Matroid A := is_Type' (@triv_matroid A).
+
+Definition dest_matroid {A : Type'} (M : Matroid A) :=
+  (matroid_set M,matroid_span M).
+
+Definition matroid {A : Type'} := finv (@dest_matroid A).
+
+Lemma axiom_45 : forall {A : Type'} (a : Matroid A), heq (@matroid A (@dest_matroid A a)) a.
+Proof. by _mk_dest_record. Qed.
+
+Lemma axiom_46 : forall {A : Type'} (r : hprod (A -> Prop) ((A -> Prop) -> A -> Prop)), heq ((fun m : hprod (A -> Prop) ((A -> Prop) -> A -> Prop) => hand (all (fun s : A -> Prop => (@SUBSET A s (@FST (A -> Prop) ((A -> Prop) -> A -> Prop) m)) -> @SUBSET A (@SND (A -> Prop) ((A -> Prop) -> A -> Prop) m s) (@FST (A -> Prop) ((A -> Prop) -> A -> Prop) m))) (hand (all (fun s : A -> Prop => (@SUBSET A s (@FST (A -> Prop) ((A -> Prop) -> A -> Prop) m)) -> @SUBSET A s (@SND (A -> Prop) ((A -> Prop) -> A -> Prop) m s))) (hand (all (fun s : A -> Prop => all (fun t : A -> Prop => (hand (@SUBSET A s t) (@SUBSET A t (@FST (A -> Prop) ((A -> Prop) -> A -> Prop) m))) -> @SUBSET A (@SND (A -> Prop) ((A -> Prop) -> A -> Prop) m s) (@SND (A -> Prop) ((A -> Prop) -> A -> Prop) m t)))) (hand (all (fun s : A -> Prop => (@SUBSET A s (@FST (A -> Prop) ((A -> Prop) -> A -> Prop) m)) -> heq (@SND (A -> Prop) ((A -> Prop) -> A -> Prop) m (@SND (A -> Prop) ((A -> Prop) -> A -> Prop) m s)) (@SND (A -> Prop) ((A -> Prop) -> A -> Prop) m s))) (hand (all (fun s : A -> Prop => all (fun x : A => (hand (@SUBSET A s (@FST (A -> Prop) ((A -> Prop) -> A -> Prop) m)) (@IN A x (@SND (A -> Prop) ((A -> Prop) -> A -> Prop) m s))) -> hex (fun s' : A -> Prop => hand (@FINITE A s') (hand (@SUBSET A s' s) (@IN A x (@SND (A -> Prop) ((A -> Prop) -> A -> Prop) m s'))))))) (all (fun s : A -> Prop => all (fun x : A => all (fun y : A => (hand (@SUBSET A s (@FST (A -> Prop) ((A -> Prop) -> A -> Prop) m)) (hand (@IN A x (@FST (A -> Prop) ((A -> Prop) -> A -> Prop) m)) (hand (@IN A y (@SND (A -> Prop) ((A -> Prop) -> A -> Prop) m (@INSERT A x s))) (not (@IN A y (@SND (A -> Prop) ((A -> Prop) -> A -> Prop) m s)))))) -> @IN A x (@SND (A -> Prop) ((A -> Prop) -> A -> Prop) m (@INSERT A y s))))))))))) r) (heq (@dest_matroid A (@matroid A r)) r).
 Proof.
-  (do! split) => s a _ ; exists EMPTY ; (do! split) ; last by move.
-  by move=> ? ; apply ; left.
+  _dest_mk_record by rewrite/3= with dest_matroid.
+  record_exists {| matroid_set := r.1 ; matroid_span := r.2 |}.
 Qed.
 
-Definition Matroid A := subtype' (Matroid_gen A).
-Definition matroid A := mk (Matroid_gen A).
-Definition dest_matroid A := dest (Matroid_gen A).
-Lemma axiom_45 : forall {A : Type'} (a : Matroid A), heq (@matroid A (@dest_matroid A a)) a.
-Proof. exact (fun A => mk_dest (Matroid_gen A)). Qed.
-Lemma axiom_46 : forall {A : Type'} (r : hprod (A -> Prop) ((A -> Prop) -> A -> Prop)), heq ((fun m : hprod (A -> Prop) ((A -> Prop) -> A -> Prop) => hand (all (fun s : A -> Prop => (@SUBSET A s (@FST (A -> Prop) ((A -> Prop) -> A -> Prop) m)) -> @SUBSET A (@SND (A -> Prop) ((A -> Prop) -> A -> Prop) m s) (@FST (A -> Prop) ((A -> Prop) -> A -> Prop) m))) (hand (all (fun s : A -> Prop => (@SUBSET A s (@FST (A -> Prop) ((A -> Prop) -> A -> Prop) m)) -> @SUBSET A s (@SND (A -> Prop) ((A -> Prop) -> A -> Prop) m s))) (hand (all (fun s : A -> Prop => all (fun t : A -> Prop => (hand (@SUBSET A s t) (@SUBSET A t (@FST (A -> Prop) ((A -> Prop) -> A -> Prop) m))) -> @SUBSET A (@SND (A -> Prop) ((A -> Prop) -> A -> Prop) m s) (@SND (A -> Prop) ((A -> Prop) -> A -> Prop) m t)))) (hand (all (fun s : A -> Prop => (@SUBSET A s (@FST (A -> Prop) ((A -> Prop) -> A -> Prop) m)) -> heq (@SND (A -> Prop) ((A -> Prop) -> A -> Prop) m (@SND (A -> Prop) ((A -> Prop) -> A -> Prop) m s)) (@SND (A -> Prop) ((A -> Prop) -> A -> Prop) m s))) (hand (all (fun s : A -> Prop => all (fun x : A => (hand (@SUBSET A s (@FST (A -> Prop) ((A -> Prop) -> A -> Prop) m)) (@IN A x (@SND (A -> Prop) ((A -> Prop) -> A -> Prop) m s))) -> hex (fun s' : A -> Prop => hand (@FINITE A s') (hand (@SUBSET A s' s) (@IN A x (@SND (A -> Prop) ((A -> Prop) -> A -> Prop) m s'))))))) (all (fun s : A -> Prop => all (fun x : A => all (fun y : A => (hand (@SUBSET A s (@FST (A -> Prop) ((A -> Prop) -> A -> Prop) m)) (hand (@IN A x (@FST (A -> Prop) ((A -> Prop) -> A -> Prop) m)) (hand (@IN A y (@SND (A -> Prop) ((A -> Prop) -> A -> Prop) m (@INSERT A x s))) (not (@IN A y (@SND (A -> Prop) ((A -> Prop) -> A -> Prop) m s)))))) -> @IN A x (@SND (A -> Prop) ((A -> Prop) -> A -> Prop) m (@INSERT A y s))))))))))) r) (heq (@dest_matroid A (@matroid A r)) r).
-Proof. exact (fun A => dest_mk (Matroid_gen A)). Qed.
-
-Definition matroid_set {A : Type'} : (Matroid A) -> A -> Prop := fun m : Matroid A => @FST (A -> Prop) ((A -> Prop) -> A -> Prop) (@dest_matroid A m).
 Lemma matroid_set_def {A : Type'} : heq (@matroid_set A) (fun m : Matroid A => @FST (A -> Prop) ((A -> Prop) -> A -> Prop) (@dest_matroid A m)).
 Proof. exact (REFL (@matroid_set A)). Qed.
-Definition matroid_span {A : Type'} : (Matroid A) -> (A -> Prop) -> A -> Prop := fun m : Matroid A => @SND (A -> Prop) ((A -> Prop) -> A -> Prop) (@dest_matroid A m).
 Lemma matroid_span_def {A : Type'} : heq (@matroid_span A) (fun m : Matroid A => @SND (A -> Prop) ((A -> Prop) -> A -> Prop) (@dest_matroid A m)).
 Proof. exact (REFL (@matroid_span A)). Qed.
 Definition matroid_spanning {A : Type'} : (Matroid A) -> (A -> Prop) -> Prop := fun h600863 : Matroid A => fun h600864 : A -> Prop => hand (@SUBSET A h600864 (@matroid_set A h600863)) (heq (@matroid_span A h600863 h600864) (@matroid_set A h600863)).
@@ -7530,32 +7617,54 @@ Proof. exact (REFL (@matroid_dim A)). Qed.
 Definition binom : (hprod num num) -> num := @ε ((hprod num (hprod num (hprod num (hprod num num)))) -> (hprod num num) -> num) (fun binom' : (hprod num (hprod num (hprod num (hprod num num)))) -> (hprod num num) -> num => all (fun h613308 : hprod num (hprod num (hprod num (hprod num num))) => hand (all (fun n : num => heq (binom' h613308 (@hpair num num n (NUMERAL h0))) (NUMERAL (BIT1 h0)))) (hand (all (fun k : num => heq (binom' h613308 (@hpair num num (NUMERAL h0) (SUC k))) (NUMERAL h0))) (all (fun n : num => all (fun k : num => heq (binom' h613308 (@hpair num num (SUC n) (SUC k))) (add (binom' h613308 (@hpair num num n (SUC k))) (binom' h613308 (@hpair num num n k))))))))) (@hpair num (hprod num (hprod num (hprod num num))) (NUMERAL (BIT0 (BIT1 (BIT0 (BIT0 (BIT0 (BIT1 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num num)) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 (BIT1 h0)))))))) (@hpair num (hprod num num) (NUMERAL (BIT0 (BIT1 (BIT1 (BIT1 (BIT0 (BIT1 (BIT1 h0)))))))) (@hpair num num (NUMERAL (BIT1 (BIT1 (BIT1 (BIT1 (BIT0 (BIT1 (BIT1 h0)))))))) (NUMERAL (BIT1 (BIT0 (BIT1 (BIT1 (BIT0 (BIT1 (BIT1 h0)))))))))))).
 Lemma binom_def : heq binom (@ε ((hprod num (hprod num (hprod num (hprod num num)))) -> (hprod num num) -> num) (fun binom' : (hprod num (hprod num (hprod num (hprod num num)))) -> (hprod num num) -> num => all (fun h613308 : hprod num (hprod num (hprod num (hprod num num))) => hand (all (fun n : num => heq (binom' h613308 (@hpair num num n (NUMERAL h0))) (NUMERAL (BIT1 h0)))) (hand (all (fun k : num => heq (binom' h613308 (@hpair num num (NUMERAL h0) (SUC k))) (NUMERAL h0))) (all (fun n : num => all (fun k : num => heq (binom' h613308 (@hpair num num (SUC n) (SUC k))) (add (binom' h613308 (@hpair num num n (SUC k))) (binom' h613308 (@hpair num num n k))))))))) (@hpair num (hprod num (hprod num (hprod num num))) (NUMERAL (BIT0 (BIT1 (BIT0 (BIT0 (BIT0 (BIT1 (BIT1 h0)))))))) (@hpair num (hprod num (hprod num num)) (NUMERAL (BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 (BIT1 h0)))))))) (@hpair num (hprod num num) (NUMERAL (BIT0 (BIT1 (BIT1 (BIT1 (BIT0 (BIT1 (BIT1 h0)))))))) (@hpair num num (NUMERAL (BIT1 (BIT1 (BIT1 (BIT1 (BIT0 (BIT1 (BIT1 h0)))))))) (NUMERAL (BIT1 (BIT0 (BIT1 (BIT1 (BIT0 (BIT1 (BIT1 h0))))))))))))).
 Proof. exact (REFL binom). Qed.
-Definition istopology {h352037 : Type'} : ((h352037 -> Prop) -> Prop) -> Prop := fun h614427 : (h352037 -> Prop) -> Prop => hand (@IN (h352037 -> Prop) (@EMPTY h352037) h614427) (hand (all (fun s : h352037 -> Prop => all (fun t : h352037 -> Prop => (hand (@IN (h352037 -> Prop) s h614427) (@IN (h352037 -> Prop) t h614427)) -> @IN (h352037 -> Prop) (@INTER h352037 s t) h614427))) (all (fun k : (h352037 -> Prop) -> Prop => (@SUBSET (h352037 -> Prop) k h614427) -> @IN (h352037 -> Prop) (@UNIONS h352037 k) h614427))).
+Definition istopology {h352037 : Type'} : ((h352037 -> Prop) -> Prop) -> Prop :=
+  fun U => U set0 /\ (forall s t, U s -> U t -> U (s `&` t))
+  /\ forall k, k `<=` U -> U (\bigcup_(s in k) s). 
+
 Lemma istopology_def {h352037 : Type'} : heq (@istopology h352037) (fun h614427 : (h352037 -> Prop) -> Prop => hand (@IN (h352037 -> Prop) (@EMPTY h352037) h614427) (hand (all (fun s : h352037 -> Prop => all (fun t : h352037 -> Prop => (hand (@IN (h352037 -> Prop) s h614427) (@IN (h352037 -> Prop) t h614427)) -> @IN (h352037 -> Prop) (@INTER h352037 s t) h614427))) (all (fun k : (h352037 -> Prop) -> Prop => (@SUBSET (h352037 -> Prop) k h614427) -> @IN (h352037 -> Prop) (@UNIONS h352037 k) h614427)))).
-Proof. exact (REFL (@istopology h352037)). Qed.
+Proof.
+  by rewrite/istopology/0= => /` *; (do! split) => *; full_destruct; and_arrow.
+Qed.
 
-Fact Topology_gen A : @istopology A (point _).
-Proof. by []. Qed.
+Record Topology_record (A : Type') := {
+  open_in : set_system A ;
+  open_set0 : open_in set0 ;
+  open_setI : forall s s', open_in s -> open_in s' -> open_in (setI s s') ;
+  open_UNIONS : forall S, S `<=` open_in ->
+    open_in (\bigcup_(s in S) s) }.
 
-Definition Topology A := subtype' (Topology_gen A).
-Definition topology A := mk (Topology_gen A).
-Definition open_in A := dest (Topology_gen A).
+Program Definition discrete_topology (A : Type') (s : set A) : Topology_record A :=
+  {| open_in := [set s' | s' `<=` s] |}.
+Next Obligation. by rewrite/subset/=. Qed.
+Next Obligation. by move=> * ; apply subIset ; left. Qed.
+Final Obligation. move=> ? ; exact: bigcup_sub. Qed.
+
+Definition Topology (A : Type') := is_Type' (discrete_topology [set:A]).
+
+Definition topology (A : Type') := finv (A := Topology A) (@open_in A).
+
 Lemma axiom_47 : forall {A : Type'} (a : Topology A), heq (@topology A (@open_in A a)) a.
-Proof. exact (fun A => mk_dest (Topology_gen A)). Qed.
+Proof. by _mk_dest_record. Qed.
 Lemma axiom_48 : forall {A : Type'} (r : (A -> Prop) -> Prop), heq ((fun t : (A -> Prop) -> Prop => @istopology A t) r) (heq (@open_in A (@topology A r)) r).
-Proof. exact (fun A => dest_mk (Topology_gen A)). Qed.
+Proof.
+  move=> A ; _dest_mk_record by rewrite/3= with (@open_in A).
+  record_exists {| open_in := r |}.
+Qed.
 
-Definition topspace {h352099 : Type'} : (Topology h352099) -> h352099 -> Prop := fun h614469 : Topology h352099 => @UNIONS h352099 (@GSPEC (h352099 -> Prop) (fun GEN_PVAR_1231 : h352099 -> Prop => hex (fun s : h352099 -> Prop => @SETSPEC (h352099 -> Prop) GEN_PVAR_1231 (@open_in h352099 h614469 s) s))).
+Definition topspace {h352099 : Type'} : (Topology h352099) -> h352099 -> Prop := fun t => \bigcup_(x in open_in t) x.
+
 Lemma topspace_def {h352099 : Type'} : heq (@topspace h352099) (fun h614469 : Topology h352099 => @UNIONS h352099 (@GSPEC (h352099 -> Prop) (fun GEN_PVAR_1231 : h352099 -> Prop => hex (fun s : h352099 -> Prop => @SETSPEC (h352099 -> Prop) GEN_PVAR_1231 (@open_in h352099 h614469 s) s)))).
-Proof. exact (REFL (@topspace h352099)). Qed.
+Proof. by move=> /1` ? /3=. Qed.
+
 Definition closed_in {h352402 : Type'} : (Topology h352402) -> (h352402 -> Prop) -> Prop := fun h614504 : Topology h352402 => fun h614505 : h352402 -> Prop => hand (@SUBSET h352402 h614505 (@topspace h352402 h614504)) (@open_in h352402 h614504 (@DIFF h352402 (@topspace h352402 h614504) h614505)).
 Lemma closed_in_def {h352402 : Type'} : heq (@closed_in h352402) (fun h614504 : Topology h352402 => fun h614505 : h352402 -> Prop => hand (@SUBSET h352402 h614505 (@topspace h352402 h614504)) (@open_in h352402 h614504 (@DIFF h352402 (@topspace h352402 h614504) h614505))).
 Proof. exact (REFL (@closed_in h352402)). Qed.
-Definition discrete_topology {A : Type'} : (A -> Prop) -> Topology A := fun h615083 : A -> Prop => @topology A (@GSPEC (A -> Prop) (fun GEN_PVAR_1235 : A -> Prop => hex (fun s : A -> Prop => @SETSPEC (A -> Prop) GEN_PVAR_1235 (@SUBSET A s h615083) s))).
-Lemma discrete_topology_def {A : Type'} : heq (@discrete_topology A) (fun h615083 : A -> Prop => @topology A (@GSPEC (A -> Prop) (fun GEN_PVAR_1235 : A -> Prop => hex (fun s : A -> Prop => @SETSPEC (A -> Prop) GEN_PVAR_1235 (@SUBSET A s h615083) s)))).
-Proof. exact (REFL (@discrete_topology A)). Qed.
-Definition discrete_space {A : Type'} : (Topology A) -> Prop := fun h615088 : Topology A => heq (@discrete_topology A (@topspace A h615088)) h615088.
-Lemma discrete_space_def {A : Type'} : heq (@discrete_space A) (fun h615088 : Topology A => heq (@discrete_topology A (@topspace A h615088)) h615088).
+
+Lemma discrete_topology_def {A : Type'} : @heq (_ -> Topology _) (@discrete_topology A) (fun h615083 : A -> Prop => @topology A (@GSPEC (A -> Prop) (fun GEN_PVAR_1235 : A -> Prop => hex (fun s : A -> Prop => @SETSPEC (A -> Prop) GEN_PVAR_1235 (@SUBSET A s h615083) s)))).
+Proof. move=> /1` ? /3= ; constr_align (@axiom_47 A). Qed.
+
+Definition discrete_space {A : Type'} : (Topology A) -> Prop := fun h615088 : Topology A => @heq (Topology A) (@discrete_topology A (@topspace A h615088)) h615088.
+Lemma discrete_space_def {A : Type'} : heq (@discrete_space A) (fun h615088 : Topology A => @heq (Topology A) (@discrete_topology A (@topspace A h615088)) h615088).
 Proof. exact (REFL (@discrete_space A)). Qed.
 Definition subtopology {h353738 : Type'} : (Topology h353738) -> (h353738 -> Prop) -> Topology h353738 := fun h615434 : Topology h353738 => fun h615435 : h353738 -> Prop => @topology h353738 (@GSPEC (h353738 -> Prop) (fun GEN_PVAR_1237 : h353738 -> Prop => hex (fun s : h353738 -> Prop => @SETSPEC (h353738 -> Prop) GEN_PVAR_1237 (@open_in h353738 h615434 s) (@INTER h353738 s h615435)))).
 Lemma subtopology_def {h353738 : Type'} : heq (@subtopology h353738) (fun h615434 : Topology h353738 => fun h615435 : h353738 -> Prop => @topology h353738 (@GSPEC (h353738 -> Prop) (fun GEN_PVAR_1237 : h353738 -> Prop => hex (fun s : h353738 -> Prop => @SETSPEC (h353738 -> Prop) GEN_PVAR_1237 (@open_in h353738 h615434 s) (@INTER h353738 s h615435))))).
@@ -7660,21 +7769,34 @@ Definition separable_space {A : Type'} : (Topology A) -> Prop := fun h755800 : T
 Lemma separable_space_def {A : Type'} : heq (@separable_space A) (fun h755800 : Topology A => hex (fun c : A -> Prop => hand (@COUNTABLE A c) (hand (@SUBSET A c (@topspace A h755800)) (heq (@closure_of A h755800 c) (@topspace A h755800))))).
 Proof. exact (REFL (@separable_space A)). Qed.
 
-Lemma net_gen (A : Type') : (fun g : hprod ((A -> Prop) -> Prop) (A -> Prop) => all (fun s : A -> Prop => all (fun t : A -> Prop => (hand (@IN (A -> Prop) s (@FST ((A -> Prop) -> Prop) (A -> Prop) g)) (@IN (A -> Prop) t (@FST ((A -> Prop) -> Prop) (A -> Prop) g))) -> @IN (A -> Prop) (@INTER A s t) (@FST ((A -> Prop) -> Prop) (A -> Prop) g)))) (point _).
-Proof. by []. Qed.
 
-Definition net A := subtype' (@net_gen A).
-Definition mk_net A := mk (@net_gen A).
-Definition dest_net A := dest (@net_gen A).
+Record net_record (A : Type') := {
+  netfilter : set A -> Prop ;
+  netlimits : set A ;
+  net_setI : forall s s', netfilter s ->
+    netfilter s' -> netfilter (s `&` s') }.
+
+Program Definition triv_net A : net_record A :=
+  {| netfilter := set0 ; netlimits := set0 |}.
+Final Obligation. by []. Qed.
+
+Definition net A := is_Type' (@triv_net A).
+
+Definition dest_net {A} (n : net A) := (netfilter n, netlimits n).
+
+Definition mk_net {A} := finv (@dest_net A).
+
 Lemma axiom_49 : forall {A : Type'} (a : net A), heq (@mk_net A (@dest_net A a)) a.
-Proof. exact (fun A => mk_dest (@net_gen A)). Qed.
-Lemma axiom_50 : forall {A : Type'} (r : hprod ((A -> Prop) -> Prop) (A -> Prop)), heq ((fun g : hprod ((A -> Prop) -> Prop) (A -> Prop) => all (fun s : A -> Prop => all (fun t : A -> Prop => (hand (@IN (A -> Prop) s (@FST ((A -> Prop) -> Prop) (A -> Prop) g)) (@IN (A -> Prop) t (@FST ((A -> Prop) -> Prop) (A -> Prop) g))) -> @IN (A -> Prop) (@INTER A s t) (@FST ((A -> Prop) -> Prop) (A -> Prop) g)))) r) (heq (@dest_net A (@mk_net A r)) r).
-Proof. exact (fun A => dest_mk (@net_gen A)). Qed.
+Proof. _mk_dest_record. Qed.
 
-Definition netfilter {A : Type'} : (net A) -> (A -> Prop) -> Prop := fun h757793 : net A => @FST ((A -> Prop) -> Prop) (A -> Prop) (@dest_net A h757793).
+Lemma axiom_50 : forall {A : Type'} (r : hprod ((A -> Prop) -> Prop) (A -> Prop)), heq ((fun g : hprod ((A -> Prop) -> Prop) (A -> Prop) => all (fun s : A -> Prop => all (fun t : A -> Prop => (hand (@IN (A -> Prop) s (@FST ((A -> Prop) -> Prop) (A -> Prop) g)) (@IN (A -> Prop) t (@FST ((A -> Prop) -> Prop) (A -> Prop) g))) -> @IN (A -> Prop) (@INTER A s t) (@FST ((A -> Prop) -> Prop) (A -> Prop) g)))) r) (heq (@dest_net A (@mk_net A r)) r).
+Proof.
+  _dest_mk_record by rewrite/3= with dest_net.
+  record_exists {| netfilter := fst r ; netlimits := snd r |}.
+Qed.
+
 Lemma netfilter_def {A : Type'} : heq (@netfilter A) (fun h757793 : net A => @FST ((A -> Prop) -> Prop) (A -> Prop) (@dest_net A h757793)).
 Proof. exact (REFL (@netfilter A)). Qed.
-Definition netlimits {A : Type'} : (net A) -> A -> Prop := fun h757798 : net A => @SND ((A -> Prop) -> Prop) (A -> Prop) (@dest_net A h757798).
 Lemma netlimits_def {A : Type'} : heq (@netlimits A) (fun h757798 : net A => @SND ((A -> Prop) -> Prop) (A -> Prop) (@dest_net A h757798)).
 Proof. exact (REFL (@netlimits A)). Qed.
 Definition netlimit {A : Type'} : (net A) -> A := fun h757803 : net A => @ε A (fun x : A => @IN A x (@netlimits A h757803)).
@@ -7698,25 +7820,72 @@ Proof. exact (REFL (@fsigma_in A)). Qed.
 Definition gdelta_in {A : Type'} : (Topology A) -> (A -> Prop) -> Prop := fun h758438 : Topology A => @relative_to A (@INTERSECTION_OF A (@COUNTABLE (A -> Prop)) (@open_in A h758438)) (@topspace A h758438).
 Lemma gdelta_in_def {A : Type'} : heq (@gdelta_in A) (fun h758438 : Topology A => @relative_to A (@INTERSECTION_OF A (@COUNTABLE (A -> Prop)) (@open_in A h758438)) (@topspace A h758438)).
 Proof. exact (REFL (@gdelta_in A)). Qed.
-Definition is_metric_space {A : Type'} : (hprod (A -> Prop) ((hprod A A) -> Real)) -> Prop := fun h759684 : hprod (A -> Prop) ((hprod A A) -> Real) => hand (all (fun x : A => all (fun y : A => (hand (@IN A x (@FST (A -> Prop) ((hprod A A) -> Real) h759684)) (@IN A y (@FST (A -> Prop) ((hprod A A) -> Real) h759684))) -> real_le (real_of_num (NUMERAL h0)) (@SND (A -> Prop) ((hprod A A) -> Real) h759684 (@hpair A A x y))))) (hand (all (fun x : A => all (fun y : A => (hand (@IN A x (@FST (A -> Prop) ((hprod A A) -> Real) h759684)) (@IN A y (@FST (A -> Prop) ((hprod A A) -> Real) h759684))) -> heq (heq (@SND (A -> Prop) ((hprod A A) -> Real) h759684 (@hpair A A x y)) (real_of_num (NUMERAL h0))) (heq x y)))) (hand (all (fun x : A => all (fun y : A => (hand (@IN A x (@FST (A -> Prop) ((hprod A A) -> Real) h759684)) (@IN A y (@FST (A -> Prop) ((hprod A A) -> Real) h759684))) -> heq (@SND (A -> Prop) ((hprod A A) -> Real) h759684 (@hpair A A x y)) (@SND (A -> Prop) ((hprod A A) -> Real) h759684 (@hpair A A y x))))) (all (fun x : A => all (fun y : A => all (fun z : A => (hand (@IN A x (@FST (A -> Prop) ((hprod A A) -> Real) h759684)) (hand (@IN A y (@FST (A -> Prop) ((hprod A A) -> Real) h759684)) (@IN A z (@FST (A -> Prop) ((hprod A A) -> Real) h759684)))) -> real_le (@SND (A -> Prop) ((hprod A A) -> Real) h759684 (@hpair A A x z)) (real_add (@SND (A -> Prop) ((hprod A A) -> Real) h759684 (@hpair A A x y)) (@SND (A -> Prop) ((hprod A A) -> Real) h759684 (@hpair A A y z))))))))).
+
+Definition is_metric_space {A : Type'} : (hprod (A -> Prop) ((hprod A A) -> Real)) -> Prop :=
+  fun M => let (car,dist) := M in (forall x y, car x -> car y -> 0 <= dist (x,y))
+  /\ (forall x y, car x -> car y -> (dist (x,y) = 0) = (x = y))
+  /\ (forall x y, car x -> car y -> dist (x,y) = dist (y,x))
+  /\ forall x y z, car x -> car y -> car z -> dist (x,z) <= dist (x,y) + dist (y,z).
+
 Lemma is_metric_space_def {A : Type'} : heq (@is_metric_space A) (fun h759684 : hprod (A -> Prop) ((hprod A A) -> Real) => hand (all (fun x : A => all (fun y : A => (hand (@IN A x (@FST (A -> Prop) ((hprod A A) -> Real) h759684)) (@IN A y (@FST (A -> Prop) ((hprod A A) -> Real) h759684))) -> real_le (real_of_num (NUMERAL h0)) (@SND (A -> Prop) ((hprod A A) -> Real) h759684 (@hpair A A x y))))) (hand (all (fun x : A => all (fun y : A => (hand (@IN A x (@FST (A -> Prop) ((hprod A A) -> Real) h759684)) (@IN A y (@FST (A -> Prop) ((hprod A A) -> Real) h759684))) -> heq (heq (@SND (A -> Prop) ((hprod A A) -> Real) h759684 (@hpair A A x y)) (real_of_num (NUMERAL h0))) (heq x y)))) (hand (all (fun x : A => all (fun y : A => (hand (@IN A x (@FST (A -> Prop) ((hprod A A) -> Real) h759684)) (@IN A y (@FST (A -> Prop) ((hprod A A) -> Real) h759684))) -> heq (@SND (A -> Prop) ((hprod A A) -> Real) h759684 (@hpair A A x y)) (@SND (A -> Prop) ((hprod A A) -> Real) h759684 (@hpair A A y x))))) (all (fun x : A => all (fun y : A => all (fun z : A => (hand (@IN A x (@FST (A -> Prop) ((hprod A A) -> Real) h759684)) (hand (@IN A y (@FST (A -> Prop) ((hprod A A) -> Real) h759684)) (@IN A z (@FST (A -> Prop) ((hprod A A) -> Real) h759684)))) -> real_le (@SND (A -> Prop) ((hprod A A) -> Real) h759684 (@hpair A A x z)) (real_add (@SND (A -> Prop) ((hprod A A) -> Real) h759684 (@hpair A A x y)) (@SND (A -> Prop) ((hprod A A) -> Real) h759684 (@hpair A A y z)))))))))).
-Proof. exact (REFL (@is_metric_space A)). Qed.
+Proof.
+  rewrite/is_metric_space/0=.
+  by ext=> -[] *  ; (do! split) => *; full_destruct; and_arrow.
+Qed.
 
-Lemma Metric_gen (A : Type') : @is_metric_space A (fun=> False, point _).
-Proof. (do! split) ; do! case + move => ?. Qed.
+Record Metric_record (A : Type') := {
+  mspace : set A ;
+  mdist0 : A -> A -> R ;
+  mdist_pos : forall x y, mspace x -> mspace y -> 0 <= mdist0 x y ;
+  mdist_sym : forall x y, mspace x -> mspace y -> mdist0 x y = mdist0 y x ;
+  mdist_refl : forall x y, mspace x -> mspace y -> mdist0 x y = 0 <-> x = y ;
+  mdist_tri : forall z x y, mspace x -> mspace y -> mspace z ->
+    mdist0 x y <= mdist0 x z + mdist0 z y }.
 
-Definition Metric A := subtype' (Metric_gen A).
-Definition metric A := mk (Metric_gen A).
-Definition dest_metric A := dest (Metric_gen A).
+Program Definition discrete_metric (A : Type') (s : set A) : Metric_record A :=
+  {| mspace := s ; mdist0 x y := if x = y then 0 else 1 |}.
+Next Obligation. by move=>> /c`. Qed.
+Next Obligation.
+  by move=>> /c` neqxy //1= ; if_triv by move:neqxy => /[swap] ->.
+Qed.
+Next Obligation. by move=>> /c` // * ; move/eqP:(@oner_neq0 R). Qed.
+Final Obligation.
+  move=>> /c` /c` /c` exy exz ezy * //.
+  - by rewrite exz -exy in ezy.
+  - by rewrite add0r.
+  - by rewrite addr0.
+  - by rewrite -(natrD _ 1 1) (ler_nat _ 1).
+Qed.
+
+Definition Metric A := is_Type' (@discrete_metric A set0).
+
+Definition mdist A M := uncurry (@mdist0 A M).
+
+Definition dest_metric A (M : Metric A) := (mspace M, mdist M).
+
+Definition metric A := finv (@dest_metric A).
+
 Lemma axiom_51 : forall {A : Type'} (a : Metric A), heq (@metric A (@dest_metric A a)) a.
-Proof. exact (fun A => mk_dest (Metric_gen A)). Qed.
-Lemma axiom_52 : forall {A : Type'} (r : hprod (A -> Prop) ((hprod A A) -> Real)), heq ((fun m : hprod (A -> Prop) ((hprod A A) -> Real) => @is_metric_space A m) r) (heq (@dest_metric A (@metric A r)) r).
-Proof. exact (fun A => dest_mk (Metric_gen A)). Qed.
+Proof.
+  finv_inv_l => /= instance1 instance2 eq.
+  destruct instance1 as [? mdist0],instance2 as [? mdist1].
+  rewrite/dest_metric/mdist in eq. simpl in eq.
+  revert_keep eq. case: eq => -> /[gen] mdisteq0.
+  have -> : mdist0 = mdist1 by ext=> x y ; exact: (mdisteq0 (x,y)).
+  clear => * ; f_equal ; exact: Prop_irrelevance.
+Qed.
 
-Definition mspace {A : Type'} : (Metric A) -> A -> Prop := fun h759924 : Metric A => @FST (A -> Prop) ((hprod A A) -> Real) (@dest_metric A h759924).
+Lemma axiom_52 : forall {A : Type'} (r : hprod (A -> Prop) ((hprod A A) -> Real)), heq ((fun m : hprod (A -> Prop) ((hprod A A) -> Real) => @is_metric_space A m) r) (heq (@dest_metric A (@metric A r)) r).
+Proof.
+  move=> A ; _dest_mk_record by rewrite/3= with (@dest_metric A).
+  case:r H => car dist /= ? ; full_destruct. 
+  record_exists {| mspace := car ; mdist0 x y := dist (x,y) |}.
+  - by move=>* ; rewrite H0.
+  - by rewrite/dest_metric/= ; congr (_,_) => /` -[].
+Qed.
+
 Lemma mspace_def {A : Type'} : heq (@mspace A) (fun h759924 : Metric A => @FST (A -> Prop) ((hprod A A) -> Real) (@dest_metric A h759924)).
 Proof. exact (REFL (@mspace A)). Qed.
-Definition mdist {A : Type'} : (Metric A) -> (hprod A A) -> Real := fun h759929 : Metric A => @SND (A -> Prop) ((hprod A A) -> Real) (@dest_metric A h759929).
 Lemma mdist_def {A : Type'} : heq (@mdist A) (fun h759929 : Metric A => @SND (A -> Prop) ((hprod A A) -> Real) (@dest_metric A h759929)).
 Proof. exact (REFL (@mdist A)). Qed.
 Definition mball {A : Type'} : (Metric A) -> (hprod A Real) -> A -> Prop := fun h760443 : Metric A => fun h760444 : hprod A Real => @GSPEC A (fun GEN_PVAR_1613 : A => hex (fun y : A => @SETSPEC A GEN_PVAR_1613 (hand (@IN A (@FST A Real h760444) (@mspace A h760443)) (hand (@IN A y (@mspace A h760443)) (real_lt (@mdist A h760443 (@hpair A A (@FST A Real h760444) y)) (@SND A Real h760444)))) y)).
@@ -7737,9 +7906,13 @@ Proof. exact (REFL (@msphere A)). Qed.
 Definition mbounded {A : Type'} : (Metric A) -> (A -> Prop) -> Prop := fun h761088 : Metric A => fun h761089 : A -> Prop => hex (fun c : A => hex (fun b : Real => @SUBSET A h761089 (@mcball A h761088 (@hpair A Real c b)))).
 Lemma mbounded_def {A : Type'} : heq (@mbounded A) (fun h761088 : Metric A => fun h761089 : A -> Prop => hex (fun c : A => hex (fun b : Real => @SUBSET A h761089 (@mcball A h761088 (@hpair A Real c b))))).
 Proof. exact (REFL (@mbounded A)). Qed.
-Definition discrete_metric {h416212 : Type'} : (h416212 -> Prop) -> Metric h416212 := fun h761613 : h416212 -> Prop => @metric h416212 (@hpair (h416212 -> Prop) ((hprod h416212 h416212) -> Real) h761613 (@GABS ((hprod h416212 h416212) -> Real) (fun f : (hprod h416212 h416212) -> Real => all (fun x : h416212 => all (fun y : h416212 => @GEQ Real (f (@hpair h416212 h416212 x y)) (@COND Real (heq x y) (real_of_num (NUMERAL h0)) (real_of_num (NUMERAL (BIT1 h0))))))))).
-Lemma discrete_metric_def {h416212 : Type'} : heq (@discrete_metric h416212) (fun h761613 : h416212 -> Prop => @metric h416212 (@hpair (h416212 -> Prop) ((hprod h416212 h416212) -> Real) h761613 (@GABS ((hprod h416212 h416212) -> Real) (fun f : (hprod h416212 h416212) -> Real => all (fun x : h416212 => all (fun y : h416212 => @GEQ Real (f (@hpair h416212 h416212 x y)) (@COND Real (heq x y) (real_of_num (NUMERAL h0)) (real_of_num (NUMERAL (BIT1 h0)))))))))).
-Proof. exact (REFL (@discrete_metric h416212)). Qed.
+
+Lemma discrete_metric_def {h416212 : Type'} : @heq (_ -> Metric _) (@discrete_metric h416212) (fun h761613 : h416212 -> Prop => @metric h416212 (@hpair (h416212 -> Prop) ((hprod h416212 h416212) -> Real) h761613 (@GABS ((hprod h416212 h416212) -> Real) (fun f : (hprod h416212 h416212) -> Real => all (fun x : h416212 => all (fun y : h416212 => @GEQ Real (f (@hpair h416212 h416212 x y)) (@COND Real (heq x y) (real_of_num (NUMERAL h0)) (real_of_num (NUMERAL (BIT1 h0)))))))))).
+Proof.
+  ext=> s ; rewrite -(axiom_51 (_ s)) ; congr (_ (_,_)).
+  by rewrite/mdist/GABS/= ; align_ε => // + + + /` -[] > -> ->.
+Qed.
+
 Definition metrizable_space {h416390 : Type'} : (Topology h416390) -> Prop := fun h761840 : Topology h416390 => hex (fun m : Metric h416390 => heq h761840 (@mtopology h416390 m)).
 Lemma metrizable_space_def {h416390 : Type'} : heq (@metrizable_space h416390) (fun h761840 : Topology h416390 => hex (fun m : Metric h416390 => heq h761840 (@mtopology h416390 m))).
 Proof. exact (REFL (@metrizable_space h416390)). Qed.
