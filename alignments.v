@@ -7,8 +7,8 @@ From Stdlib Require Import Ascii List Reals.Reals Lra Permutation.
 From HB Require Import structures.
 From mathcomp Require Import ssreflect ssrfun ssrbool eqtype ssrnat div prime.
 From mathcomp Require Import seq choice zify fintype finmap bigop finset.
-From mathcomp Require Import finfun order ssralg ssrnum matrix sesquilinear.
-From mathcomp Require Import interval ssrint intdiv archimedean.
+From mathcomp Require Import finfun order ssralg poly ssrnum matrix.
+From mathcomp Require Import sesquilinear interval ssrint intdiv archimedean.
 From mathcomp Require Import interval_inference all_classical classical_sets.
 
 (* Override the instance in pseudometric_structure.v from mathcomp analysis.
@@ -3967,12 +3967,12 @@ Proof. exact (REFL (@vec N')). Qed.
 Definition dot {N' : Type'} : (cart Real N') -> (cart Real N') -> Real := fun h1113124 : cart Real N' => fun h1113125 : cart Real N' => @sum num (dotdot (NUMERAL (BIT1 h0)) (@dimindex N' (@UNIV N'))) (fun i : num => real_mul (@dollar Real N' h1113124 i) (@dollar Real N' h1113125 i)).
 Lemma dot_def {N' : Type'} : heq (@dot N') (fun h1113124 : cart Real N' => fun h1113125 : cart Real N' => @sum num (dotdot (NUMERAL (BIT1 h0)) (@dimindex N' (@UNIV N'))) (fun i : num => real_mul (@dollar Real N' h1113124 i) (@dollar Real N' h1113125 i))).
 Proof. exact (REFL (@dot N')). Qed.
-Definition vector_norm {h586104 : Type'} : (cart Real h586104) -> Real := fun h1113880 : cart Real h586104 => sqrt (@dot h586104 h1113880 h1113880).
-Lemma vector_norm_def {h586104 : Type'} : heq (@vector_norm h586104) (fun h1113880 : cart Real h586104 => sqrt (@dot h586104 h1113880 h1113880)).
-Proof. exact (REFL (@vector_norm h586104)). Qed.
-Definition distance {h586129 : Type'} : (hprod (cart Real h586129) (cart Real h586129)) -> Real := fun h1113885 : hprod (cart Real h586129) (cart Real h586129) => @vector_norm h586129 (@vector_sub h586129 (@FST (cart Real h586129) (cart Real h586129) h1113885) (@SND (cart Real h586129) (cart Real h586129) h1113885)).
-Lemma distance_def {h586129 : Type'} : heq (@distance h586129) (fun h1113885 : hprod (cart Real h586129) (cart Real h586129) => @vector_norm h586129 (@vector_sub h586129 (@FST (cart Real h586129) (cart Real h586129) h1113885) (@SND (cart Real h586129) (cart Real h586129) h1113885))).
-Proof. exact (REFL (@distance h586129)). Qed.
+Definition vector_norm {n : Type'} : (cart Real n) -> Real := fun h1113880 : cart Real n => sqrt (@dot n h1113880 h1113880).
+Lemma vector_norm_def {n : Type'} : heq (@vector_norm n) (fun h1113880 : cart Real n => sqrt (@dot n h1113880 h1113880)).
+Proof. exact (REFL (@vector_norm n)). Qed.
+Definition distance {n : Type'} : (hprod (cart Real n) (cart Real n)) -> Real := fun h1113885 : hprod (cart Real n) (cart Real n) => @vector_norm n (@vector_sub n (@FST (cart Real n) (cart Real n) h1113885) (@SND (cart Real n) (cart Real n) h1113885)).
+Lemma distance_def {n : Type'} : heq (@distance n) (fun h1113885 : hprod (cart Real n) (cart Real n) => @vector_norm n (@vector_sub n (@FST (cart Real n) (cart Real n) h1113885) (@SND (cart Real n) (cart Real n) h1113885))).
+Proof. exact (REFL (@distance n)). Qed.
 Definition vsum {A N' : Type'} : (A -> Prop) -> (A -> cart Real N') -> cart Real N' := fun h1115682 : A -> Prop => fun h1115683 : A -> cart Real N' => @lambda Real N' (fun i : num => @sum A h1115682 (fun x : A => @dollar Real N' (h1115683 x) i)).
 Lemma vsum_def {A N' : Type'} : heq (@vsum A N') (fun h1115682 : A -> Prop => fun h1115683 : A -> cart Real N' => @lambda Real N' (fun i : num => @sum A h1115682 (fun x : A => @dollar Real N' (h1115683 x) i))).
 Proof. exact (REFL (@vsum A N')). Qed.
@@ -6541,8 +6541,6 @@ End enum_type.
 Arguments dest_enum {_} _.
 Arguments mk_dest_enum {_} _.
 
-Open Scope ring_scope.
-
 Definition neutral {A : Type'} : (A -> A -> A) -> A := Real_with_nat.neutral.
 Lemma neutral_def {A : Type'} : heq (@neutral A) (fun h68920 : A -> A -> A => @ε A (fun x : A => all (fun y : A => hand (heq (h68920 x y) y) (heq (h68920 y x) y)))).
 Proof. exact (REFL (@neutral A)). Qed.
@@ -6636,8 +6634,9 @@ Proof.
 Qed.
 
 Lemma iterate_list_cond (l : list A) (s : set A) :
-  Pi ([set of l] `&` s) f = \big[op/e]_(i <- undup l | s i) f i.
+  Pi (s `&` [set of l]) f = \big[op/e]_(i <- undup l | s i) f i.
 Proof.
+  rewrite setIC.
   elim: l s => [|a l IHl] s /= ; first by rewrite set0I iterate0 big_nil.
   case:(boolP (a \in l)).
   - move=> ? ; rewrite -IHl setUidr ; [ by [] | move=>_ -> ].
@@ -6652,12 +6651,12 @@ Qed.
 Lemma iterate_list (l : list A) :
   Pi [set of l] f = \big[op/e]_(i <- undup l) f i.
 Proof.
-  rewrite -(setIT [set of l]) /= iterate_list_cond ; congr (_ _ _ _).
+  rewrite -(setTI [set of l]) /= iterate_list_cond ; congr (_ _ _ _).
   by ext=> ? ; congr BigBody ; rewrite/= asboolT.
 Qed.
 
 Lemma iterate_list_cond_witness (l : list A) (s s' : set A) : s = [set of l] ->
-  Pi (s `&` s') f = \big[op/e]_(i <- undup l | s' i) f i.
+  Pi (s' `&` s) f = \big[op/e]_(i <- undup l | s' i) f i.
 Proof. by rewrite -iterate_list_cond=> ->. Qed.
 
 Lemma iterate_list_witness (l : list A) (s : set A) : s = [set of l] ->
@@ -6669,7 +6668,7 @@ Section convert_to_hol.
 Context (A : pointedType) (f : A -> T) (l : list A) (s : set A).
 
 Lemma big_list_cond_iterate : \big[op/e]_(i <- l | s i) f i =
-  Pi ([set of l] `&` s) (fun i : A => iterop (count_mem i l) op (f i) e).
+  Pi (s `&` [set of l]) (fun i : A => iterop (count_mem i l) op (f i) e).
 Proof.
   by rewrite -big_undup_iterop_count -iterate_list_cond.
 Qed.
@@ -6697,8 +6696,8 @@ Proof.
   by funext=>> ; rewrite -in_set_of_list MEM_compat mem_index_iota.
 Qed.
 
-Lemma iterate_nat_cond (m n : nat) (s : set nat) :
-  Pi (dotdot' m n `&` s) f = \big[op/e]_(m <= i < n.+1 | s i) f i.
+Lemma iterate_nat_cond (m n : nat) (s : set nat%') :
+  Pi (s `&` dotdot' m n) f = \big[op/e]_(m <= i < n.+1 | s i) f i.
 Proof.
   rewrite (@iterate_list_cond_witness _ _ (index_iota m n.+1)).
   - congr bigop.body ; rewrite/index_iota ; exact/undup_id/iota_uniq.
@@ -6713,8 +6712,8 @@ Proof.
   - by rewrite set_of_index_iota.
 Qed.
 
-Lemma iterate_ord_cond (n : nat) (s : set nat) :
-  Pi (dotdot' 0 n `&` s) f = \big[op/e]_(i < n.+1 | s i) f i.
+Lemma iterate_ord_cond (n : nat) (s : set nat%') :
+  Pi (s `&` dotdot' 0 n) f = \big[op/e]_(i < n.+1 | s i) f i.
 Proof. by rewrite iterate_nat_cond big_mkord. Qed.
 
 Lemma iterate_ord (n : nat) :
@@ -6752,13 +6751,20 @@ Definition sum {A : Type'} : (A -> Prop) -> (A -> Real) -> Real := @iterate A Re
 Lemma sum_def {A : Type'} : heq (@sum A) (@iterate A Real real_add).
 Proof. exact (REFL (@sum A)). Qed.
 
-(* for later:
-  Definition polynomial_function : (Real -> Real) -> Prop := fun f => exists P, f = poly.horner P.
-*)
+Definition polynomial_function : (Real -> Real) -> Prop := fun f =>
+  exists P : polynomial R, f = horner P.
 
-Definition polynomial_function : (Real -> Real) -> Prop := fun h94200 : Real -> Real => hex (fun m : num => hex (fun c : num -> Real => all (fun x : Real => heq (h94200 x) (@sum num (dotdot (NUMERAL h0) m) (fun i : num => real_mul (c i) (real_pow x i)))))).
 Lemma polynomial_function_def : heq polynomial_function (fun h94200 : Real -> Real => hex (fun m : num => hex (fun c : num -> Real => all (fun x : Real => heq (h94200 x) (@sum num (dotdot (NUMERAL h0) m) (fun i : num => real_mul (c i) (real_pow x i))))))).
-Proof. exact (REFL polynomial_function). Qed.
+Proof.
+  ext=> p /0=.
+  - case=> {}p -> ; exist ((size p).-1) (fun i => p`_i)%mcR=> x.
+    rewrite/sum iterate_ord horner_coef /=.
+    case: (poly0Vpos p) ; last by case:size.
+    move=> -> ; rewrite size_poly0 big_ord0 ; apply/esym/big1 => ? _.
+    by rewrite/real_mul coef0 mul0r.
+  - case=> n [coefs pE] ; exists (\poly_(i < n.+1) coefs i)%mcR => /` x.
+    by rewrite pE horner_poly /sum iterate_ord.
+Qed.
 
 Definition dimindex {A : Type'} : (A -> Prop) -> num := fun=> if finite_set [set: A] then CARD [set: A] else 1.
 Lemma dimindex_def {A : Type'} : heq (@dimindex A) (fun h94242 : A -> Prop => @COND num (@FINITE A (@UNIV A)) (@CARD A (@UNIV A)) (NUMERAL (BIT1 h0))).
@@ -7625,7 +7631,7 @@ Lemma binom_def : heq binom (@ε ((hprod num (hprod num (hprod num (hprod num nu
 Proof. exact (REFL binom). Qed.
 Definition istopology {h352037 : Type'} : ((h352037 -> Prop) -> Prop) -> Prop :=
   fun U => U set0 /\ (forall s t, U s -> U t -> U (s `&` t))
-  /\ forall k, k `<=` U -> U (\bigcup_(s in k) s). 
+  /\ forall k, k `<=` U -> U (\bigcup_(s in k) s).
 
 Lemma istopology_def {h352037 : Type'} : heq (@istopology h352037) (fun h614427 : (h352037 -> Prop) -> Prop => hand (@IN (h352037 -> Prop) (@EMPTY h352037) h614427) (hand (all (fun s : h352037 -> Prop => all (fun t : h352037 -> Prop => (hand (@IN (h352037 -> Prop) s h614427) (@IN (h352037 -> Prop) t h614427)) -> @IN (h352037 -> Prop) (@INTER h352037 s t) h614427))) (all (fun k : (h352037 -> Prop) -> Prop => (@SUBSET (h352037 -> Prop) k h614427) -> @IN (h352037 -> Prop) (@UNIONS h352037 k) h614427)))).
 Proof.
@@ -8198,6 +8204,10 @@ Definition brouwer_degree2 : num -> ((num -> Real) -> num -> Real) -> int := fun
 Lemma brouwer_degree2_def : heq brouwer_degree2 (fun h1030023 : num => fun h1030024 : (num -> Real) -> num -> Real => @ε int (fun d : int => all (fun x : (frag ((num -> Real) -> num -> Real)) -> Prop => (@IN ((frag ((num -> Real) -> num -> Real)) -> Prop) x (@group_carrier ((frag ((num -> Real) -> num -> Real)) -> Prop) (@reduced_homology_group (num -> Real) (@hpair int (Topology (num -> Real)) (int_of_num h1030023) (nsphere h1030023))))) -> heq (@hom_induced (num -> Real) (num -> Real) (int_of_num h1030023) (@hpair (Topology (num -> Real)) ((num -> Real) -> Prop) (nsphere h1030023) (@EMPTY (num -> Real))) (@hpair (Topology (num -> Real)) ((num -> Real) -> Prop) (nsphere h1030023) (@EMPTY (num -> Real))) h1030024 x) (@group_zpow ((frag ((num -> Real) -> num -> Real)) -> Prop) (@reduced_homology_group (num -> Real) (@hpair int (Topology (num -> Real)) (int_of_num h1030023) (nsphere h1030023))) x d)))).
 Proof. exact (REFL brouwer_degree2). Qed.
 
+(*****************************************************************************)
+(* Basics of R^n spaces. *)
+(*****************************************************************************)
+
 (* Useful for the alignment of vector operations *)
 Lemma map_lambda (A B n : Type') (f : A -> B) (v : cart A n) :
   map_mx f v = lambda (fun i => f (dollar v i)).
@@ -8240,9 +8250,9 @@ Definition vec {N' : Type'} : num -> cart Real N' := fun n => const_mx n%:R.
 Lemma vec_def {N' : Type'} : heq (@vec N') (fun h1113119 : num => @lambda Real N' (fun i : num => real_of_num h1113119)).
 Proof. by ext=> * /[rowE] * ; rewrite 2!mxE. Qed.
 
-
 Definition row_dot (R : fieldType) n : 'rV[R]_n -> 'rV[R]_n -> R :=
   form idfun 1%R.
+Definition dot {N' : Type'} : (cart Real N') -> (cart Real N') -> Real := @row_dot _ _.
 
 Lemma row_dotE (R : fieldType) n (v v' : 'rV[R]_n) :
   row_dot v v' = \sum_i v ord0 i * v' ord0 i.
@@ -8251,41 +8261,51 @@ Proof.
   by f_equal ; rewrite mxE.
 Qed.
 
-Lemma hol_sum_condE n (s : set nat%') (f : nat -> R) :
-  sum (s `&` dotdot 1 n) f = \sum_(i < n | s i.+1) f i.+1.
-Proof.
-  elim: n => [|n IHn].
-  - rewrite/setI big_ord0. rewrite/sum/iterate. Print support.  ; apply: thm_SUM_EQ_0 => /3= /= n [_].
-    by rewrite leqn0=> /andP [/[swap] /eqP ->].
-  - rewrite thm_NUMSEG_REC // setIC thm_INSERT_INTER=> /c` [sn | nsn].
-    + have [_ ->] := @thm_SUM_CLAUSES nat nat.
-      2: { apply: finite_setIl ; exact: thm_FINITE_NUMSEG. }
-      if_triv by rewrite/3=/setI/= ltnn => -[].
-      rewrite big_mkcond big_ord_recr -big_mkcond /= addrC setIC IHn.
-      by move:sn=> /3= ? /1=.
-    + rewrite big_mkcond big_ord_recr -big_mkcond /= setIC IHn.
-      by move: nsn => /3= ? /1= ; rewrite addr0.
-Qed.
-
-Definition dot {N' : Type'} : (cart Real N') -> (cart Real N') -> Real := @row_dot _ _.
 Lemma dot_def {N' : Type'} : heq (@dot N') (fun h1113124 : cart Real N' => fun h1113125 : cart Real N' => @sum num (dotdot (NUMERAL (BIT1 h0)) (@dimindex N' (@UNIV N'))) (fun i : num => real_mul (@dollar Real N' h1113124 i) (@dollar Real N' h1113125 i))).
 Proof.
-  ext=> v v' ; rewrite/dot row_dotE hol_sum_ordE ; f_equal=> /= /` -[i coordi].
-  by f_equal ; rewrite/dollar 2?coordE.
+  ext=> v v' ; rewrite/dot/sum row_dotE iterate_nat /=.
+  rewrite (big_addn 0 _ 1) subSS subn0 big_mkord ; congr bigop => /` ?.
+  by rewrite/dollar addn1 2!coord_ord.
 Qed.
-Definition vector_norm {h586104 : Type'} : (cart Real h586104) -> Real := fun h1113880 : cart Real h586104 => sqrt (@dot h586104 h1113880 h1113880).
-Lemma vector_norm_def {h586104 : Type'} : heq (@vector_norm h586104) (fun h1113880 : cart Real h586104 => sqrt (@dot h586104 h1113880 h1113880)).
-Proof. exact (REFL (@vector_norm h586104)). Qed.
-Definition distance {h586129 : Type'} : (hprod (cart Real h586129) (cart Real h586129)) -> Real := fun h1113885 : hprod (cart Real h586129) (cart Real h586129) => @vector_norm h586129 (@vector_sub h586129 (@FST (cart Real h586129) (cart Real h586129) h1113885) (@SND (cart Real h586129) (cart Real h586129) h1113885)).
-Lemma distance_def {h586129 : Type'} : heq (@distance h586129) (fun h1113885 : hprod (cart Real h586129) (cart Real h586129) => @vector_norm h586129 (@vector_sub h586129 (@FST (cart Real h586129) (cart Real h586129) h1113885) (@SND (cart Real h586129) (cart Real h586129) h1113885))).
-Proof. exact (REFL (@distance h586129)). Qed.
-Definition vsum {A N' : Type'} : (A -> Prop) -> (A -> cart Real N') -> cart Real N' := fun h1115682 : A -> Prop => fun h1115683 : A -> cart Real N' => @lambda Real N' (fun i : num => @sum A h1115682 (fun x : A => @dollar Real N' (h1115683 x) i)).
+
+Definition row_norm (R : rcfType) n (v : 'rV[R]_n) : R := Num.sqrt (row_dot v v).
+Definition vector_norm {A : Type'} : (cart Real A) -> Real := @row_norm _ _.
+
+Lemma row_square_ge0 (R : realFieldType) n (v : 'rV[R]_n) : 0 <= row_dot v v.
+Proof.
+  rewrite row_dotE ; apply: sumr_ge0 => /= i _ ; exact: sqr_ge0.
+Qed.
+
+Lemma vector_norm_def {n : Type'} : heq (@vector_norm n) (fun h1113880 : cart Real n => sqrt (@dot n h1113880 h1113880)).
+Proof.
+  by ext=> v ; rewrite/vector_norm/row_norm/sqrt/dot row_square_ge0.
+Qed.
+
+Definition row_distance (R : rcfType) n (v v' : 'rV[R]_n) := row_norm (v-v').
+
+Definition distance {n : Type'} : (hprod (cart Real n) (cart Real n)) -> Real :=
+  uncurry (@row_distance _ _).
+
+Lemma distance_def {n : Type'} : heq (@distance n) (fun h1113885 : hprod (cart Real n) (cart Real n) => @vector_norm n (@vector_sub n (@FST (cart Real n) (cart Real n) h1113885) (@SND (cart Real n) (cart Real n) h1113885))).
+Proof. by ext ; case. Qed.
+
+Definition row_sum (A : Type') n (s : set A) (f : A -> 'rV[R]_n) : 'rV_n :=
+  \row_i sum s (fun x => (f x) ord0 i).
+
+Definition vsum {A N' : Type'} : (A -> Prop) -> (A -> cart Real N') -> cart Real N' := @row_sum _ _.
+
 Lemma vsum_def {A N' : Type'} : heq (@vsum A N') (fun h1115682 : A -> Prop => fun h1115683 : A -> cart Real N' => @lambda Real N' (fun i : num => @sum A h1115682 (fun x : A => @dollar Real N' (h1115683 x) i))).
-Proof. exact (REFL (@vsum A N')). Qed.
+Proof.
+  rewrite/vsum/row_sum/lambda/dollar => /` * /= ; f_equal => /` ? [] *.
+  by f_equal => /` * ; rewrite coordE.
+Qed.
+
 Definition basis {h595400 : Type'} : num -> cart Real h595400 := fun h1117363 : num => @lambda Real h595400 (fun i : num => @COND Real (heq i h1117363) (real_of_num (NUMERAL (BIT1 h0))) (real_of_num (NUMERAL h0))).
 Lemma basis_def {h595400 : Type'} : heq (@basis h595400) (fun h1117363 : num => @lambda Real h595400 (fun i : num => @COND Real (heq i h1117363) (real_of_num (NUMERAL (BIT1 h0))) (real_of_num (NUMERAL h0)))).
 Proof. exact (REFL (@basis h595400)). Qed.
-Definition orthogonal {h596102 : Type'} : (cart Real h596102) -> (cart Real h596102) -> Prop := fun h1117569 : cart Real h596102 => fun h1117570 : cart Real h596102 => heq (@dot h596102 h1117569 h1117570) (real_of_num (NUMERAL h0)).
+
+Definition orthogonal {h596102 : Type'} : (cart Real h596102) -> (cart Real h596102) -> Prop :=
+  fun v v' => dot v v' = 0.
 Lemma orthogonal_def {h596102 : Type'} : heq (@orthogonal h596102) (fun h1117569 : cart Real h596102 => fun h1117570 : cart Real h596102 => heq (@dot h596102 h1117569 h1117570) (real_of_num (NUMERAL h0))).
 Proof. exact (REFL (@orthogonal h596102)). Qed.
 Definition linear {M N' : Type'} : ((cart Real M) -> cart Real N') -> Prop := fun h1117747 : (cart Real M) -> cart Real N' => hand (all (fun x : cart Real M => all (fun y : cart Real M => heq (h1117747 (@vector_add M x y)) (@vector_add N' (h1117747 x) (h1117747 y))))) (all (fun c : Real => all (fun x : cart Real M => heq (h1117747 (@percent M c x)) (@percent N' c (h1117747 x))))).
@@ -8507,7 +8527,9 @@ Proof. exact (REFL at_neginfinity). Qed.
 Definition in_direction {h706136 : Type'} : (cart Real h706136) -> (cart Real h706136) -> net (cart Real h706136) := fun h1218546 : cart Real h706136 => fun h1218547 : cart Real h706136 => @within (cart Real h706136) (@hat h706136 h1218546) (@GSPEC (cart Real h706136) (fun GEN_PVAR_2746 : cart Real h706136 => hex (fun b : cart Real h706136 => @SETSPEC (cart Real h706136) GEN_PVAR_2746 (hex (fun c : Real => hand (real_le (real_of_num (NUMERAL h0)) c) (heq (@vector_sub h706136 b h1218546) (@percent h706136 c h1218547)))) b))).
 Lemma in_direction_def {h706136 : Type'} : heq (@in_direction h706136) (fun h1218546 : cart Real h706136 => fun h1218547 : cart Real h706136 => @within (cart Real h706136) (@hat h706136 h1218546) (@GSPEC (cart Real h706136) (fun GEN_PVAR_2746 : cart Real h706136 => hex (fun b : cart Real h706136 => @SETSPEC (cart Real h706136) GEN_PVAR_2746 (hex (fun c : Real => hand (real_le (real_of_num (NUMERAL h0)) c) (heq (@vector_sub h706136 b h1218546) (@percent h706136 c h1218547)))) b)))).
 Proof. exact (REFL (@in_direction h706136)). Qed.
-Definition FImp {h708096 h708101 : Type'} : (h708101 -> cart Real h708096) -> (cart Real h708096) -> (net h708101) -> Prop := fun h1218977 : h708101 -> cart Real h708096 => fun h1218978 : cart Real h708096 => fun h1218979 : net h708101 => all (fun e : Real => (real_lt (real_of_num (NUMERAL h0)) e) -> @eventually h708101 (fun x : h708101 => real_lt (@distance h708096 (@hpair (cart Real h708096) (cart Real h708096) (h1218977 x) h1218978)) e) h1218979).
+Definition FImp {h708096 h708101 : Type'} : (h708101 -> cart Real h708096) -> (cart Real h708096) -> (net h708101) -> Prop :=
+  fun f l n => (forall e : R, 0 < e ->
+    eventually (fun x => row_distance (f x) l < e) n).
 Lemma FImp_def {h708096 h708101 : Type'} : heq (@FImp h708096 h708101) (fun h1218977 : h708101 -> cart Real h708096 => fun h1218978 : cart Real h708096 => fun h1218979 : net h708101 => all (fun e : Real => (real_lt (real_of_num (NUMERAL h0)) e) -> @eventually h708101 (fun x : h708101 => real_lt (@distance h708096 (@hpair (cart Real h708096) (cart Real h708096) (h1218977 x) h1218978)) e) h1218979)).
 Proof. exact (REFL (@FImp h708096 h708101)). Qed.
 Definition lim {h708144 h708145 : Type'} : (net h708145) -> (h708145 -> cart Real h708144) -> cart Real h708144 := fun h1218998 : net h708145 => fun h1218999 : h708145 -> cart Real h708144 => @ε (cart Real h708144) (fun l : cart Real h708144 => @FImp h708144 h708145 h1218999 l h1218998).
@@ -8555,9 +8577,112 @@ Proof. exact (REFL (@homeomorphism h788309 h788310)). Qed.
 Definition homeomorphic {h788326 h788327 : Type'} : ((cart Real h788327) -> Prop) -> ((cart Real h788326) -> Prop) -> Prop := fun h1281783 : (cart Real h788327) -> Prop => fun h1281784 : (cart Real h788326) -> Prop => hex (fun f : (cart Real h788327) -> cart Real h788326 => hex (fun g : (cart Real h788326) -> cart Real h788327 => @homeomorphism h788327 h788326 (@hpair ((cart Real h788327) -> Prop) ((cart Real h788326) -> Prop) h1281783 h1281784) (@hpair ((cart Real h788327) -> cart Real h788326) ((cart Real h788326) -> cart Real h788327) f g))).
 Lemma homeomorphic_def {h788326 h788327 : Type'} : heq (@homeomorphic h788326 h788327) (fun h1281783 : (cart Real h788327) -> Prop => fun h1281784 : (cart Real h788326) -> Prop => hex (fun f : (cart Real h788327) -> cart Real h788326 => hex (fun g : (cart Real h788326) -> cart Real h788327 => @homeomorphism h788327 h788326 (@hpair ((cart Real h788327) -> Prop) ((cart Real h788326) -> Prop) h1281783 h1281784) (@hpair ((cart Real h788327) -> cart Real h788326) ((cart Real h788326) -> cart Real h788327) f g)))).
 Proof. exact (REFL (@homeomorphic h788326 h788327)). Qed.
-Definition sums {h820787 : Type'} : (num -> cart Real h820787) -> (cart Real h820787) -> (num -> Prop) -> Prop := fun h1333473 : num -> cart Real h820787 => fun h1333474 : cart Real h820787 => fun h1333475 : num -> Prop => @FImp h820787 num (fun n : num => @vsum num h820787 (@INTER num h1333475 (dotdot (NUMERAL h0) n)) h1333473) h1333474 sequentially.
-Lemma sums_def {h820787 : Type'} : heq (@sums h820787) (fun h1333473 : num -> cart Real h820787 => fun h1333474 : cart Real h820787 => fun h1333475 : num -> Prop => @FImp h820787 num (fun n : num => @vsum num h820787 (@INTER num h1333475 (dotdot (NUMERAL h0) n)) h1333473) h1333474 sequentially).
-Proof. exact (REFL (@sums h820787)). Qed.
+
+Lemma row_sum_ord_cond n k (s : set nat) (f : nat -> 'rV[R]_n) :
+  row_sum ((s : set nat%') `&` dotdot 0 k) f = \sum_(i < k.+1 | s i) f i.
+Proof.
+  by apply/rowP=> -[i coordi]; rewrite/row_sum/sum summxE mxE iterate_ord_cond.
+Qed.
+
+Lemma row_square0 R n : @row_dot R n 0 0 = 0.
+Proof.
+  by rewrite row_dotE big1 // => * ; rewrite mxE mulr0.
+Qed.
+
+Lemma max_square (R : realDomainType) (x y : R) :
+  max (x ^+ 2) (y ^+ 2) = max `|x| `|y| ^+ 2.
+Proof.
+  rewrite/exp/iterop/= maxr_pMr ; last by case (ltP `|x|).
+  rewrite -2![_ * _]/(_^+ 2) -(ger0_norm (sqr_ge0 x)) -(ger0_norm (sqr_ge0 y)).
+  rewrite 2!normrX/exp/iterop/= ; case (ltP `|x|)=>[ltxy|gexy] ; rewrite/max.
+  - rewrite ltr_pM2l ?ltr_pM ?ltxy // ; exact: (le_lt_trans _ ltxy).
+  - by rewrite 2!ltNge ler_pM ?ler_wpM2l.
+Qed.
+
+Lemma bigmax_square A (R : realDomainType) (r : seq A) (F : A -> R) :
+  \big[Def.max/0]_(x <- r) F x ^+ 2 = (\big[Def.max/0]_(x <- r) `|F x|) ^+ 2.
+Proof.
+  elim:r=>[|a r IHr] ; first by rewrite/exp/= 2!big_nil mulr0.
+  rewrite 2!big_cons IHr max_square ; do 2 f_equal.
+  apply:ger0_norm ; exact: bigmax_ge_id.
+Qed.
+
+Lemma row_norm_le_mx_norm (R : rcfType) n (v : 'rV[R]_n) :
+  row_norm v <= Num.sqrt n%:R * `|v|.
+Proof.
+  rewrite/row_norm -normr_id -sqrtr_sqr -sqrtrM ; last by [].
+  rewrite ler_sqrt ; last (apply:mulr_ge0 ; [by [] | exact:mulr_ge0]).
+  rewrite/Num.norm/= mx_normrE -bigmax_square row_dotE.
+  match goal with |- is_true (_ <= _ * ?x) => set (maxv2 := x) end.
+  apply: (le_trans (y:= \sum_(i < n) maxv2)).
+  { apply: ler_sum=> /= i _ ; exact: (le_bigmax _ _ (ord0, i)). }
+  rewrite sumr_const mulr_natl.
+  match goal with |- is_true (?x <= ?y) => have -> // : x = y end.
+  f_equal ; exact: card_ord.
+Qed.
+
+Lemma injectiveE A B (f : A -> B) : injective f ->
+  forall x y, (f x = f y) = (x = y).
+Proof. move=> injf * /` ; [exact: injf | by move=>->]. Qed.
+
+Lemma lift0_surj n (k : 'I_n.+1) :
+  k <> ord0 -> exists k0 : 'I_n, k = fintype.lift ord0 k0.
+Proof.
+  case:k=> -[? []|m /[dup]] ; [exact: val_inj | rewrite{1} ltnS => ltmn ? ?].
+  by exists (Ordinal ltmn) ; apply: ord_inj ;  rewrite lift0.
+Qed.
+
+Lemma mx_norm_le_row_norm (R : rcfType) n (v : 'rV[R]_n) :
+  `|v| <= row_norm v.
+Proof.
+  rewrite/row_norm -normr_id -sqrtr_sqr ler_sqrt ; last exact: row_square_ge0.
+  rewrite/Num.norm/exp/iterop/= ; case (EM (mx_norm v == 0)).
+  - by move/eqP/mx_norm_eq0 => -> ; rewrite mx_norm0 row_square0 mulr0.
+  - move/negP/mx_norm_neq0 => -[[j i] ->] /= ; rewrite row_dotE {j}ord1.
+    rewrite-[X in X <= _]/(_ ^+ 2) -normrX ger0_norm ; last exact: sqr_ge0.
+    have ->: v ord0 i ^+ 2 = \sum_(k < n) (if k = i then v ord0 i ^+ 2 else 0).
+    + elim: n v i => [|n IHn] v i.
+      { by rewrite/exp/iterop/= thinmx0 big_ord0 mxE mul0r. }
+      rewrite big_ord_recl /= ; if_intro.
+      * move=> <-. rewrite big1 ?addr0 // => k.
+        by have ->: `[< fintype.lift ord0 k = ord0 >]=false by rewrite asboolF.
+      * rewrite sym add0r => /lift0_surj [{}i ->].
+        rewrite-{1}(mxE one (fun (i : 'I_1) j => v i (fintype.lift ord0 j))).
+        by rewrite IHn mxE ; f_equal => /` ? ; rewrite (injectiveE lift_inj).
+    + apply: ler_sum=> /= k _ /c` [->|?] ; [by [] | exact: sqr_ge0].
+Qed.
+
+Definition sums {n : Type'} : (nat -> cart Real n) -> (cart Real n) -> set nat -> Prop :=
+  fun u l s => \sum_(i < k.+1 | s i) (u i) @[k --> \oo] --> l.
+
+Lemma sums_def {n0 : Type'} : heq (@sums n0) (fun h1333473 : num -> cart Real n0 => fun h1333474 : cart Real n0 => fun h1333475 : num -> Prop => @FImp n0 num (fun n : num => @vsum num n0 (@INTER num h1333475 (dotdot (NUMERAL h0) n)) h1333473) h1333474 sequentially).
+Proof.
+  rewrite/sums/cart/vsum/FImp/row_distance; remember (dimindex [set: n0]) as n.
+  case: n Heqn => []; first by have := dimindex_gt0 [set:n0] => /[swap] <-.
+  rewrite/eventually=> {n0}n _ /` u l s.
+  - move/cvgrPdist_le=> /= cvgul e pos_e ; right.
+    have /[spec] [|[N _ incl]] := cvgul ((e / 2) / Num.sqrt n.+1%:R).
+    { apply:divr_gt0 ; [exact:divr_gt0 | by rewrite sqrtr_gt0]. }
+    exists [set n | leq N n] ; split.
+    + by exists N => // ; rewrite from_def /3=.
+    + rewrite setD0 ; apply: {incl}(subset_trans incl).
+      move=> k nearl ; rewrite row_sum_ord_cond.
+      apply: (le_lt_trans (row_norm_le_mx_norm _)).
+      rewrite -(@mulrK _ (Num.sqrt n.+1%:R) _ e).
+      * rewrite -mulrA mulrCA ltr_pM2l ; last by rewrite sqrtr_gt0.
+        rewrite -opprB normrN ; apply: (le_lt_trans nearl).
+        by rewrite mulrAC ltr_pdivrMr ?ltr_pMr ?ltr1n ?divr_gt0 ?sqrtr_gt0.
+      * by rewrite unitfE sqrtr_eq0 -real_ltNge.
+  - move=> cvgul ; apply/cvgrPdist_le => /= e pos_e.
+    case (cvgul e pos_e) => [contra |[Ns [[N _ {Ns}<-]] /= incl]].
+    + by contradict contra; apply/eqP; rewrite set0P; exist (from 0) 0.
+    + exists N => // ; rewrite setD0 from_def /3= in incl.
+      apply: {incl}(subset_trans incl) => k nearl.
+      rewrite -opprB normrN -row_sum_ord_cond /3=.
+      apply: (le_trans (mx_norm_le_row_norm _)).
+      by move:nearl ; case: ltgtP.
+Qed.
+
 Definition infsum {h820806 : Type'} : (num -> Prop) -> (num -> cart Real h820806) -> cart Real h820806 := fun h1333494 : num -> Prop => fun h1333495 : num -> cart Real h820806 => @ε (cart Real h820806) (fun l : cart Real h820806 => @sums h820806 h1333495 l h1333494).
 Lemma infsum_def {h820806 : Type'} : heq (@infsum h820806) (fun h1333494 : num -> Prop => fun h1333495 : num -> cart Real h820806 => @ε (cart Real h820806) (fun l : cart Real h820806 => @sums h820806 h1333495 l h1333494)).
 Proof. exact (REFL (@infsum h820806)). Qed.
@@ -26058,9 +26183,9 @@ Lemma thm_VECTOR_ONE : simplify (all (fun x : cart Real hunit => heq x (@lambda 
 Proof. exact thm_VECTOR_ONE. Qed.
 Lemma thm_FORALL_REAL_ONE : simplify (forall  (P : (cart Real hunit) -> Prop), heq (all (fun x : cart Real hunit => P x)) (all (fun x : Real => P (@lambda Real hunit (fun i : num => x))))).
 Proof. exact @thm_FORALL_REAL_ONE. Qed.
-Lemma thm_vector_norm : simplify (forall  {h586104 : Type'}, all (fun x : cart Real h586104 => heq (@vector_norm h586104 x) (sqrt (@dot h586104 x x)))).
+Lemma thm_vector_norm : simplify (forall  {n : Type'}, all (fun x : cart Real n => heq (@vector_norm n x) (sqrt (@dot n x x)))).
 Proof. exact @thm_vector_norm. Qed.
-Lemma thm_dist : simplify (forall  {h586129 : Type'}, all (fun x : cart Real h586129 => all (fun y : cart Real h586129 => heq (@distance h586129 (@hpair (cart Real h586129) (cart Real h586129) x y)) (@vector_norm h586129 (@vector_sub h586129 x y))))).
+Lemma thm_dist : simplify (forall  {n : Type'}, all (fun x : cart Real b => all (fun y : cart Real b => heq (@distance b (@hpair (cart Real b) (cart Real b) x y)) (@vector_norm b (@vector_sub b x y))))).
 Proof. exact @thm_dist. Qed.
 Lemma thm_NORM_REAL : simplify (all (fun x : cart Real hunit => heq (@vector_norm hunit x) (real_abs (@dollar Real hunit x (NUMERAL (BIT1 h0)))))).
 Proof. exact thm_NORM_REAL. Qed.
