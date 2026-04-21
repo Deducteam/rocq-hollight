@@ -10,6 +10,7 @@ From mathcomp Require Import seq choice zify fintype finmap bigop finset.
 From mathcomp Require Import finfun order ssralg poly ssrnum matrix.
 From mathcomp Require Import sesquilinear interval ssrint intdiv archimedean.
 From mathcomp Require Import interval_inference all_classical classical_sets.
+From mathcomp Require Import wochoice.
 
 (* Override the instance in pseudometric_structure.v from mathcomp analysis.
    More general (defined only for zmodtypes there ) *)
@@ -7120,27 +7121,267 @@ Proof. exact (REFL (@tailadmissible A B P)). Qed.
 Definition superadmissible {h138490 h138492 h138498 : Type'} : (h138490 -> h138490 -> Prop) -> ((h138490 -> h138492) -> h138498 -> Prop) -> (h138498 -> h138490) -> ((h138490 -> h138492) -> h138498 -> h138492) -> Prop := fun h103882 : h138490 -> h138490 -> Prop => fun h103883 : (h138490 -> h138492) -> h138498 -> Prop => fun h103884 : h138498 -> h138490 => fun h103885 : (h138490 -> h138492) -> h138498 -> h138492 => (@admissible h138490 h138492 h138490 Prop h138498 h103882 (fun f : h138490 -> h138492 => fun a : h138498 => htrue) h103884 h103883) -> @tailadmissible h138490 h138492 h138498 h103882 h103883 h103884 h103885.
 Lemma superadmissible_def {h138490 h138492 h138498 : Type'} : heq (@superadmissible h138490 h138492 h138498) (fun h103882 : h138490 -> h138490 -> Prop => fun h103883 : (h138490 -> h138492) -> h138498 -> Prop => fun h103884 : h138498 -> h138490 => fun h103885 : (h138490 -> h138492) -> h138498 -> h138492 => (@admissible h138490 h138492 h138490 Prop h138498 h103882 (fun f : h138490 -> h138492 => fun a : h138498 => htrue) h103884 h103883) -> @tailadmissible h138490 h138492 h138498 h103882 h103883 h103884 h103885).
 Proof. exact (REFL (@superadmissible h138490 h138492 h138498)). Qed.
-Definition fld {A : Type'} : (A -> A -> Prop) -> A -> Prop := fun h113806 : A -> A -> Prop => @GSPEC A (fun GEN_PVAR_372 : A => hex (fun x : A => @SETSPEC A GEN_PVAR_372 (hex (fun y : A => hor (h113806 x y) (h113806 y x))) x)).
+
+Section rels_on_sets.
+Context {A : Type'} (R : A -> A -> Prop).
+
+Definition fld : set A := [set x | exists y, R x y \/ R y x].
+
+Definition Setrel T (s : set T) (R : T -> T -> Prop) : rel s :=
+  fun x y => R (\val x) (\val y).
+
+Local Notation R' := (@Setrel _ fld R).
+
+Definition qoset := preorder R'.
+
+Definition poset := partial_order R'.
+
+Definition toset := total_order R'.
+
+Definition woset := well_order R'.
+
+Definition wqoset := preorder R' /\ forall s, s `<=` fld -> exists s',
+   finite_set s' /\ s' `<=` s /\ forall y, s y -> exists x, s' x /\ R x y.
+
+Definition chain (s : set A) := chain R s.
+End rels_on_sets.
+
+Arguments Setrel {_} _.
+Notation setrel := (Setrel _).
+
 Lemma fld_def {A : Type'} : heq (@fld A) (fun h113806 : A -> A -> Prop => @GSPEC A (fun GEN_PVAR_372 : A => hex (fun x : A => @SETSPEC A GEN_PVAR_372 (hex (fun y : A => hor (h113806 x y) (h113806 y x))) x))).
-Proof. exact (REFL (@fld A)). Qed.
-Definition qoset {A : Type'} : (A -> A -> Prop) -> Prop := fun h113861 : A -> A -> Prop => hand (all (fun x : A => (@IN A x (@fld A h113861)) -> h113861 x x)) (all (fun x : A => all (fun y : A => all (fun z : A => (hand (h113861 x y) (h113861 y z)) -> h113861 x z)))).
+Proof. by funext=>> ; rewrite/3=. Qed.
+
+Lemma in_to_set {T} {s : set T} {x : T} : s x -> exists x' : s, x = \val x'.
+Proof. by rewrite -in_setE => xs ; exists (exist _ x xs). Qed.
+
+Lemma IN_to_set (T : Type') (s : set T) (x : T) :
+  IN x s -> exists x' : s, x = \val x'.
+Proof. move=> ? ; exact: in_to_set. Qed.
+
+Variant fld_spec (T : Type') (R : T -> T -> Prop) (x y : T) : Type :=
+  | Fld_spec (x' y' : fld R) : x = \val x' -> y = \val y' ->
+    setrel R x' y' -> fld_spec R x y.
+
+Lemma fldP (T : Type') (R : T -> T -> Prop) (x y : T) :
+  R x y -> fld_spec R x y.
+Proof.
+  move=> /[dup] Rxy ; have/IN_to_set/cid [?]: IN y (fld R) by exists x ; right.
+  have /IN_to_set/cid [?] : IN x (fld R) by exists y ; left.
+  move=> /[dup] + {1}-> /[dup] + {1}-> /asboolP ; exact: Fld_spec.
+Qed.
+
+Lemma Setrel_reflP {T} {s : set T} {R : T -> T -> Prop} :
+  reflexive (Setrel s R) <-> forall x, s x -> R x x.
+Proof.
+   split=> reflR=> [? /in_to_set [? ->]|> ] ; first exact/asboolP/reflR.
+   apply/asboolP/reflR ; rewrite/IN -in_setE ; exact: valP.
+Qed.
+
+Lemma Setrel_transP {T} {s : set T} {R : T -> T -> Prop} :
+  transitive (Setrel s R) <->
+  forall y x z, s x -> s y -> s z -> R x y -> R y z -> R x z.
+Proof.
+  split=> transR=>>.
+  - do 3! case/in_to_set=> ? ->.
+    move/asboolP/transR=> + /asboolP=> /[apply]/asboolP ; exact.
+  - rewrite/Setrel 3!asboolE ; apply transR ; rewrite -in_setE ; exact: valP.
+Qed.
+
+Lemma fld_transP {T : Type'} {R : T -> T -> Prop} :
+  transitive (Setrel (fld R) R) <-> forall y x z, R x y -> R y z -> R x z.
+Proof.
+  rewrite Setrel_transP** ; split ; last by move=> + + + + _ _ _.
+  move=> transR _ _ ? /[dup]/fldP[x y -> -> _]+/[dup]/fldP[_ z _ -> _].
+  apply transR ; rewrite -in_setE ; exact:valP.
+Qed.
+
+Lemma Setrel_antiP {T} {s : set T} {R : T -> T -> Prop} :
+  antisymmetric (Setrel s R) <->
+  forall x y, s x -> s y -> R x y -> R y x -> x = y.
+Proof.
+  split=> antiR.
+  - move=> _ _ /in_to_set [x ->] /in_to_set [y ->] /asboolP ? /asboolP ?.
+    by have -> : x = y by exact/antiR/andP.
+  - move=> ? ? /andP ; rewrite/Setrel 2!asboolE=> -[*].
+    apply/val_inj/antiR => // ; rewrite -in_setE ; exact: valP.
+Qed.
+
+Lemma fld_antiP {T : Type'} {R : T -> T -> Prop} :
+  antisymmetric (Setrel (fld R) R) <-> forall x y, R x y -> R y x -> x = y.
+Proof.
+  split=> antiR x y=> [/fldP [{}x {}y -> -> ?] /fldP []|/andP []].
+  - by move=> _ _/val_inj <-/val_inj <- ?; have -> : x = y by exact/antiR/andP.
+  - rewrite/Setrel 2!asboolE=> * ; exact/val_inj/antiR.
+Qed.
+
+Lemma Setrel_totalP {T} {s : set T} {R : T -> T -> Prop} :
+  total (Setrel s R) <-> forall x y, s x -> s y -> R x y \/ R y x.
+Proof.
+  split=> totalR=> [_ _ /in_to_set [? ->] /in_to_set [? ->] | > ].
+  - exact/or_asboolP/totalR.
+  - apply/or_asboolP/totalR ; rewrite -in_setE ; exact/valP.
+Qed.
+
+Definition proj_pred T (P : pred T) (t : subType P) (P' : pred T) : pred t :=
+  fun x => P' (\val x).
+
+Definition sig_pred T (P : pred T) (t : subType P) (P' : pred t) : pred T :=
+  fun x => if insub x is Some x' then P' x' else false.
+
+Arguments proj_pred {_ _}.
+Arguments sig_pred {_ _}.
+
+Lemma sig_predK T P t : cancel (@sig_pred T P t) (proj_pred t).
+Proof.
+  by move=> ? /` ? ; rewrite/sig_pred/proj_pred valK.
+Qed.
+
+Lemma proj_predK T (P : pred T) (t : subType P) (P' : pred T) :
+  subpred P' P -> sig_pred t (proj_pred t P') = P'.
+Proof.
+  move=> subP'P /` x ; rewrite/sig_pred/proj_pred ; case:insubP.
+  - by move=> _ _ ->.
+  - rewrite sym ; move=> + /ltac:(apply negbTE) ; exact/contraNN/subP'P.
+Qed.
+
+Lemma proj_subset T (s s' : set T) :
+  s `<=` s' -> sig_pred s' (proj_pred s' s) = s.
+Proof.
+  move=> subss'; rewrite proj_predK // => ?; rewrite 2!in_setE; exact: subss'.
+Qed.
+
+Lemma sig_subpred T (P : pred T) (t : subType P) (P' : pred t) :
+  subpred (sig_pred t P') P.
+Proof. by move=>> ; rewrite/sig_pred ; case:insubP. Qed.
+
+Lemma sig_subset T (s : set T) (s' : set s) :
+  sig_pred s s' `<=` s.
+Proof. move=> ? sx ; rewrite -in_setE ; exact (sig_subpred sx). Qed.
+
+Check sig_subset.
+
+Lemma Setrel_lbP {T} {s : set T} {R : T -> T -> Prop} {P : {pred s}} {x : s} :
+  lower_bound (Setrel s R) P x <-> forall y, y \in sig_pred s P -> R (val x) y.
+Proof.
+  split=> lbRPx y.
+  - rewrite/sig_pred/mem/in_mem/= ; case: insubP => // {}y _ <- ?.
+    exact/asboolP/lbRPx.
+  - by rewrite in_setE => ? ; apply lbRPx ; rewrite/sig_pred/mem/in_mem/= valK.
+Qed.
+
+Lemma Setrel_woP {T} {s : set T} {R : T -> T -> Prop} :
+  well_order (Setrel s R) <-> forall s0, s0 `<=` s -> s0 !=set0 ->
+  exists! x : T, s0 x /\ forall y : T, s0 y -> R x y.
+Proof.
+  split=> woR.
+  - move=> s0 subs0s [_ /[dup] /subs0s /in_to_set [x ->] s0x].
+    case: (woR (proj_pred s s0)) ; first by exists x ; rewrite/= in_setE.
+    move=> {s0x}x [[]] ; rewrite in_setE Setrel_lbP** => s0vx.
+    rewrite proj_predK ; last by move=> ? ; rewrite 2!in_setE ; exact: subs0s.
+    move=> minRvx uniqmin ; exists (\val x).
+    split ; first by split=> // ? ? ; apply minRvx ; rewrite in_setE.
+    move=> y [/[dup] /subs0s] ; rewrite -(insubK s y).
+    case: insubP ; last by move/negP ; rewrite in_setE.
+    move=> {}y _ <- /= ? ? minRs0vy ; have -> : x = y ; last by [].
+    apply uniqmin ; split ; first by rewrite in_setE.
+    move=> ? ; rewrite in_setE=> ?; exact/asboolP/minRs0vy.
+  - move=> s0 [x s0x] ; case: (woR (sig_pred s s0)).
+    + move=> ? ; rewrite -(in_setE s) ; exact: sig_subpred.
+    + by exists (\val x) ; rewrite/sig_pred valK.
+    + move=> {s0x}x [[]]; rewrite {1}/sig_pred; case:insubP=> // {}x _ <-.
+      move=> s0x minRs0vx uniqmin ; exists x.
+      (do! split); [by []|exact/Setrel_lbP/minRs0vx|move=>? [? /Setrel_lbP ?]].
+      by apply/val_inj/uniqmin ; split ; first rewrite/sig_pred valK.
+Qed.
+
 Lemma qoset_def {A : Type'} : heq (@qoset A) (fun h113861 : A -> A -> Prop => hand (all (fun x : A => (@IN A x (@fld A h113861)) -> h113861 x x)) (all (fun x : A => all (fun y : A => all (fun z : A => (hand (h113861 x y) (h113861 y z)) -> h113861 x z))))).
-Proof. exact (REFL (@qoset A)). Qed.
-Definition poset {A : Type'} : (A -> A -> Prop) -> Prop := fun h113866 : A -> A -> Prop => hand (all (fun x : A => (@IN A x (@fld A h113866)) -> h113866 x x)) (hand (all (fun x : A => all (fun y : A => all (fun z : A => (hand (h113866 x y) (h113866 y z)) -> h113866 x z)))) (all (fun x : A => all (fun y : A => (hand (h113866 x y) (h113866 y x)) -> heq x y)))).
+Proof.
+  funext=> R ; rewrite/qoset/preorder. rewrite Setrel_reflP** fld_transP**.
+  congr and=> /` [+>[] | + y x *] => [|/[spec x | y]] ; exact.
+Qed.
+
 Lemma poset_def {A : Type'} : heq (@poset A) (fun h113866 : A -> A -> Prop => hand (all (fun x : A => (@IN A x (@fld A h113866)) -> h113866 x x)) (hand (all (fun x : A => all (fun y : A => all (fun z : A => (hand (h113866 x y) (h113866 y z)) -> h113866 x z)))) (all (fun x : A => all (fun y : A => (hand (h113866 x y) (h113866 y x)) -> heq x y))))).
-Proof. exact (REFL (@poset A)). Qed.
-Definition toset {A : Type'} : (A -> A -> Prop) -> Prop := fun h113871 : A -> A -> Prop => hand (all (fun x : A => (@IN A x (@fld A h113871)) -> h113871 x x)) (hand (all (fun x : A => all (fun y : A => all (fun z : A => (hand (h113871 x y) (h113871 y z)) -> h113871 x z)))) (hand (all (fun x : A => all (fun y : A => (hand (h113871 x y) (h113871 y x)) -> heq x y))) (all (fun x : A => all (fun y : A => (hand (@IN A x (@fld A h113871)) (@IN A y (@fld A h113871))) -> hor (h113871 x y) (h113871 y x)))))).
+Proof.
+  funext=>> ; rewrite/0= andA ; congr and ; first by rewrite -/(qoset _) qoset_def.
+  rewrite fld_antiP** => /` [+>[]|+]* ; exact.
+Qed.
+
 Lemma toset_def {A : Type'} : heq (@toset A) (fun h113871 : A -> A -> Prop => hand (all (fun x : A => (@IN A x (@fld A h113871)) -> h113871 x x)) (hand (all (fun x : A => all (fun y : A => all (fun z : A => (hand (h113871 x y) (h113871 y z)) -> h113871 x z)))) (hand (all (fun x : A => all (fun y : A => (hand (h113871 x y) (h113871 y x)) -> heq x y))) (all (fun x : A => all (fun y : A => (hand (@IN A x (@fld A h113871)) (@IN A y (@fld A h113871))) -> hor (h113871 x y) (h113871 y x))))))).
-Proof. exact (REFL (@toset A)). Qed.
-Definition woset {A : Type'} : (A -> A -> Prop) -> Prop := fun h113876 : A -> A -> Prop => hand (all (fun x : A => (@IN A x (@fld A h113876)) -> h113876 x x)) (hand (all (fun x : A => all (fun y : A => all (fun z : A => (hand (h113876 x y) (h113876 y z)) -> h113876 x z)))) (hand (all (fun x : A => all (fun y : A => (hand (h113876 x y) (h113876 y x)) -> heq x y))) (hand (all (fun x : A => all (fun y : A => (hand (@IN A x (@fld A h113876)) (@IN A y (@fld A h113876))) -> hor (h113876 x y) (h113876 y x)))) (all (fun s : A -> Prop => (hand (@SUBSET A s (@fld A h113876)) (not (heq s (@EMPTY A)))) -> hex (fun x : A => hand (@IN A x s) (all (fun y : A => (@IN A y s) -> h113876 x y)))))))).
+Proof.
+  funext=>> ; rewrite/0= 2!andA ; congr and.
+  - by rewrite -andA -/(poset _) poset_def.
+  - rewrite Setrel_totalP** => /` [+ ? ? []|+] * ; exact.
+Qed.
+
+Lemma well_order_total T (R : rel T) : well_order R -> total R.
+Proof.
+  move=> woR x y ; case: (woR (mem [set x ; y])).
+  - by exists x ; rewrite in_setE ; left.
+  - by move=> _ [[/[1! in_setE] -[]-> ->]]; rewrite ?in_setE-?orP** /=; auto.
+Qed.
+
+Lemma total_refl T (R : rel T) : total R -> reflexive R.
+Proof. by move=> + x => /[spec x | x] /orP []. Qed.
+
+Lemma well_order_refl T (R : rel T) : well_order R -> reflexive R.
+Proof. exact ((@total_refl _ _) \o (@well_order_total _ _)). Qed.
+
+Lemma well_order_anti T (R : rel T) : well_order R -> antisymmetric R.
+Proof.
+  move=> woR x y /andP [Rxy Ryx] ; case: (woR (mem [set x ; y])).
+  - by exists x ; rewrite in_setE ; left.
+  - move=> _ [[/[1! in_setE] -[]-> _]] ; last rewrite sym ; apply.
+    1,2 : split ; [by rewrite in_setE/= ; auto|move=> _ /[1! in_setE] -[]->//].
+    1,2 : exact: well_order_refl.
+Qed.
+
+Lemma well_order_trans T (R : rel T) : well_order R -> transitive R.
+Proof.
+  move=> woR y x z ; case: (woR (mem [set x ; y ; z])).
+  - by exists z ; rewrite in_setE ; right.
+  - move=> _ [[/[1! in_setE] -[[]|]->]].
+    + by move=> /[spec z] -> // ; rewrite in_setE ; right.
+    + move=> /[dup] /[spec x] /[spec] ; first by rewrite in_setE/= ; auto.
+      move=> ? + _ ? _ ; have -> : x = y by exact/(well_order_anti woR)/andP.
+      by move=>-> // ; rewrite in_setE/= ; auto.
+    + move=> /[dup]/[dup]/[spec y]/[spec] ; first by rewrite in_setE/= ; auto.
+      by move=> ?++ _ +? ; have -> : z = y by exact/(well_order_anti woR)/andP.
+Qed.
+
+Lemma well_order_order T (R : rel T) : well_order R -> total_order R.
+Proof.
+  do! split.
+  - exact: well_order_refl.
+  - exact: well_order_trans.
+  - exact: well_order_anti.
+  - exact: well_order_total.
+Qed.
+
 Lemma woset_def {A : Type'} : heq (@woset A) (fun h113876 : A -> A -> Prop => hand (all (fun x : A => (@IN A x (@fld A h113876)) -> h113876 x x)) (hand (all (fun x : A => all (fun y : A => all (fun z : A => (hand (h113876 x y) (h113876 y z)) -> h113876 x z)))) (hand (all (fun x : A => all (fun y : A => (hand (h113876 x y) (h113876 y x)) -> heq x y))) (hand (all (fun x : A => all (fun y : A => (hand (@IN A x (@fld A h113876)) (@IN A y (@fld A h113876))) -> hor (h113876 x y) (h113876 y x)))) (all (fun s : A -> Prop => (hand (@SUBSET A s (@fld A h113876)) (not (heq s (@EMPTY A)))) -> hex (fun x : A => hand (@IN A x s) (all (fun y : A => (@IN A y s) -> h113876 x y))))))))).
-Proof. exact (REFL (@woset A)). Qed.
-Definition wqoset {A : Type'} : (A -> A -> Prop) -> Prop := fun h113881 : A -> A -> Prop => hand (all (fun x : A => (@IN A x (@fld A h113881)) -> h113881 x x)) (hand (all (fun x : A => all (fun y : A => all (fun z : A => (hand (h113881 x y) (h113881 y z)) -> h113881 x z)))) (all (fun s : A -> Prop => (@SUBSET A s (@fld A h113881)) -> hex (fun t : A -> Prop => hand (@FINITE A t) (hand (@SUBSET A t s) (all (fun y : A => (@IN A y s) -> hex (fun x : A => hand (@IN A x t) (h113881 x y))))))))).
+Proof.
+  ext=> R /0=.
+  - move=> woR ; rewrite 3!andA ; split ; move: woR.
+    + by move/well_order_order ; rewrite -/(toset _) toset_def -!andA.
+    + move/Setrel_woP=> + ? [] =>/[apply] + /eqP/set0P=> /[apply] -[+ [+ _]].
+      exact: ex_intro.
+  - case=> _ [_ [antiR [_ wfR]]] ; apply Setrel_woP => s subsfld /set0P/eqP ?.
+    apply/unique_existence ; split ; first exact: wfR.
+    move=> x y [sx +] [sy /[spec x | sx]]? => /[spec y | sy] ? ; exact: antiR.
+Qed.
+
 Lemma wqoset_def {A : Type'} : heq (@wqoset A) (fun h113881 : A -> A -> Prop => hand (all (fun x : A => (@IN A x (@fld A h113881)) -> h113881 x x)) (hand (all (fun x : A => all (fun y : A => all (fun z : A => (hand (h113881 x y) (h113881 y z)) -> h113881 x z)))) (all (fun s : A -> Prop => (@SUBSET A s (@fld A h113881)) -> hex (fun t : A -> Prop => hand (@FINITE A t) (hand (@SUBSET A t s) (all (fun y : A => (@IN A y s) -> hex (fun x : A => hand (@IN A x t) (h113881 x y)))))))))).
-Proof. exact (REFL (@wqoset A)). Qed.
-Definition chain {A : Type'} : (A -> A -> Prop) -> (A -> Prop) -> Prop := fun h113886 : A -> A -> Prop => fun h113887 : A -> Prop => all (fun x : A => all (fun y : A => (hand (@IN A x h113887) (@IN A y h113887)) -> hor (h113886 x y) (h113886 y x))).
+Proof.
+  by funext=>> ; rewrite/0= andA; congr and; rewrite -/(qoset _) qoset_def.
+Qed.
+
 Lemma chain_def {A : Type'} : heq (@chain A) (fun h113886 : A -> A -> Prop => fun h113887 : A -> Prop => all (fun x : A => all (fun y : A => (hand (@IN A x h113887) (@IN A y h113887)) -> hor (h113886 x y) (h113886 y x)))).
-Proof. exact (REFL (@chain A)). Qed.
+Proof.
+  ext=> R s Rchains x y.
+  - by case=> ? ? ; apply/or_asboolP/Rchains ; rewrite in_setE.
+  - rewrite 2!in_setE => * ; exact/or_asboolP/Rchains.
+Qed.
+
 Definition antichain {A : Type'} : (A -> A -> Prop) -> (A -> Prop) -> Prop := fun h113898 : A -> A -> Prop => fun h113899 : A -> Prop => hand (@SUBSET A h113899 (@fld A h113898)) (@pairwise A (fun x : A => fun y : A => not (h113898 x y)) h113899).
 Lemma antichain_def {A : Type'} : heq (@antichain A) (fun h113898 : A -> A -> Prop => fun h113899 : A -> Prop => hand (@SUBSET A h113899 (@fld A h113898)) (@pairwise A (fun x : A => fun y : A => not (h113898 x y)) h113899)).
 Proof. exact (REFL (@antichain A)). Qed.
