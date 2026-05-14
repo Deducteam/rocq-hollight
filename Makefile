@@ -1,4 +1,4 @@
-LIBNAME=HOLLight
+LIBNAME=Multivariate
 
 .SUFFIXES:
 
