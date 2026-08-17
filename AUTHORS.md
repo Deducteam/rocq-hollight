@@ -4,4 +4,4 @@
 - [Théo Winterhalter](https://theowinterhalter.github.io/) for the tactic align_ε
 - [Alessio Coltellacci](https://github.com/notbad4u) for the alignment of lcm
 - [Jérémy Dubut](https://jeremydubut.com/) for the alignment of EVEN, ODD, WF
-- Antoine Gontard for the tactics to automatically align inductive types and recursive functions
+- [Antoine Gontard](https://agontard.github.io/) for the tactics to automatically align inductive types and recursive functions, alignments with mathcomp, and translation of the Logic library
