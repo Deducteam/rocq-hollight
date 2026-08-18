@@ -3,6 +3,7 @@ From mathcomp Require Import ssreflect ssrbool ssrfun ssrnat.
 From mathcomp Require Export eqtype choice.
 From mathcomp Require Import seq boolp functions.
 From mathcomp Require Export classical_sets.
+Unset SsrOldRewriteGoalsOrder. (* Remove upon requiring mathcomp-algebra >= 2.6.0 *)
 Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
@@ -24,7 +25,7 @@ HB.factory Record HOL_isPointed T := {point : T}.
 Notation is_Type' := (HOL_isPointed.Build _).
 
 (* in classical context, is a factory for pointedType *)
-HB.builders Context T of HOL_isPointed T.
+HB.builders Context T (_ : HOL_isPointed T).
 
 HB.instance Definition _ := gen_eqMixin T.
 
@@ -677,7 +678,7 @@ Ltac align_ε :=
           gobble a' uv ;
           revert a' H H' (* Revert [a'], [P a] and [P a'] to reuse them in other tactics *)
         ]
-    | |- @eq ?T _ (ε _) => apply (align_ε (A := (T : Type')))
+    | |- _ = (@ε ?T _) => apply (align_ε (A := T))
         (* Replaces the goal [a = ε P] with two goals [P a] and
            [forall x, P a => P x => x = a]. *)
     end
@@ -708,8 +709,8 @@ Qed.
 
 Tactic Notation "if_triv" "by" tactic(tac) :=
   rewrite/COND ;
-  (rewrite if_triv_True ; last by tac) ||
-  (rewrite if_triv_False ; last by tac) ||
+  (rewrite if_triv_True ; first by tac) ||
+  (rewrite if_triv_False ; first by tac) ||
   fail "no conditional term to simplify".
 
 Tactic Notation "if_triv" := if_triv by idtac.
@@ -720,22 +721,22 @@ Ltac ssrsimpl1 := repeat if_triv.
 (* If needed, specify which P is trivial *)
 Tactic Notation "if_triv" constr(P) :=
   rewrite/COND ;
-  (rewrite (if_triv_True _ P) ; [auto | easy]) +
-  (rewrite (if_triv_False _ P) ; [auto | easy]).
+  (rewrite (if_triv_True _ P) ; [easy | auto]) +
+  (rewrite (if_triv_False _ P) ; [easy | auto]).
 
 Tactic Notation "if_triv" "using" constr(H) :=
   rewrite/COND ; let H' := fresh in set (H' := H) ;
-  (rewrite if_triv_True ; last by auto using H') ||
-  (rewrite if_triv_False ; last by auto using H') ; clear H'.
+  (rewrite if_triv_True ; first by auto using H') ||
+  (rewrite if_triv_False ; first by auto using H') ; clear H'.
 
 Tactic Notation "if_triv" constr(P) "using" constr(H) :=
   rewrite/COND ; let H' := fresh in set (H' := H) ;
-  (rewrite (if_triv_True _ P) ; last by auto using H') ||
-  (rewrite (if_triv_False _ P) ; last by auto using H') ; clear H'.
+  (rewrite (if_triv_True _ P) ; first by auto using H') ||
+  (rewrite (if_triv_False _ P) ; first by auto using H') ; clear H'.
 
 Lemma if_intro (A : Type) (Q : Prop) (P : A -> Prop) (x y : A) :
   (Q -> P x) -> (~Q -> P y) -> P (if Q then x else y).
-Proof. case (pselect Q)=> [? /1= + _ | ? /1= _]; exact. Qed.
+Proof. case (pselect Q)=> [? /1= + _ | ? /1= _] ; exact. Qed.
 
 (* applies if_intro then also clears all if with
    the same hypothesis *)
@@ -1496,8 +1497,7 @@ Section Quotient.
   Lemma mk_quotient_elt_of x : mk_quotient (R (elt_of x)) = x.
   Proof.
     apply eq_class_intro_elt. set (a := elt_of x). unfold elt_of.
-    rewrite dest_mk_aux_quotient. apply R_sym. apply eq_elt_of.
-    exists a. reflexivity.
+    by rewrite dest_mk_aux_quotient ; [exists a | apply/R_sym/eq_elt_of].
   Qed.
 
 End Quotient.

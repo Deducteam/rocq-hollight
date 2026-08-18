@@ -8,6 +8,7 @@ From mathcomp Require Import realfun Rstruct_topology.
 Import preorder.Order Order.TTheory Num.Theory GRing.Theory.
 Require Export HOLLight.HOL.mappings.
 From HB Require Import structures.
+Unset SsrOldRewriteGoalsOrder. (* Remove upon requiring mathcomp-algebra >= 2.6.0 *)
 Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
@@ -236,7 +237,7 @@ Proof.
     have:= (cvgxl (e/2)%R e20) => -[M _ incl_inter_ball] ; exists M.
     split ; [exact:leqnn | move=> n leqMn ; apply incl_ball_U].
     rewrite ball_normE ; apply: (closed_ball_subset e20).
-    + by rewrite ltr_pdivrMr // ; rewrite ltr_pMr ; first rewrite ltr1n.
+    + by rewrite ltr_pdivrMr // ltr_pMr ; last rewrite ltr1n.
     + by rewrite (closed_ballE _ e20) ; apply (incl_inter_ball n).
   - move=> cvgxl ; apply/(@cvgrPdist_le R R^o) => /= e pos_e.
     pose B := closed_ball_ Num.Def.normr l e. have := cvgxl B.
@@ -268,7 +269,7 @@ Proof.
     + by rewrite normr_gt0;apply lt0r_neq0;rewrite divr_gt0.
     + move=> x ; rewrite ?coqRE => -[neq_x_x0 ball_x0_d2_x].
       apply incl_ball_U ; rewrite ball_normE ; apply: (closed_ball_subset pos_e2).
-      * by rewrite ltr_pdivrMr // ; rewrite ltr_pMr ; first rewrite ltr1n.
+      * by rewrite ltr_pdivrMr // ltr_pMr ; last rewrite ltr1n.
       * rewrite (closed_ballE _ pos_e2) ; apply incl_inter_ball.
         { rewrite/= distrC ; apply: (le_lt_trans ball_x0_d2_x).
           by rewrite gtr0_norm ?divr_gt0 // ltr_pdivrMr // ltr_pMr // ltr1n. }
@@ -317,7 +318,7 @@ Proof.
     f (x0 + x)%mcR @[x0 --> (0%mcR)^'+] --> f (0+x)%mcR).
   - apply propext. apply iff_sym. exact: left_right_continuousP.
   - ext => [[contfxl contfxr]|contfx].
-    + by apply (@cvg_at_right_left_dnbhs _ R^o).
+    + exact: (@cvg_at_right_left_dnbhs _ R^o).
     + split ; [exact: cvg_dnbhs_at_left | exact: cvg_dnbhs_at_right].
 Qed.
 

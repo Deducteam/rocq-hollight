@@ -8,6 +8,7 @@ From mathcomp Require Import normedtype Rstruct_topology.
 Import Order Order.TTheory GRing Num.Theory.
 Require Export HOLLight.HOL.mappings.
 From HOLLight Require Import morepointedtypes HOL.theorems.
+Unset SsrOldRewriteGoalsOrder. (* Remove upon requiring mathcomp-algebra >= 2.6.0 *)
 Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
@@ -420,7 +421,7 @@ Proof.
     by rewrite leqn0=> /andP [/[swap] /eqP ->].
   - rewrite thm_NUMSEG_REC // setIC thm_INSERT_INTER=> /c` [sn | nsn].
     + have [_ ->] := @thm_SUM_CLAUSES nat nat.
-      2: { apply: finite_setIl ; exact: thm_FINITE_NUMSEG. }
+      { apply: finite_setIl ; exact: thm_FINITE_NUMSEG. }
       if_triv by rewrite/3=/setI/= ltnn => -[].
       rewrite big_mkcond big_ord_recr -big_mkcond /= addrC setIC IHn.
       by move:sn=> /3= ? /1=.
@@ -516,7 +517,7 @@ Definition sums n (u : nat -> cart R n) (l : cart R n) (s : set nat) :=
 Lemma max_square (R : realDomainType) (x y : R) :
   max (x ^+ 2) (y ^+ 2) = max `|x| `|y| ^+ 2.
 Proof.
-  rewrite/exp/iterop/= maxr_pMr ; last by case (ltP `|x|).
+  rewrite/exp/iterop/= maxr_pMr ; first by case (ltP `|x|).
   rewrite -2![_ * _]/(_^+ 2) -(ger0_norm (sqr_ge0 x)) -(ger0_norm (sqr_ge0 y)).
   rewrite 2!normrX/exp/iterop/= ; case (ltP `|x|)=>[ltxy|gexy] ; rewrite/max.
   - rewrite ltr_pM2l ?ltr_pM ?ltxy // ; exact: (le_lt_trans _ ltxy).
@@ -534,8 +535,8 @@ Qed.
 Lemma row_norm_le_mx_norm (R : rcfType) n (v : 'rV[R]_n) :
   row_norm v <= Num.sqrt n%:R * `|v|.
 Proof.
-  rewrite/row_norm -normr_id -sqrtr_sqr -sqrtrM ; last by [].
-  rewrite ler_sqrt ; last (apply:mulr_ge0 ; [by [] | exact:mulr_ge0]).
+  rewrite/row_norm -normr_id -sqrtr_sqr -sqrtrM ; first by [].
+  rewrite ler_sqrt ; first (apply:mulr_ge0 ; [by [] | exact:mulr_ge0]).
   rewrite/Num.norm/= mx_normrE -bigmax_square row_dotE.
   match goal with |- is_true (_ <= _ * ?x) => set (maxv2 := x) end.
   apply: (le_trans (y:= \sum_(i < n) maxv2)).
@@ -559,11 +560,11 @@ Qed.
 Lemma mx_norm_le_row_norm (R : rcfType) n (v : 'rV[R]_n) :
   `|v| <= row_norm v.
 Proof.
-  rewrite/row_norm -normr_id -sqrtr_sqr ler_sqrt ; last exact: row_square_ge0.
+  rewrite/row_norm -normr_id -sqrtr_sqr ler_sqrt ; first exact: row_square_ge0.
   rewrite/Num.norm/exp/iterop/= ; case (EM (mx_norm v == 0)).
   - by move/eqP/mx_norm_eq0 => -> ; rewrite mx_norm0 row_square0 mulr0.
   - move/negP/mx_norm_neq0 => -[[j i] ->] /= ; rewrite row_dotE {j}ord1.
-    rewrite-[X in X <= _]/(_ ^+ 2) -normrX ger0_norm ; last exact: sqr_ge0.
+    rewrite-[X in X <= _]/(_ ^+ 2) -normrX ger0_norm ; first exact: sqr_ge0.
     have ->: v ord0 i ^+ 2 = \sum_(k < n) (if k = i then v ord0 i ^+ 2 else 0).
     + elim: n v i => [|n IHn] v i.
       { by rewrite/exp/iterop/= thinmx0 big_ord0 mxE mul0r. }
@@ -590,10 +591,10 @@ Proof.
       move=> k nearl ; rewrite row_sum_condE.
       apply: (le_lt_trans (row_norm_le_mx_norm _)).
       rewrite -(@mulrK _ (Num.sqrt n.+1%:R) _ e).
-      * rewrite -mulrA mulrCA ltr_pM2l ; last by rewrite sqrtr_gt0.
+      * by rewrite unitfE sqrtr_eq0 -real_ltNge.
+      * rewrite -mulrA mulrCA ltr_pM2l ; first by rewrite sqrtr_gt0.
         rewrite -opprB normrN ; apply: (le_lt_trans nearl).
         by rewrite mulrAC ltr_pdivrMr ?ltr_pMr ?ltr1n ?divr_gt0 ?sqrtr_gt0.
-      * by rewrite unitfE sqrtr_eq0 -real_ltNge.
   - move=> cvgul ; apply/cvgrPdist_le => /= e pos_e.
     case (cvgul e pos_e) => [contra |[Ns [[N _ {Ns}<-]] /= incl]].
     + by contradict contra; apply/eqP; rewrite set0P; exist (from 0) 0.
