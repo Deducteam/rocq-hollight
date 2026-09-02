@@ -2,6 +2,7 @@ Require Import Corelib.Init.Wf HB.structures.
 From Stdlib Require Import BinNat List Lia PeanoNat Ascii Setoid.
 From mathcomp Require Import ssreflect ssrfun ssrbool eqtype ssrnat choice.
 From mathcomp Require Import boolp classical_sets functions.
+Unset SsrOldRewriteGoalsOrder. (* Remove upon requiring mathcomp-algebra >= 2.6.0 *)
 Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
@@ -346,24 +347,24 @@ Qed.
 
 Tactic Notation "if_triv" :=
   rewrite/COND ;
-  (rewrite if_triv_True ; [auto | easy]) +
-  (rewrite if_triv_False ; [auto | easy]).
+  (rewrite if_triv_True ; [easy | auto]) +
+  (rewrite if_triv_False ; [easy | auto]).
 
 (* If needed, specify which P is trivial *)
 Tactic Notation "if_triv" constr(P) :=
   rewrite/COND ;
-  (rewrite (if_triv_True _ P) ; [auto | easy]) +
-  (rewrite (if_triv_False _ P) ; [auto | easy]).
+  (rewrite (if_triv_True _ P) ; [easy | auto]) +
+  (rewrite (if_triv_False _ P) ; [easy | auto]).
 
 Tactic Notation "if_triv" "using" constr(H) :=
   rewrite/COND ; let H' := fresh in set (H' := H) ;
-  (rewrite if_triv_True ; [auto | now auto using H']) +
-  (rewrite if_triv_False ; [auto | now auto using H']) ; clear H'.
+  (rewrite if_triv_True ; [now auto using H' | auto]) +
+  (rewrite if_triv_False ; [now auto using H' | auto]) ; clear H'.
 
 Tactic Notation "if_triv" constr(P) "using" constr(H) :=
   rewrite/COND ; let H' := fresh in set (H' := H) ;
-  (rewrite (if_triv_True _ P) ; [auto | now auto using H']) +
-  (rewrite (if_triv_False _ P) ; [auto | now auto using H']) ; clear H'.
+  (rewrite (if_triv_True _ P) ; [now auto using H' | auto]) +
+  (rewrite (if_triv_False _ P) ; [now auto using H' | auto]) ; clear H'.
 
 Lemma if_intro (A : Type') (Q : Prop) (P : A -> Prop) (x y : A) :
   (Q -> P x) -> (~Q -> P y) -> P (if Q then x else y).
@@ -1257,8 +1258,7 @@ Section Quotient.
   Lemma mk_quotient_elt_of x : mk_quotient (R (elt_of x)) = x.
   Proof.
     apply eq_class_intro_elt. set (a := elt_of x). unfold elt_of.
-    rewrite dest_mk_aux_quotient. apply R_sym. apply eq_elt_of.
-    exists a. reflexivity.
+    rewrite dest_mk_aux_quotient. by exists a. apply R_sym. apply eq_elt_of.
   Qed.
 
 End Quotient.
@@ -1535,7 +1535,7 @@ Qed.
 
 Lemma SUC_def : N.succ = (fun _2104 : N => mk_num (IND_SUC (dest_num _2104))).
 Proof.
-  symmetry. ext=>x. rewrite mk_num_S. 2: apply NUM_REP_dest_num.
+  symmetry. ext=>x. rewrite mk_num_S. apply NUM_REP_dest_num.
   apply f_equal. apply axiom_7.
 Qed.
 
@@ -1958,9 +1958,8 @@ Lemma NUMRIGHT_NUMSUM b n : NUMRIGHT (NUMSUM b n) = n.
 Proof.
   unfold NUMSUM, NUMRIGHT. numfold.
   if_intro=>H ; rewrite double_0 succ_0 double_1.
-  - rewrite N.even_succ N.odd_mul N.odd_2 succ_minus_1 NDIV_MULT.
-    reflexivity. discriminate.
-  - rewrite even_double NDIV_MULT. reflexivity. discriminate.
+  - by rewrite N.even_succ N.odd_mul N.odd_2 succ_minus_1 NDIV_MULT.
+  - by rewrite even_double NDIV_MULT.
 Qed.
 
 Lemma Nplus_1_minus_1 x : x + 1 - 1 = x.
@@ -1971,7 +1970,7 @@ Proof.
   exists (NUMLEFT n). exists (NUMRIGHT n). unfold NUMSUM, NUMLEFT, NUMRIGHT. numfold.
   case_eq (N.even n); intro h ; if_triv.
   - rewrite N.even_spec in h. destruct h as [k h]. subst n.
-    rewrite NDIV_MULT. reflexivity. lia.
+    rewrite NDIV_MULT. lia. reflexivity.
   - apply eq_false_negb_true in h. change (N.odd n = true) in h.
     rewrite N.odd_spec in h. destruct h as [k h]. subst. rewrite Nplus_1_minus_1.
     rewrite NDIV_MULT. lia. lia.
@@ -2596,7 +2595,7 @@ Proof.
   revert l'. induction l ; intros l' H.
   reflexivity. destruct l'.
   - simpl in H. destruct (Nat.nle_succ_0 _ H).
-  - simpl. rewrite IHl. reflexivity. now apply le_S_n.
+  - simpl. rewrite IHl. now apply le_S_n. reflexivity.
 Qed.
 
 Lemma ZIP_def {A B : Type'} : zip = (@ε ((prod N (prod N N)) -> (list A) -> (list B) -> list (prod A B)) (fun ZIP' : (prod N (prod N N)) -> (list A) -> (list B) -> list (prod A B) => forall _18205 : prod N (prod N N), (forall l2 : list B, (ZIP' _18205 (@nil A) l2) = (@nil (prod A B))) /\ (forall h1' : A, forall t1 : list A, forall l2 : list B, (ZIP' _18205 (@cons A h1' t1) l2) = (@cons (prod A B) (@pair A B h1' (@hd B l2)) (ZIP' _18205 t1 (@tl B l2))))) (@pair N (prod N N) ((BIT0 (BIT1 (BIT0 (BIT1 (BIT1 (BIT0 (BIT1 N0)))))))) (@pair N N ((BIT1 (BIT0 (BIT0 (BIT1 (BIT0 (BIT0 (BIT1 N0)))))))) ((BIT0 (BIT0 (BIT0 (BIT0 (BIT1 (BIT0 (BIT1 N0))))))))))).
@@ -2770,8 +2769,8 @@ Lemma nadd_of_num_add p q :
   nadd_of_num (p + q) = nadd_add (nadd_of_num p) (nadd_of_num q).
 Proof.
   unfold nadd_add, nadd_of_num. f_equal. ext=> x.
-  rewrite axiom_20_aux. 2: apply is_nadd_times.
-  rewrite axiom_20_aux. 2: apply is_nadd_times.
+  rewrite axiom_20_aux. apply is_nadd_times.
+  rewrite axiom_20_aux. apply is_nadd_times.
   lia.
 Qed.
 
@@ -2781,8 +2780,8 @@ Proof. unfold nadd_add. f_equal. ext=>x. lia. Qed.
 Lemma NADD_ADD_ASSOC p q r :
   nadd_add (nadd_add p q) r = nadd_add p (nadd_add q r).
 Proof.
-  unfold nadd_add. f_equal. ext=>x. rewrite !axiom_20_aux. lia.
-  apply is_nadd_add. apply is_nadd_add.
+  unfold nadd_add. f_equal. ext=>x. rewrite !axiom_20_aux.
+  apply is_nadd_add. apply is_nadd_add. lia.
 Qed.
 
 Definition nadd_mul : nadd -> nadd -> nadd := fun _23325 : nadd => fun _23326 : nadd => mk_nadd (fun n : N => dest_nadd _23325 (dest_nadd _23326 n)).
@@ -2825,8 +2824,8 @@ Add Morphism nadd_add
 Proof.
   intros f f' [b ff'] g g' [c gg']. exists (b+c). intro n.
   generalize (ff' n); intro ff'n. generalize (gg' n); intro gg'n.
-  unfold nadd_add. rewrite !axiom_20_aux. unfold dist in *; simpl in *. lia.
-  apply is_nadd_add. apply is_nadd_add.
+  unfold nadd_add. rewrite !axiom_20_aux. 1,2: apply is_nadd_add.
+  unfold dist in *; simpl in *. lia.
 Qed.
 
 (*Add Morphism nadd_le
@@ -2851,8 +2850,9 @@ Lemma NADD_ADD_LCANCEL x y z :
 Proof.
   intro h. destruct x as [x hx]. destruct y as [y hy]. destruct z as [z hz].
   destruct h as [B h]. exists B. intro n. generalize (h n). unfold nadd_add. simpl.
-  unfold dest_nadd, mk_nadd. rewrite !dest_mk_aux. unfold dist. simpl. lia.
-  apply is_nadd_add_aux; assumption. apply is_nadd_add_aux; assumption.
+  unfold dest_nadd, mk_nadd. rewrite !dest_mk_aux.
+  1,2: apply is_nadd_add_aux; assumption.
+  unfold dist. simpl. lia.
 Qed.
 
 Definition nadd_inv : nadd -> nadd := fun _23476 : nadd => @COND nadd (nadd_eq _23476 (nadd_of_num (NUMERAL N0))) (nadd_of_num (NUMERAL N0)) (mk_nadd (nadd_rinv _23476)).
@@ -2894,11 +2894,11 @@ Proof.
   unfold hreal_add, hreal_of_num. f_equal. ext=>x h.
   exists (nadd_of_num p). exists (nadd_of_num q). split.
   rewrite <- nadd_of_num_add. exact h. split.
-  rewrite axiom_22_aux. 2: exists (nadd_of_num p); reflexivity. apply NADD_EQ_REFL.
-  rewrite axiom_22_aux. 2: exists (nadd_of_num q); reflexivity. apply NADD_EQ_REFL.
+  rewrite axiom_22_aux. exists (nadd_of_num p); reflexivity. apply NADD_EQ_REFL.
+  rewrite axiom_22_aux. exists (nadd_of_num q); reflexivity. apply NADD_EQ_REFL.
   destruct h as [f [g [h1 [h2 h3]]]].
-  rewrite axiom_22_aux in h2. 2: exists (nadd_of_num p); reflexivity.
-  rewrite axiom_22_aux in h3. 2: exists (nadd_of_num q); reflexivity.
+  rewrite axiom_22_aux in h2. exists (nadd_of_num p); reflexivity.
+  rewrite axiom_22_aux in h3. exists (nadd_of_num q); reflexivity.
   rewrite nadd_of_num_add. rewrite h2 h3. exact h1.
 Qed.
 
@@ -2921,13 +2921,13 @@ Proof.
   unfold hreal_add. apply f_equal. ext=> x h.
 
   unfold dest_hreal, mk_hreal in h. destruct h as [p' [q' [h1 [h2 h3]]]].
-  rewrite dest_mk_aux_quotient in h2. 2: apply is_eq_class_of.
-  rewrite dest_mk_aux_quotient in h3. 2: apply is_eq_class_of.
+  rewrite dest_mk_aux_quotient in h2. apply is_eq_class_of.
+  rewrite dest_mk_aux_quotient in h3. apply is_eq_class_of.
   rewrite h2 h3. exact h1.
 
   exists p. exists q. split. exact h. unfold dest_hreal, mk_hreal.
-  rewrite !dest_mk_aux_quotient. split; reflexivity.
-  apply is_eq_class_of. apply is_eq_class_of.
+  rewrite !dest_mk_aux_quotient. 1,2 : apply is_eq_class_of.
+  split; reflexivity.
 Qed.
 
 Lemma mk_hreal_nadd_eq p : mk_hreal (nadd_eq (elt_of p)) = p.

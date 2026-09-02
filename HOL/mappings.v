@@ -16,7 +16,7 @@ From mathcomp Require Import realfun.
 Import preorder.Order Order.TTheory GRing GRing.Theory Num.Theory Logic.
 Require Export HOLLight.Real_With_nat.mappings.
 From HOLLight.Real_With_nat Require Import terms theorems.
-
+Unset SsrOldRewriteGoalsOrder. (* Remove upon requiring mathcomp-algebra >= 2.6.0 *)
 Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
@@ -110,7 +110,7 @@ Proof.
   - exact: le_refl.
   - move/[swap]. exact: le_trans.
   - exact: sup_upper_bound.
-  - simp_R_struct. rewrite RealdownE. exact: sup_total.
+  - simp_R_struct. rewrite RealdownE. exact: @sup_total.
   - move=> *; exact: lerD.
   - rewrite eq_R_struct. exact: addrC.
   - rewrite eq_R_struct. exact: addrA.
@@ -145,11 +145,11 @@ Proof.
   f_equal. rewrite treal_add_of_num. ext=> [x h | x [p' [q' [h1 [h2 h3]]]]].
 
   exists (treal_of_num p). exists (treal_of_num q). split. exact h. split.
-  rewrite axiom_24_aux. reflexivity. exists (treal_of_num p). reflexivity.
-  rewrite axiom_24_aux. reflexivity. exists (treal_of_num q). reflexivity.
+  rewrite axiom_24_aux. exists (treal_of_num p). 1,2: reflexivity.
+  rewrite axiom_24_aux. exists (treal_of_num q). 1,2: reflexivity.
 
-  rewrite axiom_24_aux in h2. 2: exists (treal_of_num p); reflexivity.
-  rewrite axiom_24_aux in h3. 2: exists (treal_of_num q); reflexivity.
+  rewrite axiom_24_aux in h2. exists (treal_of_num p); reflexivity.
+  rewrite axiom_24_aux in h3. exists (treal_of_num q); reflexivity.
   rewrite h2 h3. exact h1.
 Qed.
 
@@ -180,10 +180,8 @@ Canonical real_struct.
 Lemma real_sup_is_lub E :
   Real.has_sup E -> ub E (real_sup E) /\ (forall b, ub E b -> real_le (real_sup E) b).
 Proof.
-  move=> [i j] ; rewrite/real_sup.
-  case (pselect (exists x : real, E x)) ; last contradiction.
-  case (pselect (exists M : real, forall x : real, E x -> real_le x M)) ; last contradiction.
-  by (ε_spec by exact (thm_REAL_COMPLETE E (conj i j))) => ? -[].
+  move=> [i j] ; rewrite/real_sup ; do 2! (case: pselect ; last contradiction).
+  by ε_spec by exact (thm_REAL_COMPLETE E (conj i j)) => ? -[].
 Qed.
 
 Lemma real_sup_upper_bound E : Real.has_sup E -> ub E (real_sup E).
@@ -420,7 +418,7 @@ Lemma real_sgn_def : sgr = (fun _26598 : R => @COND R (ltr (R_of_nat (NUMERAL O)
 Proof.
   rewrite/COND/ltr ; ext => /= r ; case (sgr_elim r).
   - by move=>? ; if_triv.
-  - move=> neg_0 ; rewrite if_triv_False ; first by if_triv.
+  - move=> neg_0 ; rewrite if_triv_False ; last by if_triv.
     by move/(lt_trans neg_0) ; rewrite lt_irreflexive.
   - by rewrite lt_irreflexive ; do 2 if_triv.
 Qed.
@@ -447,14 +445,14 @@ Proof.
       have spos_r : 0 < r by rewrite lt_neqAle -andP** -negP** -eqP** sym.
       by rewrite/sgr !gtr0_sg // sqrtr_gt0.
     + rewrite/expr ; case (sqrtrP r) ; [by rewrite R_ltNge|move=>/={}r{}pos_r].
-      rewrite ger0_norm ; [exact: erefl | exact: sqr_ge0].
-    + rewrite/sgr ltr0_sg ; first by rewrite ltr0_sg ?RltE.
+      rewrite ger0_norm ; [exact: sqr_ge0 | exact: erefl].
+    + rewrite/sgr ltr0_sg ; last by rewrite ltr0_sg ?RltE.
       by rewrite oppr_lt0 sqrtr_gt0 -oppr_lt0 opprK.
     + rewrite/expr -{2}(opprK r). set k := -r. case (sqrtrP (k)) => /=.
       * rewrite oppr_lt0 => pos_r. have := lt_trans neg_r pos_r.
         by rewrite lt_irreflexive.
       * move =>{k neg_r}r pos_r.
-        rewrite sqrrN normrN ger0_norm ; [exact: erefl | exact: sqr_ge0].
+        rewrite sqrrN normrN ger0_norm ; [exact: sqr_ge0 | exact: erefl].
   - set (s_r := hol_sqrt r : R) ; move=> s_r' [<- <-] [].
     rewrite/expr ; case (sgr_elim s_r) ; case (sgr_elim s_r') => //=.
     2-4,6-8: cbn ; lra.
@@ -624,7 +622,7 @@ Proof.
     + move/eqP; repeat split; [exact: modz_ge0|exact: ltz_mod|exact: divz_eq].
   - move=> div _ [rem div_def] ; ext=> m n ; specialize (div_def m n).
     eapply if_elim with (1 := div_def) ; first (move=>->[-> _] ; exact: divz0).
-    move=> ? [? [? {1}->]]; rewrite divzMDl ; last by apply/eqP.
+    move=> ? [? [? {1}->]]; rewrite divzMDl ; first by apply/eqP.
     by rewrite divz_small -?andP** ?addr0.
 Qed.
 
@@ -1014,15 +1012,15 @@ Proof.
   intro H.
   exists (if S a then a :: [seq of S] else [seq of a |` S]).
   if_intro=>H' ; split ; auto.
-  - f_equal. rewrite setUidr. reflexivity. now intros _ ->.
+  - by congr (_ _) ; rewrite setUidr => [_ ->|].
   - apply eq_mod_permut.
     + intro x. rewrite In_seq_of_set.
-      ext. inversion 1 as [->|]. 3 : intros [i | i].
+      2: ext => [|[i | i]]; first inversion 1 as [->|].
+      * rewrite -> finite_setE in *. now apply finite'_setU1.
       * now left.
       * right. now rewrite In_seq_of_set.
       * left. now symmetry.
       * right. now rewrite <- In_seq_of_set.
-      * rewrite -> finite_setE in *. now apply finite'_setU1.
     + rewrite -uniq_NoDup. apply seq_of_set_spec. rewrite -> finite_setE in *.
       exact: finite'_setU1.
     + apply NoDup_cons. now rewrite In_seq_of_set.
@@ -1057,7 +1055,8 @@ Proof.
   - split. now rewrite seq_of_set0. intros a E H'. unfold INSERT.
     destruct (seq_of_setU1 a H') as (l, (Hl, ->))=> /3= /c` H.
     reflexivity. now rewrite (permut_inv_fold_right Hl).
-  - rewrite finite_setE. intros f' (HEmpty,HINSERT) (HEmpty', HINSERT') E (_, Hfin).
+  - rewrite finite_setE.
+    intros f' (HEmpty,HINSERT) (HEmpty', HINSERT') E (_, Hfin).
     induction Hfin. now rewrite HEmpty HEmpty'.
     unfold INSERT in *. now rewrite -> HINSERT, HINSERT', IHHfin.
 Qed.
@@ -1082,7 +1081,7 @@ Qed.
 Lemma fset_set_seq {A : Type'} (s : seq A) :
   fset_set [set` s] = [fset x in s].
 Proof.
-  apply fsetP=>x ; rewrite in_fset_set ; last by apply (finite_witness s).
+  apply fsetP=>x ; rewrite in_fset_set ; first by apply (finite_witness s).
   by rewrite in_fset_seq mem_setE.
 Qed.
 
@@ -1091,8 +1090,7 @@ Proof.
   rewrite/3=/CARD/fold_set => /` S /c` fin_S ; last by [].
   if_triv using permut_inv_succ.
   move:(seq_of_set_spec fin_S)=>[eq nd] ; rewrite -{1}eq.
-  rewrite fset_set_seq card_fseq undup_id ; last by [].
-  by elim:[seq of S] => [|a s IHs] ; last (simpl ; f_equal).
+  by rewrite fset_set_seq card_fseq undup_id.
 Qed.
 
 Definition dimindex (A : Type') (_ : set A) :=
@@ -1265,7 +1263,7 @@ Qed.
 (* To be able to use HOL Light objects on row vectors *)
 Lemma fset_setT (T : finType) : fset_set [set: T] = [fset i in finset.setT]%fset.
 Proof.
-  apply/fsetP => x ; rewrite in_fset_set ; last exact: finite_finset.
+  apply/fsetP => x ; rewrite in_fset_set ; first exact: finite_finset.
   by rewrite in_setT 2!inE.
 Qed.
 
@@ -1500,6 +1498,6 @@ Proof.
     rewrite/inhabits/coord/3= => m mgt0 M ; rewrite -andP** not_andE 2!negP**.
     rewrite -2!ltnNge ltnS leqn0 ; case.
     + move/eqP=> -> /= ; f_equal ; exact: inord_lt.
-    + move=> ltSmn ; rewrite inord_gt ; last by elim:n ltSmn.
+    + move=> ltSmn ; rewrite inord_gt ; first by elim:n ltSmn.
       rewrite/ord0 ; do 2 f_equal ; exact:Prop_irrelevance.
 Qed.

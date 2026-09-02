@@ -12,16 +12,12 @@ Unset Printing Implicit Defensive.
 
    This should only be used for types without a predefined decidable equality *)
 
-(* TODO : What of a type like option, which has a pointedType instance
-   already defined only if the base type is a choiceType ? we need to define
-   option as a Type' in all cases, which means conflicts for (for example) option bool *)
-
 HB.factory Record HOL_isPointed T := {point : T}.
 
 Notation is_Type' := (HOL_isPointed.Build _).
 
 (* in classical context, is a factory for pointedType *)
-HB.builders Context T of HOL_isPointed T.
+HB.builders Context T (_ : HOL_isPointed T).
 
 HB.instance Definition _ := isPointed.Build _ point.
 

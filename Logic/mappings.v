@@ -4,6 +4,7 @@ From mathcomp Require Import choice bigop finmap boolp classical_sets.
 From mathcomp Require Import cardinality.
 Require Export HOLLight.Unif.mappings.
 Require Import HOLLight.Unif.theorems.
+Unset SsrOldRewriteGoalsOrder. (* Remove upon requiring mathcomp-algebra >= 2.6.0 *)
 Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
@@ -96,7 +97,7 @@ Proof.
       by move=> + _ [[= ->] _].
     + if_triv by case=> ? [[= <-]] ; apply/negP.
       if_triv by move/eqP ; rewrite Heq0.
-      rewrite if_triv_False ; first by [].
+      rewrite if_triv_False ; last by [].
       case => ? [? [-> [mappedn' _]]] ; move: {Heq} i0 => /negP ; apply.
       exact: (map_f _ mappedn').
     + by rewrite Heq/1= ; if_triv by case => ? [].
@@ -220,11 +221,11 @@ Proof.
     rewrite/EX 2!negP** /= => /negbTE -> ; rewrite Bool.orb_false_r.
     by rewrite eqP** asboolb. }
   have Sn_E5 : CARD (Sn `&` E5) = 0.
-  { rewrite -/(NUMERAL 0) thm_CARD_EQ_0 ; last by apply:finite_setI ; left.
+  { rewrite -/(NUMERAL 0) thm_CARD_EQ_0 ; first by apply:finite_setI ; left.
     by ext => k [] ; rewrite HeqSn => ->. }
   replace (CARD (setU Sn E5)) with (CARD E5 + 1).
   match goal with |- is_true (?n - _ < ?m - _) => replace m with n end.
-  - rewrite subnDA ltn_subLR ; first by [].
+  - rewrite subnDA ltn_subLR ; last by [].
     apply: (@leq_trans (CARD (Sn `|` E5) - CARD E5)).
     + rewrite thm_CARD_UNION_GEN // Sn_E5 subn0 addnK -(setU0 Sn) HeqSn.
       by rewrite thm_CARD_SING.
