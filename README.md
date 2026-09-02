@@ -11,7 +11,20 @@ derivatives, Clifford algebra, integration, measure theory, complex
 numbers and analysis, transcendental numbers, real analysis, complex
 line integrals, etc. See HOL-Light files for more details.
 
-The translated theorems are provided as axioms in order to have a fast Require because the proofs currently extracted from HOL-Light are very big (91 Gb) and not very informative for they are low level (the translation is done at the kernel level, not at the source level). If you are skeptical, you can however generate and check them again by using the script [reproduce](https://github.com/Deducteam/rocq-hollight/blob/main/reproduce). It however takes about 25 hours with 32 processors Intel Core i9-13950HX and 128 Gb RAM. If every thing works well, the proofs will be in the directory `tmp/output`.
+**Reproducibility**
+
+The translated theorems are provided as axioms in order to have a fast Require because the proofs currently extracted from HOL-Light are very big (91 Gb) and not very informative for they are low level (the translation is done at the kernel level, not at the source level). If you are skeptical, you can however generate and check them again by using the script [reproduce](https://github.com/Deducteam/rocq-hollight/blob/main/reproduce).  
+This script:
+- sets up a local opam switch with all the dependencies (which takes more than 30 minutes, and even more depending on computer specs)
+- generates the translated proofs and theorems (which, depending on the choice of library to generate proofs for, takes between 5 minutes and more than an hour with 32 processors Intel Core i9-13950HX and 128 Gb RAM)
+- checks the proofs (which, depending on the choice of library, takes between 10 minutes and over 50 hours with 32 processors Intel Core i9-13950HX and 128 Gb RAM).  
+
+If everything works well, the proofs will be in the directory `tmp/output`.  
+It is possible to execute only parts of it, more details are displayed when running the script with no argument:
+```
+./reproduce
+```
+**Definition alignments**
 
 The types and functions currently [aligned](https://github.com/Deducteam/rocq-hollight/blob/main/Multivariate/mappings.lp) are:
 - types: unit, prod, list, option, sum, ascii, N, R, Z
