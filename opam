@@ -13,11 +13,11 @@ authors: ["Frédéric Blanqui"]
 license: "CeCILL-2.1"
 depends: [
   "rocq-prover" {>= "9.0"}
-  "coq-mathcomp-classical" {>= "1.16.0"}
-  "coq-mathcomp-analysis-stdlib" {>= "1.14.0"}
-  "coq-mathcomp-algebra" {< "2.6.0"}
+  "rocq-mathcomp-classical"
+  "rocq-mathcomp-analysis-stdlib"
+  "rocq-mathcomp-algebra" {>= "2.6"}
   "coq-fourcolor-reals" {>= "1.4.2"}
-  "coq-mathcomp-zify" {>= "1.6.0"}
+  "rocq-mathcomp-zify"
   "rocq-equations" {>= "1.3.1+9.0"}
 ]
 build: [make "-j%{jobs}%"]
