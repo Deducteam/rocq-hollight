@@ -2,7 +2,6 @@ Require Import Corelib.Init.Wf HB.structures.
 From Stdlib Require Import BinNat List Lia PeanoNat Ascii Setoid.
 From mathcomp Require Import ssreflect ssrfun ssrbool eqtype ssrnat choice.
 From mathcomp Require Import boolp classical_sets functions.
-Unset SsrOldRewriteGoalsOrder. (* Remove upon requiring mathcomp-algebra >= 2.6.0 *)
 Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.

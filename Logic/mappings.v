@@ -4,7 +4,6 @@ From mathcomp Require Import choice bigop finmap boolp classical_sets.
 From mathcomp Require Import cardinality.
 Require Export HOLLight.Unif.mappings.
 Require Import HOLLight.Unif.theorems.
-Unset SsrOldRewriteGoalsOrder. (* Remove upon requiring mathcomp-algebra >= 2.6.0 *)
 Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.

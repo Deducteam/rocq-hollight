@@ -8,7 +8,6 @@ From mathcomp Require Import normedtype Rstruct_topology.
 Import Order Order.TTheory GRing Num.Theory.
 Require Export HOLLight.HOL.mappings.
 From HOLLight Require Import morepointedtypes HOL.theorems.
-Unset SsrOldRewriteGoalsOrder. (* Remove upon requiring mathcomp-algebra >= 2.6.0 *)
 Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.

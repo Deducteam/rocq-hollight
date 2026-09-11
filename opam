@@ -12,8 +12,6 @@ maintainer: "frederic.blanqui@inria.fr"
 authors: ["Frédéric Blanqui"]
 license: "CeCILL-2.1"
 depends: [
-  "rocq-prover" {>= "9.0"}
-  "rocq-mathcomp-classical"
   "rocq-mathcomp-analysis-stdlib"
   "rocq-mathcomp-algebra" {>= "2.6"}
   "coq-fourcolor-reals" {>= "1.4.2"}

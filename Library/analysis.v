@@ -8,7 +8,6 @@ From mathcomp Require Import realfun Rstruct_topology.
 Import preorder.Order Order.TTheory Num.Theory GRing.Theory.
 Require Export HOLLight.HOL.mappings.
 From HB Require Import structures.
-Unset SsrOldRewriteGoalsOrder. (* Remove upon requiring mathcomp-algebra >= 2.6.0 *)
 Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.

@@ -16,7 +16,6 @@ From mathcomp Require Import realfun.
 Import preorder.Order Order.TTheory GRing GRing.Theory Num.Theory Logic.
 Require Export HOLLight.Real_With_nat.mappings.
 From HOLLight.Real_With_nat Require Import terms theorems.
-Unset SsrOldRewriteGoalsOrder. (* Remove upon requiring mathcomp-algebra >= 2.6.0 *)
 Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.

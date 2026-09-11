@@ -3,7 +3,6 @@ From mathcomp Require Import ssreflect ssrbool ssrfun ssrnat.
 From mathcomp Require Export eqtype choice.
 From mathcomp Require Import seq boolp functions.
 From mathcomp Require Export classical_sets.
-Unset SsrOldRewriteGoalsOrder. (* Remove upon requiring mathcomp-algebra >= 2.6.0 *)
 Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
