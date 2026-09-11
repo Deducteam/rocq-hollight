@@ -24,7 +24,7 @@ build: [make "-j%{jobs}%"]
 install: [make "install"]
 tags: [
   "logpath:HOLLight"
-  "date:2025-12-15"
+  "date:2026-09-08"
   "category:Mathematics/Arithmetic and Number Theory/Miscellaneous"
   "category:Mathematics/Real Numbers"
   "category:Mathematics/Real Calculus and Topology"
