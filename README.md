@@ -84,9 +84,8 @@ Lemma Prop_irrelevance : forall (P:Prop) (p1 p2:P), p1 = p2.
 Dependencies: [rocq-equations](https://github.com/rocq-prover/equations), [rocq-mathcomp-analysis-stdlib](https://github.com/math-comp/analysis/tree/master/reals_stdlib), [rocq-mathcomp-zify](https://github.com/math-comp/mczify), [coq-fourcolor-reals](https://github.com/coq-community/fourcolor)
 
 ```
-git clone https://github.com/Deducteam/rocq-hollight.git
-cd rocq-hollight
-opam install .
+opam repo add rocq-released https://rocq-prover.org/opam/released
+opam install rocq-hollight
 ```
 
 **Usage in a Rocq file**
