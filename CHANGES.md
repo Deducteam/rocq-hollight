@@ -2,6 +2,10 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## 1.1.0 (2026-09-18)
+
+Compatibility with MathComp 2.6 and Rocq 9.2.
+
 ## 1.0.0 (2026-09-08)
 
 First release. This new package regroups in a single one [coq-hol-light-real-with-nat](https://github.com/Deducteam/coq-hol-light-real-with-nat), [coq-hol-light-real-with-N](https://github.com/Deducteam/coq-hol-light-real-with-N) and [coq-hol-light](https://github.com/Deducteam/coq-hol-light), following the structure of the HOL-Light repository. It also includes the newly translated Logic library. We now align the basic data structures (integers, lists, real numbers) and their basic operations with the ones in Mathcomp rather than with the ones in the Rocq standard library. This allows us to align more complex objects that are present in Mathcomp but not in the Rocq standard library.
