@@ -269,7 +269,7 @@ stage() {
         shift
         t0=$SECONDS
         $*
-        echo $((SECONDS - t0)) > time-stage-$stage
+        echo $((SECONDS - t0)) > time-$library-$stage
         echo $stage > STAGE
         stage=`expr $stage + 1`
     fi
@@ -293,3 +293,10 @@ stage 11 create_and_check_opam_library
 stage 12 compare_opam_files
 stage 13 translate_proofs
 stage 14 check_proofs
+
+for f in `ls -1 time-$library-* | sort -V`
+do
+    t=`cat $f`
+    printf '%02d:%02d:%02d ' $((t/3600)) $((t%3600/60)) $((t%60))
+    echo `grep "^stage ${f##*-} " ../$0`
+done
