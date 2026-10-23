@@ -2,8 +2,6 @@
 
 set -e # to exit as soon as there is an error
 
-jobs='-j32'
-
 #opam_version=2.6.1
 #dune_version=3.24.2
 #make_version=4.4.1
@@ -16,6 +14,8 @@ camlp5_version=8.03.06
 ocaml_version=5.3.0
 rocq_core_version=9.2.0
 rocq_stdlib_version=9.2.0
+
+make="make -j`nproc`"
 
 usage() {
     cat <<__EOF__
@@ -203,7 +203,7 @@ config_output_dir() {
     start configure output directory
     mkdir -p output
     cd output
-    if test -f Makefile; then make $jobs clean-all; fi
+    if test -f Makefile; then $make clean-all; fi
     hol2dk config $hollight_file $root_path $requiring $vfiles $mkfile --mapping $mapping --renaming $renaming
     cd ..
 }
@@ -212,17 +212,17 @@ translate_proofs() {
     start translate HOL-Light proofs to lambdapi and rocq
     cd output
     make split
-    make $jobs lp
-    make $jobs v
-    make $jobs merge-spec-files
-    make $jobs rm-empty-deps
+    $make lp
+    $make v
+    $make merge-spec-files
+    $make rm-empty-deps
     cd ..
 }
 
 check_proofs() {
     start check proofs
     cd output
-    make $jobs vo
+    $make vo
     cd ..
 }
 
@@ -237,16 +237,16 @@ remove_empty_modules() {
 create_and_check_opam_library() {
     start create opam library
     cd output
-    make $jobs opam
+    $make opam
     cd ..
     mkdir -p opam
     cd opam
-    if test -f Makefile; then make $jobs clean; fi
+    if test -f Makefile; then $make clean; fi
     cp ../../opam $vfiles $mkfile .
     sed -e "s/HOLLight/HOLLight.$library/" ../../Makefile > Makefile
     remove_empty_modules ../output/${base}_terms.v > terms.v
     remove_empty_modules ../output/${base}_opam.v > theorems.v
-    make $jobs
+    $make
     cd ..
 }
 
