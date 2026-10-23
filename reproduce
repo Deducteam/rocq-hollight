@@ -2,42 +2,33 @@
 
 set -e # to exit as soon as there is an error
 
-#opam_version=2.2.1
-#dune_version=3.20.2
-#make_version=4.3
+#opam_version=2.6.1
+#dune_version=3.24.2
+#make_version=4.4.1
 
 hollight_version=3.1.0
 hollight_commit=Release-3.1.0
-hol2dk_commit=2.1.0
-lambdapi_commit=3.0.0
+hol2dk_commit=11e45c0 # > 2.1.0
+lambdapi_commit=dfd44e0a # > 3.0.0
 camlp5_version=8.03.06
 ocaml_version=5.3.0
-rocq_version=9.0.0
+rocq_core_version=9.2.0
+rocq_stdlib_version=9.2.0
+
+make="make -j`nproc`"
 
 usage() {
     cat <<__EOF__
-usage: `basename $0` \$library [\$stage]
+usage: `basename $0` LIB [STAGE]
 
-arguments:
-- \$library: one of Real_With_nat, Real_With_N, HOL, Multivariate, Unif or Logic
-- stage: optional integer specifying at which point to start the script
+create the subdirectory ./tmp, install in it the necessary software,
+and generate, translate and check the proofs of the HOL-Light LIB
 
-effects in a temporary directory ./tmp: 
-stage 1: create an opam switch
-stage 2: install hol-light's dependencies
-stage 3: install lambdapi $lambdapi_commit
-stage 4: install rocq-prover $rocq_version
-stage 5: install this repository's dependencies (mathcomp, equations)
-stage 6: install hol2dk $hol2dk_commit
-stage 7: install hol-light
-stage 8: patch_hollight
-stage 9: dump_proofs
-stage 10: configure a tmp/output directory
-stage 11 create and check opam library in tmp/opam
-stage 12 compare opam files
-stage 13 translate proofs in tmp/output
-stage 14 check proofs
+LIB: Real_With_nat, Real_With_N, HOL, Multivariate, Unif or Logic
+
+STAGE:
 __EOF__
+    grep -h '^stage ' $0 | sed -e 's/stage \([0-9]*\)/\1:/' -e 's/\$.*//'
 }
 
 error() {
@@ -49,7 +40,6 @@ error() {
 
 library="$1"
 
-# The file to translate
 case $library in
     Real_With_N|Real_With_nat)
         hollight_file=hol_upto_real.ml;;
@@ -67,41 +57,39 @@ case $library in
         error "unknown library name: $library";;
 esac
 
-# dump-simp-before-hol for everything included in hol.ml
+root_path=HOLLight.$library
+mapping=$library/mappings.lp
+renaming=renaming.lp
+base=`basename $hollight_file .ml`
+
 case $library in
     Real_With_N|Real_With_nat|HOL)
         dump_simp_option=-before-hol;;
     *)
-        dump_simp_option= ;;
-esac
-        
-# The dependencies
-case $library in
-    Real_With_N)
-        require="Stdlib.NArith.BinNat mathcomp.classical.classical_sets";;
-    Real_With_nat)
-        require="mathcomp.boot.ssrnat mathcomp.boot.div mathcomp.boot.seq";;
-    *)
-        require="Stdlib.Reals.Reals mathcomp.boot.ssrnat mathcomp.boot.div mathcomp.boot.seq mathcomp.algebra.ssralg mathcomp.algebra.ssrint mathcomp.algebra.intdiv mathcomp.classical.classical_sets mathcomp.classical.cardinality mathcomp.analysis_stdlib.Rstruct_topology";;
+        dump_simp_option=;;
 esac
 
-# The mappings files for Real_With_N are specific
+case $library in
+    Real_With_N)
+        requiring="Stdlib.NArith.BinNat mathcomp.classical.classical_sets";;
+    Real_With_nat)
+        requiring="mathcomp.boot.ssrnat mathcomp.boot.div mathcomp.boot.seq";;
+    *)
+        requiring="Stdlib.Reals.Reals mathcomp.boot.ssrnat mathcomp.boot.div mathcomp.boot.seq mathcomp.algebra.ssralg mathcomp.algebra.ssrint mathcomp.algebra.intdiv mathcomp.classical.classical_sets mathcomp.classical.cardinality mathcomp.analysis_stdlib.Rstruct_topology";;
+esac
+
 case $library in
     Real_With_N)
         vfiles="$library/type.v $library/mappings.v"
         mkfile="$library/mappings.mk";;
     *)
         vfiles=$library/mappings.v
-        mkfile= ;;
+        mkfile=;;
 esac
 
-base=`basename $hollight_file .ml`
-lpfile=$library/mappings.lp
-root_path=HOLLight.$library
-jobs='-j32'
-
-# we prefix $lpfile, $vfiles and $mkfile with "../../"
-lpfile=../../$lpfile
+# we prefix all files by ../../ because commands are run in tmp/output/
+mapping=../../$mapping
+renaming=../../$renaming
 if test -n "$mkfile"; then mkfile=../../$mkfile; fi
 for f in $vfiles; do files="$files ../../$f"; done
 vfiles=$files
@@ -142,7 +130,7 @@ checkout_commit() {
 #usage: install package_name version
 install() {
     start install $1
-    opam install -y $1.$2
+    opam pin -y $1 $2
 }
 
 create_opam_switch() {
@@ -155,6 +143,7 @@ install_hollight_deps() {
     start install HOL-Light dependencies
     opam pin -y camlp5 $camlp5_version
     opam install -y --deps-only hol_light.$hollight_version
+    opam uninstall ledit
 }
 
 install_lambdapi() {
@@ -168,7 +157,8 @@ install_lambdapi() {
 install_deps() {
     start install dependencies
     opam repo add rocq-released https://rocq-prover.org/opam/released
-    opam install -y .. #TODO: do not know if there is something better to do than to install the library for dependencies between files. 
+    opam pin -y rocq-stdlib $rocq_stdlib_version
+    opam install -y --deps-only ..
 }
 
 install_hol2dk() {
@@ -198,7 +188,7 @@ gen_hollight_file() {
         Unif)
             awk '/^loadt "Logic\/unif.ml"/{print;RM=1;next}/^loadt /{if(RM)next}{print}' Logic/make.ml > $hollight_file;;
         *);;
-    esac       
+    esac
 }
 
 dump_proofs() {
@@ -213,8 +203,8 @@ config_output_dir() {
     start configure output directory
     mkdir -p output
     cd output
-    if test -f Makefile; then make $jobs clean-all; fi
-    hol2dk config $hollight_file $root_path $require $vfiles $mkfile $lpfile
+    if test -f Makefile; then $make clean-all; fi
+    hol2dk config $hollight_file $root_path $requiring $vfiles $mkfile --mapping $mapping --renaming $renaming
     cd ..
 }
 
@@ -222,17 +212,17 @@ translate_proofs() {
     start translate HOL-Light proofs to lambdapi and rocq
     cd output
     make split
-    make $jobs lp
-    make $jobs v
-    make $jobs merge-spec-files
-    make $jobs rm-empty-deps
+    $make lp
+    $make v
+    $make merge-spec-files
+    $make rm-empty-deps
     cd ..
 }
 
 check_proofs() {
     start check proofs
     cd output
-    make $jobs vo
+    $make vo
     cd ..
 }
 
@@ -247,16 +237,16 @@ remove_empty_modules() {
 create_and_check_opam_library() {
     start create opam library
     cd output
-    make $jobs opam
+    $make opam
     cd ..
     mkdir -p opam
     cd opam
-    if test -f Makefile; then make $jobs clean; fi
+    if test -f Makefile; then $make clean; fi
     cp ../../opam $vfiles $mkfile .
     sed -e "s/HOLLight/HOLLight.$library/" ../../Makefile > Makefile
     remove_empty_modules ../output/${base}_terms.v > terms.v
     remove_empty_modules ../output/${base}_opam.v > theorems.v
-    make $jobs
+    $make
     cd ..
 }
 
@@ -277,7 +267,9 @@ stage() {
     if test $1 -eq $stage
     then
         shift
+        t0=$SECONDS
         $*
+        echo $((SECONDS - t0)) > time-$library-$stage
         echo $stage > STAGE
         stage=`expr $stage + 1`
     fi
@@ -286,10 +278,10 @@ stage() {
 stage 1 create_opam_switch
 eval `opam env`
 stage 2 install_hollight_deps
-stage 3 install lambdapi $lambdapi_commit
-stage 4 install rocq-prover $rocq_version
+stage 3 install_lambdapi $lambdapi_commit
+stage 4 install rocq-core $rocq_core_version
 stage 5 install_deps
-stage 6 install hol2dk $hol2dk_commit
+stage 6 install_hol2dk $hol2dk_commit
 #export HOL2DK_DIR=`pwd`/hol2dk
 export HOL2DK_DIR=$OPAM_SWITCH_PREFIX/share/hol2dk
 stage 7 install_hollight
@@ -301,3 +293,10 @@ stage 11 create_and_check_opam_library
 stage 12 compare_opam_files
 stage 13 translate_proofs
 stage 14 check_proofs
+
+for f in `ls -1 time-$library-* | sort -V`
+do
+    t=`cat $f`
+    printf '%02d:%02d:%02d ' $((t/3600)) $((t%3600/60)) $((t%60))
+    echo `grep "^stage ${f##*-} " ../$0`
+done

@@ -5,6 +5,9 @@ name: Docker CI
 on:
   pull_request:
     types: [opened, synchronize, reopened]
+    paths:
+      - '*.v'
+      - 'Makefile'
   push:
     paths:
       - '*.v'
