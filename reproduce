@@ -40,7 +40,6 @@ error() {
 
 library="$1"
 
-# HOL-Light file to translate
 case $library in
     Real_With_N|Real_With_nat)
         hollight_file=hol_upto_real.ml;;
@@ -67,7 +66,7 @@ case $library in
     Real_With_N|Real_With_nat|HOL)
         dump_simp_option=-before-hol;;
     *)
-        dump_simp_option= ;;
+        dump_simp_option=;;
 esac
 
 case $library in
