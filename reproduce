@@ -130,7 +130,7 @@ checkout_commit() {
 #usage: install package_name version
 install() {
     start install $1
-    opam install -y $1.$2
+    opam pin -y $1 $2
 }
 
 create_opam_switch() {
@@ -157,7 +157,7 @@ install_lambdapi() {
 install_deps() {
     start install dependencies
     opam repo add rocq-released https://rocq-prover.org/opam/released
-    opam install -y rocq-stdlib.$rocq_stdlib_version
+    opam pin -y rocq-stdlib $rocq_stdlib_version
     opam install -y --deps-only ..
 }
 
