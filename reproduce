@@ -10,11 +10,11 @@ jobs='-j32'
 
 hollight_version=3.1.0
 hollight_commit=Release-3.1.0
-hol2dk_commit=59ad456 # > 2.1.0
+hol2dk_commit=11e45c0 # > 2.1.0
 lambdapi_commit=dfd44e0a # > 3.0.0
 camlp5_version=8.03.06
 ocaml_version=5.3.0
-rocq_core_version=9.3.0
+rocq_core_version=9.2.0
 rocq_stdlib_version=9.2.0
 
 usage() {
@@ -267,7 +267,9 @@ stage() {
     if test $1 -eq $stage
     then
         shift
+        t0=$SECONDS
         $*
+        echo $((SECONDS - t0)) > time-stage-$stage
         echo $stage > STAGE
         stage=`expr $stage + 1`
     fi
